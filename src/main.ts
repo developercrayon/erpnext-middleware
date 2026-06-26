@@ -1,0 +1,108 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import helmet from 'helmet';
+import * as compression from 'compression';
+import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
+import {
+  ResponseInterceptor,
+  LoggingInterceptor,
+} from './common/interceptors/response.interceptor';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  const config = app.get(ConfigService);
+
+  // ─── Logger ───────────────────────────────────────────────────────────────
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+
+  // ─── Security ─────────────────────────────────────────────────────────────
+  app.use(helmet());
+  app.enableCors({
+    origin: config.get<string>('app.url') || '*',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-correlation-id'],
+    credentials: true,
+  });
+
+  // ─── Compression ──────────────────────────────────────────────────────────
+  app.use(compression());
+
+  // ─── Global Prefix ────────────────────────────────────────────────────────
+  app.setGlobalPrefix('api/v1');
+
+  // ─── Validation ───────────────────────────────────────────────────────────
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
+
+  // ─── Global Filters ───────────────────────────────────────────────────────
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
+  // ─── Global Interceptors ──────────────────────────────────────────────────
+  app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
+
+  // ─── Swagger ──────────────────────────────────────────────────────────────
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('ERPNext Integration Middleware')
+    .setDescription(
+      `
+      Production-ready middleware connecting ERPNext with Amazon and Flipkart marketplaces.
+      
+      ## Authentication
+      - **Internal APIs**: Use JWT Bearer token (POST /api/v1/auth/login)
+      - **Webhooks**: Use x-api-key header
+      
+      ## Queues Dashboard
+      Available at /queues (Bull Board)
+    `,
+    )
+    .setVersion('1.0.0')
+    .addBearerAuth()
+    .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' }, 'api-key')
+    .addTag('Auth', 'Authentication endpoints')
+    .addTag('Orders', 'Order management and webhook ingestion')
+    .addTag('Inventory', 'Inventory synchronization')
+    .addTag('Products', 'Product catalog management')
+    .addTag('Pricing', 'Price synchronization')
+    .addTag('Shipments', 'Shipment management')
+    .addTag('Logs', 'System logs and monitoring')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'list',
+      filter: true,
+      tagsSorter: 'alpha',
+    },
+  });
+
+  // ─── Start ────────────────────────────────────────────────────────────────
+  const port = config.get<number>('app.port') || 3000;
+  const env = config.get<string>('app.env') || 'development';
+
+  await app.listen(port);
+
+  console.log(`
+  ╔════════════════════════════════════════════════════╗
+  ║        ERPNext Integration Middleware              ║
+  ╠════════════════════════════════════════════════════╣
+  ║  Environment : ${env.padEnd(34)}║
+  ║  Server      : http://localhost:${String(port).padEnd(19)}║
+  ║  Swagger     : http://localhost:${port}/api/docs${' '.repeat(8)}║
+  ╚════════════════════════════════════════════════════╝
+  `);
+}
+
+bootstrap();
