@@ -10,6 +10,7 @@ import { join } from 'path';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
+        url: config.get<string>('database.url'),
         host: config.get<string>('database.host'),
         port: config.get<number>('database.port'),
         username: config.get<string>('database.username'),
