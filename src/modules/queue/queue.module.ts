@@ -24,23 +24,28 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
     name,
     imports: [ConfigModule],
     inject: [ConfigService],
-    useFactory: (config: ConfigService) => ({
-      redis: {
-        host: config.get<string>('redis.host'),
-        port: config.get<number>('redis.port'),
-        password: config.get<string>('redis.password'),
-        db: config.get<number>('redis.db'),
-      },
-      defaultJobOptions: {
-        attempts: config.get<number>('queues.maxRetries') || 3,
-        backoff: {
-          type: 'exponential',
-          delay: config.get<number>('queues.retryDelay') || 5000,
+    useFactory: (config: ConfigService) => {
+      const redisUrl = config.get<string>('redis.url');
+      return {
+        ...(redisUrl ? { url: redisUrl } : {
+          redis: {
+            host: config.get<string>('redis.host'),
+            port: config.get<number>('redis.port'),
+            password: config.get<string>('redis.password'),
+            db: config.get<number>('redis.db'),
+          }
+        }),
+        defaultJobOptions: {
+          attempts: config.get<number>('queues.maxRetries') || 3,
+          backoff: {
+            type: 'exponential',
+            delay: config.get<number>('queues.retryDelay') || 5000,
+          },
+          removeOnComplete: { age: 86400, count: 1000 },
+          removeOnFail: false,
         },
-        removeOnComplete: { age: 86400, count: 1000 },
-        removeOnFail: false,
-      },
-    }),
+      };
+    },
   }),
 );
 

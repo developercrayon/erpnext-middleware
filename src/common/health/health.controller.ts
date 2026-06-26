@@ -28,13 +28,18 @@ export class HealthController {
     let redisOk = false;
     let redis: Redis | null = null;
     try {
-      redis = new Redis({
-        host: this.config.get<string>('redis.host'),
-        port: this.config.get<number>('redis.port'),
-        password: this.config.get<string>('redis.password'),
-        lazyConnect: true,
-        connectTimeout: 2000,
-      });
+      const redisUrl = this.config.get<string>('redis.url');
+      if (redisUrl) {
+        redis = new Redis(redisUrl, { lazyConnect: true, connectTimeout: 2000 });
+      } else {
+        redis = new Redis({
+          host: this.config.get<string>('redis.host'),
+          port: this.config.get<number>('redis.port'),
+          password: this.config.get<string>('redis.password'),
+          lazyConnect: true,
+          connectTimeout: 2000,
+        });
+      }
       await redis.connect();
       redisOk = redis.status === 'ready' || redis.status === 'connect';
     } catch (e) {
