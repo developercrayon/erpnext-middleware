@@ -1,4 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -13,7 +15,23 @@ import {
 } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+  app.useStaticAssets(join(__dirname, '..', 'public'));
+
+  // Workaround for AdminJS NestJS integration crash on Express 4/5
+  const httpAdapter = app.getHttpAdapter();
+  const originalGetInstance = httpAdapter.getInstance;
+  httpAdapter.getInstance = function () {
+    const instance = originalGetInstance.call(this);
+    return new Proxy(instance, {
+      get(target, prop, receiver) {
+        if (prop === 'router') {
+          return target._router;
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+  };
 
   const config = app.get(ConfigService);
 
@@ -21,7 +39,21 @@ async function bootstrap() {
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   // ─── Security ─────────────────────────────────────────────────────────────
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
   app.enableCors({
     origin: config.get<string>('app.url') || '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -33,7 +65,9 @@ async function bootstrap() {
   app.use(compression());
 
   // ─── Global Prefix ────────────────────────────────────────────────────────
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['admin/(.*)', 'admin', '', '/'],
+  });
 
   // ─── Validation ───────────────────────────────────────────────────────────
   app.useGlobalPipes(
@@ -99,8 +133,9 @@ async function bootstrap() {
   ║        ERPNext Integration Middleware              ║
   ╠════════════════════════════════════════════════════╣
   ║  Environment : ${env.padEnd(34)}║
-  ║  Server      : http://localhost:${String(port).padEnd(19)}║
-  ║  Swagger     : http://localhost:${port}/api/docs${' '.repeat(8)}║
+  ║  Server      : ${(`http://localhost:${port}`).padEnd(34)}║
+  ║  Swagger     : ${(`http://localhost:${port}/api/docs`).padEnd(34)}║
+  ║  Admin Panel : ${(`http://localhost:${port}/admin`).padEnd(34)}║
   ╚════════════════════════════════════════════════════╝
   `);
 }

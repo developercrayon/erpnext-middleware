@@ -207,6 +207,16 @@ export class OrdersService {
     return String(job.id);
   }
 
+  async triggerFetchOrders(source: MarketplaceSource, fromDate?: Date): Promise<string> {
+    const job = await this.ordersQueue.add(
+      'fetch-marketplace-orders',
+      { source, fromDate: fromDate || new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+    );
+    this.logger.log(`Manual order fetch queued for ${source}: jobId=${job.id}`);
+    return String(job.id);
+  }
+
   async getStats(): Promise<Record<string, number>> {
     const total = await this.orderRepo.count();
     const pending = await this.orderRepo.count({ where: { syncStatus: SyncStatus.PENDING } });

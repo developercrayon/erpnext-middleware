@@ -25,6 +25,9 @@ import { LogsModule } from './modules/logs/logs.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { HealthController } from './common/health/health.controller';
+import { AppController } from './app.controller';
+
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -56,6 +59,9 @@ import { HealthController } from './common/health/health.controller';
     // ─── Database ─────────────────────────────────────────────────────────────
     DatabaseModule,
 
+    // ─── Admin Dashboard ──────────────────────────────────────────────────────
+    AdminModule.register(),
+
     // ─── Connectors ───────────────────────────────────────────────────────────
     ERPNextModule,
     AmazonModule,
@@ -74,6 +80,6 @@ import { HealthController } from './common/health/health.controller';
     QueueModule,
     SchedulerModule,
   ],
-  controllers: [HealthController],
+  controllers: [AppController, HealthController],
 })
 export class AppModule {}

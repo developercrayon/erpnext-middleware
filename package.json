@@ -24,6 +24,11 @@
     "migration:revert": "npm run typeorm -- migration:revert"
   },
   "dependencies": {
+    "@adminjs/express": "^6.1.1",
+    "@adminjs/nestjs": "^7.0.0",
+    "@adminjs/typeorm": "^5.0.1",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@nestjs/bull": "^10.2.3",
     "@nestjs/common": "^10.4.0",
     "@nestjs/config": "^3.3.0",
@@ -35,6 +40,7 @@
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/throttler": "^6.2.1",
     "@nestjs/typeorm": "^10.0.2",
+    "adminjs": "^7.8.17",
     "axios": "^1.7.9",
     "bull": "^4.16.3",
     "bullmq": "^5.30.1",
@@ -43,7 +49,10 @@
     "compression": "^1.7.4",
     "crypto-js": "^4.2.0",
     "date-fns": "^3.6.0",
+    "express": "^4.21.1",
+    "express-formidable": "^1.2.0",
     "express-rate-limit": "^7.4.1",
+    "express-session": "^1.19.0",
     "helmet": "^8.0.0",
     "ioredis": "^5.4.1",
     "nest-winston": "^1.9.7",
@@ -51,12 +60,21 @@
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "pg": "^8.13.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router": "^8.0.1",
+    "react-router-dom": "^7.18.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "styled-components": "^6.4.3",
+    "tslib": "^2.8.1",
     "typeorm": "^0.3.20",
     "uuid": "^10.0.0",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
+  },
+  "overrides": {
+    "express": "^4.21.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
@@ -85,16 +103,23 @@
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "webpack-node-externals": "^3.0.0"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }
