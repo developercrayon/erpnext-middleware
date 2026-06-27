@@ -32,8 +32,8 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built artifacts from the builder stage
 COPY --from=builder /usr/src/app/dist ./dist
 
-# Create logs directory
-RUN mkdir -p logs && chown -R node:node logs
+# Create logs and .adminjs directories
+RUN mkdir -p logs .adminjs && chown -R node:node logs .adminjs
 
 # Run as non-root user
 USER node
