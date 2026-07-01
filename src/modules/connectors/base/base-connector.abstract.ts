@@ -39,6 +39,7 @@ export abstract class BaseConnector implements IConnector {
   abstract updatePrice(items: NormalizedPrice[]): Promise<ConnectorResult<UpdateResult>>;
   abstract createShipment(shipment: NormalizedShipment): Promise<ConnectorResult<{ shipmentId: string }>>;
   abstract cancelOrder(orderId: string, reason?: string): Promise<ConnectorResult<boolean>>;
+  abstract createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>>;
 
   // ─── Common Utilities ─────────────────────────────────────────────────────
 

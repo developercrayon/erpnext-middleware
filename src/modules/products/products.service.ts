@@ -11,6 +11,8 @@ import { QUEUE_NAMES, JOB_NAMES, QUEUE_DEFAULT_OPTIONS } from '../queue/queue.co
 import { MarketplaceSource } from '../../database/entities/order.entity';
 import { ProductQueryDto } from './dto/product.dto';
 
+import { QueueJob, QueueJobStatus } from '../../database/entities/operational.entity';
+
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
@@ -23,6 +25,8 @@ export class ProductsService {
     private readonly flipkartConnector: FlipkartConnector,
     @InjectQueue(QUEUE_NAMES.PRODUCTS)
     private readonly productsQueue: Queue,
+    @InjectRepository(QueueJob)
+    private readonly queueJobRepo: Repository<QueueJob>,
   ) {}
 
   // ─── Query Methods ────────────────────────────────────────────────────────
@@ -71,6 +75,23 @@ export class ProductsService {
       { source, skus },
       QUEUE_DEFAULT_OPTIONS,
     );
+    
+    // Synchronously insert the DB record so it immediately appears in the UI
+    // Using insert instead of upsert so we don't accidentally overwrite a COMPLETED status
+    // if the job finished instantly before this line executes.
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.PRODUCTS,
+        jobName: JOB_NAMES.SYNC_PRODUCTS,
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: job.opts?.attempts || 3,
+      });
+    } catch (e) {
+      // Ignore unique constraint violation (means listener already saved it as COMPLETED/ACTIVE)
+    }
+
     this.logger.log(`Product sync job queued: ${job.id}`);
     return String(job.id);
   }
@@ -81,6 +102,21 @@ export class ProductsService {
       {},
       QUEUE_DEFAULT_OPTIONS,
     );
+
+    // Synchronously insert the DB record so it immediately appears in the UI
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.PRODUCTS,
+        jobName: JOB_NAMES.FETCH_PRODUCTS,
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: job.opts?.attempts || 3,
+      });
+    } catch (e) {
+      // Ignore unique constraint violation
+    }
+
     this.logger.log(`Fetch products from ERPNext job queued: ${job.id}`);
     return String(job.id);
   }
@@ -110,11 +146,16 @@ export class ProductsService {
             description: p.description,
             category: p.category,
             brand: p.brand,
+            thumbnailUrl: p.thumbnailUrl || (p.images && p.images.length > 0 ? p.images[0] : null),
+            images: p.images || [],
             mrp: p.mrp || 0,
             sellingPrice: p.sellingPrice || 0,
             hsnCode: p.hsnCode,
             gstRate: p.gstRate || 18,
             weight: p.weight,
+            upc: p.upc || null,
+            amazonAsin: p.amazonAsin || null,
+            amazonProductType: p.amazonProductType || null,
             status: ProductStatus.ACTIVE,
             lastSyncedAt: new Date(),
           },

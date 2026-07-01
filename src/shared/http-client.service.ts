@@ -1,19 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { ConfigService } from '@nestjs/config';
+import { ApiLog } from '../database/entities/logs.entity';
 
 /**
  * HttpClientService wraps Axios with built-in:
  * - Structured request/response logging
  * - Configurable timeouts
  * - Error normalization
+ * - Saves logs to ApiLog table
  */
 @Injectable()
 export class HttpClientService {
   private readonly logger = new Logger(HttpClientService.name);
   private readonly client: AxiosInstance;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @InjectRepository(ApiLog)
+    private readonly apiLogRepo: Repository<ApiLog>,
+  ) {
     this.client = axios.create({
       timeout: 30000,
       headers: { 'Content-Type': 'application/json' },
@@ -45,16 +53,44 @@ export class HttpClientService {
         this.logger.debug(
           `← ${response.status} ${response.config.url} (${duration}ms)`,
         );
+        this.saveLog(response.config, response, duration, null).catch(err => this.logger.error('Failed to save API Log', err));
         return response;
       },
       (error) => {
+        const duration = Date.now() - ((error.config as any)?.metadata?.startTime || Date.now());
         const status = error.response?.status;
         const url = error.config?.url;
         const message = error.response?.data?.message || error.message;
         this.logger.error(`← ${status || 'ERR'} ${url} — ${message}`);
+        this.saveLog(error.config, error.response, duration, error).catch(err => this.logger.error('Failed to save API Log', err));
         return Promise.reject(this.normalizeError(error));
       },
     );
+  }
+
+  private async saveLog(config: any, response: any, duration: number, error: any) {
+    if (!config) return;
+    
+    // Determine the service name based on URL
+    let service = 'UNKNOWN';
+    const urlStr = config.url || '';
+    if (urlStr.includes('amazon')) service = 'AMAZON';
+    else if (urlStr.includes('flipkart')) service = 'FLIPKART';
+    else if (urlStr.includes('erpnext') || urlStr.includes(this.config.get('erpnext.baseUrl') || '')) service = 'ERPNEXT';
+
+    const logEntry = this.apiLogRepo.create({
+      service,
+      method: (config.method || 'GET').toUpperCase(),
+      url: urlStr,
+      requestHeaders: config.headers,
+      requestBody: typeof config.data === 'string' ? JSON.parse(config.data).catch(()=>config.data) : config.data,
+      responseStatus: response?.status || null,
+      responseBody: response?.data || null,
+      durationMs: duration,
+      error: error ? error.message : null,
+    });
+    
+    await this.apiLogRepo.save(logEntry);
   }
 
   private normalizeError(error: any): Error {

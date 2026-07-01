@@ -166,6 +166,35 @@ export class FlipkartConnector extends BaseConnector {
     }
   }
 
+  // ─── Create Listing ───────────────────────────────────────────────────────
+
+  async createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>> {
+    try {
+      await this.ensureAuthenticated();
+      
+      const payload = {
+        sku_id: product.sku,
+        product_id: product.flipkartSku || product.sku,
+        listing_status: isDraft ? 'INACTIVE' : 'ACTIVE',
+        mrp: { amount: product.mrp || 0, unit: 'INR' },
+        your_selling_price: { amount: product.sellingPrice || product.mrp || 0, unit: 'INR' },
+        tax_rule_id: 'Standard',
+        fulfillment_profile: 'SELLER_FULFILLMENT',
+        shipping_provider: 'FLIPKART',
+      };
+
+      await this.http.post(
+        `${this.apiUrl}/v3/listings`,
+        { listings: [payload] },
+        { headers: this.apiHeaders }
+      );
+
+      return this.success(true);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
   // ─── Update Inventory ─────────────────────────────────────────────────────
 
   async updateInventory(items: NormalizedInventory[]): Promise<ConnectorResult<UpdateResult>> {

@@ -32,8 +32,17 @@ export class Product {
   @Column({ name: 'amazon_fnsku', type: 'varchar', nullable: true })
   amazonFnsku: string;
 
+  @Column({ name: 'amazon_product_type', type: 'varchar', nullable: true })
+  amazonProductType: string;
+
+  @Column({ name: 'upc', type: 'varchar', nullable: true })
+  upc: string;
+
   @Column({ name: 'flipkart_sku', type: 'varchar', nullable: true })
   flipkartSku: string;
+
+  @Column({ name: 'thumbnail_url', type: 'text', nullable: true })
+  thumbnailUrl: string;
 
   @Column({ name: 'name', type: 'varchar' })
   name: string;
@@ -76,6 +85,18 @@ export class Product {
 
   @Column({ name: 'attributes', type: 'jsonb', nullable: true })
   attributes: Record<string, any>;
+
+  @Column({ name: 'custom_amazon_price', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  customAmazonPrice: number;
+
+  @Column({ name: 'custom_flipkart_price', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  customFlipkartPrice: number;
+
+  @Column({ name: 'custom_amazon', type: 'boolean', default: false })
+  customAmazon: boolean;
+
+  @Column({ name: 'custom_flipkart', type: 'boolean', default: false })
+  customFlipkart: boolean;
 
   @Column({ name: 'status', type: 'enum', enum: ProductStatus, default: ProductStatus.ACTIVE })
   status: ProductStatus;

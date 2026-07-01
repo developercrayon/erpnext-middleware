@@ -36,6 +36,9 @@ export interface IConnector {
 
   /** Cancel an order on the external service */
   cancelOrder(orderId: string, reason?: string): Promise<ConnectorResult<boolean>>;
+
+  /** Create a product listing on the external service */
+  createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>>;
 }
 
 export interface FetchOrdersParams {

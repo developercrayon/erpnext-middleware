@@ -178,6 +178,206 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
+  // ─── Create Listing ───────────────────────────────────────────────────────
+
+  async createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>> {
+    try {
+      await this.ensureAuthenticated();
+      
+      // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
+      const productType = product.amazonProductType || product.attributes?.amazonProductType || 'PRODUCT';
+      const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
+
+      const payload: any = {
+        productType,
+        requirements,
+        attributes: {
+          condition_type: [{ value: 'new_new' }],
+          item_name: [{ value: product.name, language_tag: 'en_IN' }],
+        },
+      };
+
+      if (product.brand) {
+        payload.attributes.brand = [{ value: product.brand, language_tag: 'en_IN' }];
+      }
+      
+      if (product.description) {
+        // Amazon expects plain text; strip HTML tags that come from ERPNext
+        const plainDesc = product.description.replace(/<[^>]*>?/gm, '').trim();
+        if (plainDesc) {
+          payload.attributes.product_description = [{ value: plainDesc, language_tag: 'en_IN' }];
+        }
+      }
+      
+      const mainImage = product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null);
+      if (mainImage) {
+        payload.attributes.main_product_image_locator = [{ 
+          marketplace_id: this.marketplaceId,
+          media_location: mainImage 
+        }];
+      }
+
+      // If there are additional images, add them to other_product_image_locator_N
+      if (product.images && product.images.length > 0) {
+        const otherImages = product.images.filter(img => img !== mainImage);
+        for (let i = 0; i < Math.min(otherImages.length, 8); i++) {
+          const key = `other_product_image_locator_${i + 1}`;
+          payload.attributes[key] = [{
+            marketplace_id: this.marketplaceId,
+            media_location: otherImages[i]
+          }];
+        }
+      }
+
+      if (product.upc) {
+        payload.attributes.externally_assigned_product_identifier = [{
+          type: 'upc',
+          value: product.upc,
+        }];
+      } else if (product.attributes?.ean) {
+        payload.attributes.externally_assigned_product_identifier = [{
+          type: 'ean',
+          value: product.attributes.ean
+        }];
+      }
+
+      // To create a "Draft/Inactive" listing on Amazon, we set purchasable to false
+      // or omit inventory details entirely. We do not send purchasable_offer
+      // via putListingsItem. Price and Inventory are updated via their respective feeds.
+
+      if (requirements === 'LISTING') {
+        const erp = product.attributes || {};
+        
+        // Dynamically mapped fields from ERPNext
+        // Amazon expects 'IN' instead of 'India'
+        let country = erp.country_of_origin;
+        if (!country || country.toLowerCase() === 'india') country = 'IN';
+        
+        payload.attributes.country_of_origin = [{ value: country }];
+        payload.attributes.material = [{ value: erp.custom_material || 'Ceramic', language_tag: 'en_IN' }];
+        payload.attributes.item_type_name = [{ value: erp.custom_item_type_name || 'Coffee Mug', language_tag: 'en_IN' }];
+        payload.attributes.model_name = [{ value: erp.custom_model_name || product.sku }];
+        payload.attributes.manufacturer = [{ value: erp.default_item_manufacturer || product.brand || 'Generic' }];
+        
+        // Fallbacks for the remaining mandatory Amazon SP-API fields
+        payload.attributes.model_number = [{ value: product.sku }];
+        payload.attributes.number_of_items = [{ value: 1 }];
+        payload.attributes.unit_count = [{ value: 1, type: { value: 'count', language_tag: 'en_IN' } }];
+        payload.attributes.included_components = [{ value: '1 Mug', language_tag: 'en_IN' }];
+        payload.attributes.bullet_point = [{ value: 'High quality product', language_tag: 'en_IN' }];
+        payload.attributes.color = [{ value: 'White', language_tag: 'en_IN' }];
+        payload.attributes.size = [{ value: 'Standard', language_tag: 'en_IN' }];
+        payload.attributes.batteries_required = [{ value: false }];
+        payload.attributes.supplier_declared_dg_hz_regulation = [{ value: 'not_applicable' }];
+        payload.attributes.care_instructions = [{ value: 'Hand wash only', language_tag: 'en_IN' }];
+        payload.attributes.rtip_manufacturer_contact_information = [{ value: 'contact@brand.com' }];
+        payload.attributes.packer_contact_information = [{ value: 'contact@brand.com', language_tag: 'en_IN' }];
+        
+        payload.attributes.external_product_information = [{
+          entity: 'HSN Code',
+          value: erp.gst_hsn_code || '610510'
+        }];
+
+        // Units - strictly match schema formats
+        payload.attributes.item_dimensions = [{
+          height: { value: 10, unit: 'centimeters' },
+          length: { value: 10, unit: 'centimeters' },
+          width: { value: 10, unit: 'centimeters' }
+        }];
+        payload.attributes.item_width_height = [{
+          height: { value: 10, unit: 'centimeters' },
+          width: { value: 10, unit: 'centimeters' }
+        }];
+        payload.attributes.item_package_dimensions = [{
+          height: { value: 12, unit: 'centimeters' },
+          length: { value: 12, unit: 'centimeters' },
+          width: { value: 12, unit: 'centimeters' }
+        }];
+        payload.attributes.item_weight = [{ value: 0.5, unit: 'kilograms' }];
+        payload.attributes.item_package_weight = [{ value: 0.6, unit: 'kilograms' }];
+        payload.attributes.capacity = [{ value: 350, unit: 'milliliters' }];
+      }
+
+      payload.attributes.condition_type = [{ value: 'new_new', marketplace_id: this.marketplaceId }];
+
+      // If the product has an ASIN, provide it. Otherwise, Amazon might reject it for LISTING_OFFER_ONLY.
+      if (product.amazonAsin) {
+        payload.attributes.merchant_suggested_asin = [{ value: product.amazonAsin }];
+      } else if (product.upc) {
+        let idType = 'upc';
+        const idLength = product.upc.trim().length;
+        if (idLength === 13) idType = 'ean';
+        else if (idLength === 14) idType = 'gtin';
+        else if (idLength === 10) idType = 'isbn';
+
+        payload.attributes.externally_assigned_product_identifier = [{
+          type: idType,
+          value: product.upc.trim()
+        }];
+      } else {
+        payload.attributes.supplier_declared_has_product_identifier_exemption = [{ value: true }];
+      }
+
+      const response = await this.http.put(
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${product.sku}`,
+        payload,
+        {
+          headers: this.spApiHeaders,
+          params: { marketplaceIds: this.marketplaceId },
+        },
+      );
+
+      // SP-API returns 200/202 but might contain submission issues in the body
+      const data = response.data || {};
+      const issues = data.issues || [];
+      const errors = issues.filter((i: any) => i.severity === 'ERROR');
+
+      if (errors.length > 0) {
+        const errorMsg = errors.map((e: any) => `[${e.code}] ${e.message}`).join(' | ');
+        return this.failure(`Amazon accepted submission but rejected listing with issues: ${errorMsg}`, 400);
+      }
+
+      let fetchedAsin = null;
+      try {
+        fetchedAsin = await this.getListingAsin(product.sku);
+      } catch (err) {
+        this.logger.warn(`Could not fetch ASIN immediately for SKU ${product.sku}`);
+      }
+
+      return this.success(true, { submissionId: data.submissionId, issues, asin: fetchedAsin });
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  /**
+   * Fetches the Amazon ASIN for a given SKU using the Listings Items API
+   */
+  async getListingAsin(sku: string): Promise<string | null> {
+    try {
+      await this.ensureAuthenticated();
+      const response = await this.http.get(
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
+        {
+          headers: this.spApiHeaders,
+          params: { marketplaceIds: this.marketplaceId },
+        }
+      );
+      
+      const summaries = response.data?.summaries || [];
+      if (summaries.length > 0 && summaries[0].asin) {
+        return summaries[0].asin;
+      }
+      return null;
+    } catch (error) {
+      // If 404, it means not found yet
+      if (error.response && error.response.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   // ─── Update Inventory ─────────────────────────────────────────────────────
 
   async updateInventory(items: NormalizedInventory[]): Promise<ConnectorResult<UpdateResult>> {

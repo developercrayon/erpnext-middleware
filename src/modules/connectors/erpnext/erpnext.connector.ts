@@ -106,24 +106,70 @@ export class ERPNextConnector extends BaseConnector {
         params: {
           fields: JSON.stringify([
             'name', 'item_name', 'item_code', 'description', 'item_group',
-            'brand', 'stock_uom', 'gst_hsn_code', 'net_weight', 'weight_uom',
-            'has_variants', 'standard_rate', 'image',
+            'brand', 'stock_uom', 'gst_hsn_code', 'weight_per_unit', 'weight_uom',
+            'has_variants', 'standard_rate', 'image', 'custom_thumbnail_image',
+            'custom_amazon_price', 'custom_flipkart_price', 'custom_amazon', 'custom_flipkart', 'valuation_rate', 'custom_mrp', 'custom_amazon_product_type',
+            'country_of_origin', 'custom_material', 'custom_item_type_name', 'custom_model_name', 'default_item_manufacturer'
+          ]),
+          filters: JSON.stringify([
+            ['custom_sync_marketplace', '=', 1]
           ]),
           limit_page_length: params?.pageSize || 100,
         },
       });
 
-      const items: NormalizedProduct[] = (response.data?.data || []).map((item: any) => ({
-        sku: item.item_code,
-        name: item.item_name,
-        description: item.description,
-        category: item.item_group,
-        brand: item.brand,
-        mrp: item.standard_rate || 0,
-        sellingPrice: item.standard_rate || 0,
-        hsnCode: item.gst_hsn_code,
-        weight: item.net_weight,
-        rawPayload: item,
+      const itemsData = response.data?.data || [];
+      const items: NormalizedProduct[] = await Promise.all(itemsData.map(async (item: any) => {
+        let images: string[] = [];
+        const mainImage = item.image || item.custom_thumbnail_image;
+        if (mainImage) {
+          const cleanImage = mainImage.startsWith('/') ? mainImage.substring(1) : mainImage;
+          const imgUrl = cleanImage.startsWith('http') ? cleanImage : `${this.baseUrl.replace(/\/$/, '')}/${cleanImage}`;
+          images.push(imgUrl);
+        }
+
+        let upc = '';
+        let amazonAsin = '';
+        try {
+          const fullItemRes = await this.http.get(`${this.baseUrl}/api/resource/Item/${encodeURIComponent(item.item_code)}`, { headers: this.authHeaders });
+          const fullItem = fullItemRes.data?.data;
+          if (fullItem) {
+            amazonAsin = fullItem.custom_amazon_asin || '';
+            if (fullItem.barcodes && fullItem.barcodes.length > 0) {
+              const upcBarcode = fullItem.barcodes.find((b: any) => b.barcode_type === 'UPC');
+              if (upcBarcode) {
+                upc = upcBarcode.barcode;
+              } else {
+                upc = fullItem.barcodes[0].barcode; // Fallback to first barcode
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore individual fetch error, continue with empty upc and asin
+        }
+
+        return {
+          sku: item.item_code,
+          name: item.item_name,
+          description: item.description,
+          category: item.item_group,
+          brand: item.brand,
+          mrp: item.custom_mrp || 0,
+          sellingPrice: item.standard_rate || 0,
+          hsnCode: item.gst_hsn_code,
+          weight: item.weight_per_unit,
+          customAmazonPrice: item.custom_amazon_price,
+          customFlipkartPrice: item.custom_flipkart_price,
+          customAmazon: item.custom_amazon === 1,
+          customFlipkart: item.custom_flipkart === 1,
+          amazonProductType: item.custom_amazon_product_type,
+          upc: upc,
+          amazonAsin: amazonAsin,
+          valuationRate: item.valuation_rate || 0,
+          thumbnailUrl: images.length > 0 ? images[0] : undefined,
+          images: images,
+          rawPayload: item,
+        };
       }));
 
       return this.success({
@@ -139,6 +185,11 @@ export class ERPNextConnector extends BaseConnector {
   }
 
   // ─── Inventory ────────────────────────────────────────────────────────────
+
+  async createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>> {
+    // ERPNext is the source of truth for products in this flow, we don't push listings to it
+    return this.success(false);
+  }
 
   async updateInventory(items: NormalizedInventory[]): Promise<ConnectorResult<UpdateResult>> {
     // ERPNext does not receive inventory updates from marketplaces in this flow

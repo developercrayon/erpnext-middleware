@@ -13,6 +13,11 @@ import {
   ResponseInterceptor,
   LoggingInterceptor,
 } from './common/interceptors/response.interceptor';
+import * as pg from 'pg';
+
+// Force pg driver to parse 'timestamp without time zone' columns as UTC
+// instead of the local node process timezone. This fixes the -5:30 IST shift bug.
+pg.types.setTypeParser(1114, str => new Date(str + 'Z'));
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });

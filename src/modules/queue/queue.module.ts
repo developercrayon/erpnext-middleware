@@ -9,6 +9,7 @@ import { PricingProcessor } from './processors/pricing.processor';
 import { ShipmentsProcessor } from './processors/shipments.processor';
 import { ProductsProcessor } from './processors/products.processor';
 import { RetryProcessor } from './processors/retry.processor';
+import { QueueListenerService } from './queue.listener';
 import { OrdersModule } from '../orders/orders.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
 import { AmazonModule } from '../connectors/amazon/amazon.module';
@@ -33,6 +34,7 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
             port: config.get<number>('redis.port'),
             password: config.get<string>('redis.password'),
             db: config.get<number>('redis.db'),
+            maxRetriesPerRequest: null,
           }
         }),
         defaultJobOptions: {
@@ -73,6 +75,7 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
     ShipmentsProcessor,
     ProductsProcessor,
     RetryProcessor,
+    QueueListenerService,
   ],
   exports: [BullModule],
 })

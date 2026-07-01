@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bull';
 
 import configuration from './common/config/configuration';
 import { createWinstonConfig } from './common/config/logger.config';
@@ -55,6 +56,27 @@ import { AdminModule } from './admin/admin.module';
         limit: parseInt(process.env.THROTTLE_LIMIT || '100', 10),
       },
     ]),
+
+    // ─── Queue (Global Config) ────────────────────────────────────────────────
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('redis.url');
+        return {
+          prefix: process.env.NODE_ENV === 'development' ? 'bull-dev' : 'bull',
+          ...(redisUrl ? { url: redisUrl } : {
+            redis: {
+              host: config.get<string>('redis.host') || 'localhost',
+              port: config.get<number>('redis.port') || 6379,
+              password: config.get<string>('redis.password'),
+              db: config.get<number>('redis.db') || 0,
+              maxRetriesPerRequest: null,
+            }
+          }),
+        };
+      },
+    }),
 
     // ─── Database ─────────────────────────────────────────────────────────────
     DatabaseModule,

@@ -30,6 +30,11 @@ export class SchedulerService {
     name: 'fetch-marketplace-orders',
   })
   async fetchMarketplaceOrders(): Promise<void> {
+    const cronValue = process.env.CRON_FETCH_ORDERS;
+    if (cronValue && (cronValue.includes('31 2') || cronValue === 'disabled')) {
+      this.logger.log('CRON: fetch-marketplace-orders is disabled');
+      return;
+    }
     this.logger.log('CRON: Fetching marketplace orders...');
     const fromDate = new Date(Date.now() - 30 * 60 * 1000); // last 30 minutes
 
@@ -57,6 +62,11 @@ export class SchedulerService {
     name: 'sync-inventory',
   })
   async syncInventory(): Promise<void> {
+    const cronValue = process.env.CRON_SYNC_INVENTORY;
+    if (cronValue && (cronValue.includes('31 2') || cronValue === 'disabled')) {
+      this.logger.log('CRON: sync-inventory is disabled');
+      return;
+    }
     this.logger.log('CRON: Syncing inventory to marketplaces...');
 
     await this.inventoryQueue.add(
@@ -76,6 +86,11 @@ export class SchedulerService {
     name: 'sync-prices',
   })
   async syncPrices(): Promise<void> {
+    const cronValue = process.env.CRON_SYNC_PRICES;
+    if (cronValue && (cronValue.includes('31 2') || cronValue === 'disabled')) {
+      this.logger.log('CRON: sync-prices is disabled');
+      return;
+    }
     this.logger.log('CRON: Syncing prices to marketplaces...');
 
     await this.pricingQueue.add(
@@ -95,6 +110,11 @@ export class SchedulerService {
     name: 'retry-failed',
   })
   async retryFailedJobs(): Promise<void> {
+    const cronValue = process.env.CRON_RETRY_FAILED;
+    if (cronValue && (cronValue.includes('31 2') || cronValue === 'disabled')) {
+      this.logger.log('CRON: retry-failed is disabled');
+      return;
+    }
     this.logger.log('CRON: Retrying failed jobs...');
 
     await this.retryQueue.add(

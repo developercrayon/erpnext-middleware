@@ -23,7 +23,7 @@ export class ProductsProcessor {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
-  ) {}
+  ) { }
 
   /**
    * Fetches products from ERPNext and upserts them into the local database
@@ -35,7 +35,7 @@ export class ProductsProcessor {
     try {
       const result = await this.erpnextService['connector']?.fetchProducts({ pageSize: 500 });
       if (!result?.success) {
-        throw new Error('Failed to fetch products from ERPNext');
+        throw new Error(`Failed to fetch products from ERPNext: ${result?.error || 'Unknown error'}`);
       }
 
       const products = result.data?.items || [];
@@ -56,6 +56,15 @@ export class ProductsProcessor {
               hsnCode: p.hsnCode,
               gstRate: p.gstRate || 18,
               weight: p.weight,
+              costPrice: p.valuationRate || 0,
+              customAmazonPrice: p.customAmazonPrice,
+              customFlipkartPrice: p.customFlipkartPrice,
+              customAmazon: p.customAmazon,
+              customFlipkart: p.customFlipkart,
+              amazonProductType: p.amazonProductType || null,
+              upc: p.upc || null,
+              images: p.images,
+              attributes: p.rawPayload,
               lastSyncedAt: new Date(),
             },
             ['sku'],
@@ -80,9 +89,98 @@ export class ProductsProcessor {
     const { source, skus } = job.data;
     this.logger.log(`Executing background job: Sync Products to ${source || 'all marketplaces'}`);
 
-    // This is a placeholder for actual product listing API calls which are complex
-    // Usually requires submitting catalog feeds to Amazon/Flipkart
-    this.logger.log(`Product sync involves catalog feeds. Currently mock-executed for SKUs: ${skus?.join(', ') || 'ALL'}`);
+    const query = this.productRepo.createQueryBuilder('product');
+    if (skus && skus.length > 0) {
+      query.where('product.sku IN (:...skus)', { skus });
+    }
+    const products = await query.getMany();
+
+    if (!products.length) {
+      this.logger.warn('No products found matching the criteria for sync.');
+      return;
+    }
+
+    const marketplaces = source
+      ? [source]
+      : [MarketplaceSource.AMAZON, MarketplaceSource.FLIPKART];
+
+    for (const mp of marketplaces) {
+      const connector = mp === MarketplaceSource.AMAZON ? this.amazonConnector : this.flipkartConnector;
+
+      let successCount = 0;
+      let failureCount = 0;
+
+      for (const product of products) {
+        if (mp === MarketplaceSource.AMAZON && !product.customAmazon) continue;
+        if (mp === MarketplaceSource.FLIPKART && !product.customFlipkart) continue;
+
+        try {
+          const getPrice = (customPrice: number, standardPrice: number, valRate: number) => {
+            if (customPrice && customPrice > 0) return customPrice;
+            if (standardPrice && standardPrice > 0) return standardPrice;
+            return valRate || 0;
+          };
+
+          const sellingPrice = mp === MarketplaceSource.AMAZON 
+            ? getPrice(product.customAmazonPrice, product.sellingPrice, product.costPrice)
+            : mp === MarketplaceSource.FLIPKART 
+              ? getPrice(product.customFlipkartPrice, product.sellingPrice, product.costPrice)
+              : getPrice(0, product.sellingPrice, product.costPrice);
+
+          const normalizedProduct = {
+            sku: product.sku,
+            amazonAsin: product.amazonAsin,
+            amazonProductType: product.amazonProductType,
+            upc: product.upc,
+            thumbnailUrl: product.thumbnailUrl,
+            flipkartSku: product.flipkartSku,
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            brand: product.brand,
+            mrp: product.mrp,
+            sellingPrice: sellingPrice,
+            attributes: product.attributes,
+            images: product.images,
+            rawPayload: product,
+          };
+
+          const result = await connector.createListing(normalizedProduct, true); // true = isDraft
+
+          if (result.success) {
+            successCount++;
+            if (mp === MarketplaceSource.AMAZON) {
+              const updateData: any = { isAmazonListed: true, lastSyncedAt: new Date() };
+              if (result.meta && result.meta.asin) {
+                updateData.amazonAsin = result.meta.asin;
+              }
+              await this.productRepo.update(product.id, updateData);
+            } else if (mp === MarketplaceSource.FLIPKART) {
+              await this.productRepo.update(product.id, { isFlipkartListed: true, lastSyncedAt: new Date() });
+            }
+          } else {
+            failureCount++;
+            const errorMsg = result.error || 'Unknown error from marketplace connector';
+            this.logger.error(`Failed to push product ${product.sku} to ${mp}: ${errorMsg}`);
+            await this.errorLogRepo.save({
+              source: QUEUE_NAMES.PRODUCTS,
+              context: `sync-to-${mp.toLowerCase()}`,
+              message: `Failed to sync SKU "${product.sku}" to ${mp}: ${errorMsg}`,
+              stackTrace: JSON.stringify(result),
+              payload: { sku: product.sku, marketplace: mp },
+            });
+          }
+        } catch (error) {
+          failureCount++;
+          this.logger.error(`Error syncing product ${product.sku} to ${mp}: ${error.message}`);
+        }
+      }
+
+      this.logger.log(`Finished syncing products to ${mp}: ${successCount} succeeded, ${failureCount} failed.`);
+      if (failureCount > 0) {
+        throw new Error(`Sync to ${mp} finished with ${failureCount} failures. See Error Logs for details.`);
+      }
+    }
   }
 
   @OnQueueCompleted()

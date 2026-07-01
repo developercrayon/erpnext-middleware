@@ -74,7 +74,8 @@ export enum QueueJobStatus {
 }
 
 @Entity('queue_jobs')
-@Index(['queueName', 'status', 'createdAt'])
+@Index(['queueName', 'status', 'createdDate'])
+@Index(['bullJobId', 'queueName'], { unique: true })
 export class QueueJob {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -90,12 +91,6 @@ export class QueueJob {
 
   @Column({ name: 'status', type: 'enum', enum: QueueJobStatus, default: QueueJobStatus.WAITING })
   status: QueueJobStatus;
-
-  @Column({ name: 'payload', type: 'jsonb', nullable: true })
-  payload: Record<string, any>;
-
-  @Column({ name: 'result', type: 'jsonb', nullable: true })
-  result: Record<string, any>;
 
   @Column({ name: 'attempts', type: 'int', default: 0 })
   attempts: number;
@@ -115,10 +110,10 @@ export class QueueJob {
   @Column({ name: 'duration_ms', type: 'int', nullable: true })
   durationMs: number;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @CreateDateColumn({ name: 'created_date', type: 'timestamptz' })
+  createdDate: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }
 

@@ -9,10 +9,11 @@ import { AuthModule } from '../auth/auth.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
 import { AmazonModule } from '../connectors/amazon/amazon.module';
 import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
+import { QueueJob } from '../../database/entities/operational.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product]),
+    TypeOrmModule.forFeature([Product, QueueJob]),
     BullModule.registerQueue({ name: QUEUE_NAMES.PRODUCTS }),
     AuthModule,
     ERPNextModule,

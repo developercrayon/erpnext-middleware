@@ -32,6 +32,10 @@ export class AdminModule {
     const componentLoader = new ComponentLoader();
     const Components = {
       Dashboard: componentLoader.add('Dashboard', './components/dashboard.jsx'),
+      ImageThumbnail: componentLoader.add('ImageThumbnail', './components/image-thumbnail.jsx'),
+      // IST timezone date components — override AdminJS default datetime rendering globally
+      DateIstList: componentLoader.override('DefaultDatetimeListProperty', './components/date-ist.jsx'),
+      DateIstShow: componentLoader.override('DefaultDatetimeShowProperty', './components/date-ist.jsx'),
     };
     const AdminJSTypeorm = await eval('import("@adminjs/typeorm")');
 
@@ -118,7 +122,7 @@ export class AdminModule {
                   grey60: '#212529',
                   grey40: '#212529',
                   grey20: '#212529',
-                  filterBg: '#212529',
+                  filterBg: '#ffffff',
                   text: '#212529',
                   bg: '#ffffff', // Background (if required)
                 },
@@ -139,9 +143,11 @@ export class AdminModule {
               {
                 resource: Order,
                 options: { navigation: null,
+                  sort: { sortBy: 'createdAt', direction: 'desc' },
                   actions: { new: { isAccessible: false },
                     syncToERPNext: {
                       actionType: 'record',
+                      component: false,
                       icon: 'Sync',
                       isVisible: true,
                       handler: async (request, response, context) => {
@@ -169,6 +175,7 @@ export class AdminModule {
                     },
                     fetchAmazonOrders: {
                       actionType: 'resource',
+                      component: false,
                       icon: 'Download',
                       isVisible: true,
                       handler: async (request, response, context) => {
@@ -200,20 +207,49 @@ export class AdminModule {
               {
                 resource: Product,
                 options: { navigation: null,
+                  properties: {
+                    description: {
+                      isVisible: { list: false, show: true, edit: true, filter: true }
+                    },
+                    amazonProductType: {
+                      isVisible: { list: true, show: true, edit: true, filter: true },
+                      position: 5,
+                    },
+                    upc: {
+                      isVisible: { list: true, show: true, edit: true, filter: true },
+                      position: 6,
+                    },
+                    thumbnailUrl: {
+                      isVisible: { list: false, show: true, edit: true, filter: false },
+                      components: {
+                        show: Components.ImageThumbnail,
+                      }
+                    },
+                    attributes: {
+                      isVisible: { list: false, show: true, edit: false, filter: false },
+                    },
+                    images: {
+                      isVisible: { list: false, show: true, edit: false, filter: false },
+                    }
+                  },
                   actions: { new: { isAccessible: false },
-                    syncToMarketplace: {
+                    syncToAmazon: {
                       actionType: 'record',
-                      icon: 'Share',
-                      isVisible: true,
+                      component: false,
+                      icon: 'Amazon',
+                      isVisible: (context) => {
+                        const { record } = context;
+                        return record && (record.params.customAmazon === true || record.params.customAmazon === 1 || record.params.customAmazon === 'true');
+                      },
                       handler: async (request, response, context) => {
                         const { record } = context;
                         const sku = record.param('sku');
                         try {
-                          const jobId = await productsService.triggerSync(undefined, [sku]);
+                          const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, [sku]);
                           return {
                             record: record.toJSON(),
                             notice: {
-                              message: `Product ${sku} queued for sync to marketplaces (Job ID: ${jobId}).`,
+                              message: `Product ${sku} queued for sync to Amazon (Job ID: ${jobId}).`,
                               type: 'success',
                             },
                           };
@@ -221,7 +257,154 @@ export class AdminModule {
                           return {
                             record: record.toJSON(),
                             notice: {
-                              message: `Failed to queue product sync: ${err.message}`,
+                              message: `Failed to queue product sync to Amazon: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
+                    syncToFlipkart: {
+                      actionType: 'record',
+                      component: false,
+                      icon: 'ShoppingBag',
+                      isVisible: (context) => {
+                        const { record } = context;
+                        return record && (record.params.customFlipkart === true || record.params.customFlipkart === 1 || record.params.customFlipkart === 'true');
+                      },
+                      handler: async (request, response, context) => {
+                        const { record } = context;
+                        const sku = record.param('sku');
+                        try {
+                          const jobId = await productsService.triggerSync(MarketplaceSource.FLIPKART, [sku]);
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Product ${sku} queued for sync to Flipkart (Job ID: ${jobId}).`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Failed to queue product sync to Flipkart: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
+                    bulkSyncToAmazon: {
+                      actionType: 'bulk',
+                      component: false,
+                      icon: 'Amazon',
+                      label: 'Sync into Amazon',
+                      isVisible: (context) => {
+                        const { records } = context;
+                        if (!records || records.length === 0) return false;
+                        return records.some(r => r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true');
+                      },
+                      handler: async (request, response, context) => {
+                        const { records } = context;
+                        const skus = records
+                          .filter(r => r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true')
+                          .map(r => r.params.sku);
+                        
+                        try {
+                          const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, skus);
+                          return {
+                            notice: {
+                              message: `Successfully queued ${skus.length} products for Amazon sync (Job ID: ${jobId}).`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            notice: {
+                              message: `Failed to queue bulk Amazon sync: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
+                    bulkSyncToFlipkart: {
+                      actionType: 'bulk',
+                      component: false,
+                      icon: 'ShoppingBag',
+                      label: 'Sync into Flipkart',
+                      isVisible: (context) => {
+                        const { records } = context;
+                        if (!records || records.length === 0) return false;
+                        return records.some(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true');
+                      },
+                      handler: async (request, response, context) => {
+                        const { records } = context;
+                        const skus = records
+                          .filter(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
+                          .map(r => r.params.sku);
+                        
+                        try {
+                          const jobId = await productsService.triggerSync(MarketplaceSource.FLIPKART, skus);
+                          return {
+                            notice: {
+                              message: `Successfully queued ${skus.length} products for Flipkart sync (Job ID: ${jobId}).`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            notice: {
+                              message: `Failed to queue bulk Flipkart sync: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
+                    bulkSyncToBoth: {
+                      actionType: 'bulk',
+                      component: false,
+                      icon: 'Sync',
+                      label: 'Sync into Both',
+                      isVisible: (context) => {
+                        const { records } = context;
+                        if (!records || records.length === 0) return false;
+                        return records.some(r => 
+                          (r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true') &&
+                          (r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
+                        );
+                      },
+                      handler: async (request, response, context) => {
+                        const { records } = context;
+                        const amazonSkus = records
+                          .filter(r => r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true')
+                          .map(r => r.params.sku);
+                        const flipkartSkus = records
+                          .filter(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
+                          .map(r => r.params.sku);
+                        
+                        try {
+                          let msg = '';
+                          if (amazonSkus.length > 0) {
+                            const jobIdAmz = await productsService.triggerSync(MarketplaceSource.AMAZON, amazonSkus);
+                            msg += `Queued ${amazonSkus.length} for Amazon (Job: ${jobIdAmz}). `;
+                          }
+                          if (flipkartSkus.length > 0) {
+                            const jobIdFkp = await productsService.triggerSync(MarketplaceSource.FLIPKART, flipkartSkus);
+                            msg += `Queued ${flipkartSkus.length} for Flipkart (Job: ${jobIdFkp}).`;
+                          }
+                          return {
+                            notice: {
+                              message: `Bulk Sync queued. ${msg}`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            notice: {
+                              message: `Failed to queue bulk sync: ${err.message}`,
                               type: 'error',
                             },
                           };
@@ -230,6 +413,7 @@ export class AdminModule {
                     },
                     fetchFromERPNext: {
                       actionType: 'resource',
+                      component: false,
                       icon: 'Download',
                       isVisible: true,
                       handler: async (request, response, context) => {
@@ -253,6 +437,7 @@ export class AdminModule {
                     },
                     syncAllToMarketplaces: {
                       actionType: 'resource',
+                      component: false,
                       icon: 'Share',
                       isVisible: true,
                       handler: async (request, response, context) => {
@@ -280,9 +465,11 @@ export class AdminModule {
               {
                 resource: Inventory,
                 options: { navigation: null,
+                  sort: { sortBy: 'createdAt', direction: 'desc' },
                   actions: { new: { isAccessible: false },
                     syncSkuInventory: {
                       actionType: 'record',
+                      component: false,
                       icon: 'Sync',
                       isVisible: true,
                       handler: async (request, response, context) => {
@@ -310,6 +497,7 @@ export class AdminModule {
                     },
                     syncAllInventory: {
                       actionType: 'resource',
+                      component: false,
                       icon: 'Sync',
                       isVisible: true,
                       handler: async (request, response, context) => {
@@ -336,14 +524,16 @@ export class AdminModule {
               },
               {
                 resource: InventorySync,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { navigation: null, sort: { sortBy: 'createdAt', direction: 'desc' }, actions: { new: { isAccessible: false } } },
               },
               {
                 resource: PriceSync,
                 options: { navigation: null,
+                  sort: { sortBy: 'createdAt', direction: 'desc' },
                   actions: { new: { isAccessible: false },
                     syncAllPrices: {
                       actionType: 'resource',
+                      component: false,
                       icon: 'Sync',
                       isVisible: true,
                       handler: async (request, response, context) => {
@@ -370,15 +560,23 @@ export class AdminModule {
               },
               {
                 resource: ShipmentSync,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { navigation: null, sort: { sortBy: 'createdAt', direction: 'desc' }, actions: { new: { isAccessible: false } } },
               },
               {
                 resource: SyncHistory,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { navigation: null, sort: { sortBy: 'createdAt', direction: 'desc' }, actions: { new: { isAccessible: false } } },
               },
               {
                 resource: QueueJob,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { 
+                  navigation: null, 
+                  actions: { new: { isAccessible: false } },
+                  listProperties: ['id', 'queueName', 'jobName', 'status', 'attempts', 'createdDate', 'completedAt'],
+                  sort: {
+                    sortBy: 'createdDate',
+                    direction: 'desc',
+                  },
+                },
               },
               {
                 resource: Settings,
@@ -386,19 +584,39 @@ export class AdminModule {
               },
               {
                 resource: ConnectorLog,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { 
+                  navigation: null, 
+                  listProperties: ['id', 'connector', 'action', 'level', 'message', 'createdAt'],
+                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
+                  actions: { new: { isAccessible: false } } 
+                },
               },
               {
                 resource: WebhookLog,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { 
+                  navigation: null, 
+                  listProperties: ['id', 'source', 'eventType', 'processed', 'createdAt'],
+                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
+                  actions: { new: { isAccessible: false } } 
+                },
               },
               {
                 resource: ApiLog,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { 
+                  navigation: null, 
+                  listProperties: ['id', 'service', 'method', 'url', 'responseStatus', 'createdAt'],
+                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
+                  actions: { new: { isAccessible: false } } 
+                },
               },
               {
                 resource: ErrorLog,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { 
+                  navigation: null, 
+                  listProperties: ['id', 'source', 'context', 'message', 'createdAt'],
+                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
+                  actions: { new: { isAccessible: false } } 
+                },
               },
             ],
           },

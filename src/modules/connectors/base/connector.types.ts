@@ -55,6 +55,11 @@ export interface NormalizedOrder {
 export interface NormalizedProduct {
   sku: string;
   marketplaceSku?: string;
+  amazonAsin?: string;
+  amazonProductType?: string;
+  upc?: string;
+  thumbnailUrl?: string;
+  flipkartSku?: string;
   name: string;
   description?: string;
   category?: string;
@@ -66,6 +71,11 @@ export interface NormalizedProduct {
   weight?: number;
   images?: string[];
   attributes?: Record<string, any>;
+  customAmazonPrice?: number;
+  customFlipkartPrice?: number;
+  customAmazon?: boolean;
+  customFlipkart?: boolean;
+  valuationRate?: number;
   rawPayload?: Record<string, any>;
 }
 
