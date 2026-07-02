@@ -300,20 +300,26 @@ export class AdminModule {
                       component: false,
                       icon: 'Amazon',
                       label: 'Sync into Amazon',
-                      isVisible: (context) => {
-                        const { records } = context;
-                        if (!records || records.length === 0) return false;
-                        return records.some(r => r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true');
-                      },
                       handler: async (request, response, context) => {
                         const { records } = context;
-                        const skus = records
+                        const skus = (records || [])
                           .filter(r => r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true')
                           .map(r => r.params.sku);
+                        
+                        if (skus.length === 0) {
+                          return {
+                            records: context.records || [],
+                            notice: {
+                              message: 'None of the selected products are configured for Amazon sync.',
+                              type: 'error',
+                            },
+                          };
+                        }
                         
                         try {
                           const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, skus);
                           return {
+                            records: context.records || [],
                             notice: {
                               message: `Successfully queued ${skus.length} products for Amazon sync (Job ID: ${jobId}).`,
                               type: 'success',
@@ -321,6 +327,7 @@ export class AdminModule {
                           };
                         } catch (err) {
                           return {
+                            records: context.records || [],
                             notice: {
                               message: `Failed to queue bulk Amazon sync: ${err.message}`,
                               type: 'error',
@@ -334,20 +341,26 @@ export class AdminModule {
                       component: false,
                       icon: 'ShoppingBag',
                       label: 'Sync into Flipkart',
-                      isVisible: (context) => {
-                        const { records } = context;
-                        if (!records || records.length === 0) return false;
-                        return records.some(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true');
-                      },
                       handler: async (request, response, context) => {
                         const { records } = context;
-                        const skus = records
+                        const skus = (records || [])
                           .filter(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
                           .map(r => r.params.sku);
                         
+                        if (skus.length === 0) {
+                          return {
+                            records: context.records || [],
+                            notice: {
+                              message: 'None of the selected products are configured for Flipkart sync.',
+                              type: 'error',
+                            },
+                          };
+                        }
+
                         try {
                           const jobId = await productsService.triggerSync(MarketplaceSource.FLIPKART, skus);
                           return {
+                            records: context.records || [],
                             notice: {
                               message: `Successfully queued ${skus.length} products for Flipkart sync (Job ID: ${jobId}).`,
                               type: 'success',
@@ -355,6 +368,7 @@ export class AdminModule {
                           };
                         } catch (err) {
                           return {
+                            records: context.records || [],
                             notice: {
                               message: `Failed to queue bulk Flipkart sync: ${err.message}`,
                               type: 'error',
@@ -368,41 +382,45 @@ export class AdminModule {
                       component: false,
                       icon: 'Sync',
                       label: 'Sync into Both',
-                      isVisible: (context) => {
-                        const { records } = context;
-                        if (!records || records.length === 0) return false;
-                        return records.some(r => 
-                          (r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true') &&
-                          (r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
-                        );
-                      },
                       handler: async (request, response, context) => {
                         const { records } = context;
-                        const amazonSkus = records
+                        const amazonSkus = (records || [])
                           .filter(r => r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true')
                           .map(r => r.params.sku);
-                        const flipkartSkus = records
+                        const flipkartSkus = (records || [])
                           .filter(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
                           .map(r => r.params.sku);
                         
+                        if (amazonSkus.length === 0 && flipkartSkus.length === 0) {
+                          return {
+                            records: context.records || [],
+                            notice: {
+                              message: 'None of the selected products are configured for Amazon or Flipkart sync.',
+                              type: 'error',
+                            },
+                          };
+                        }
+
                         try {
                           let msg = '';
                           if (amazonSkus.length > 0) {
                             const jobIdAmz = await productsService.triggerSync(MarketplaceSource.AMAZON, amazonSkus);
-                            msg += `Queued ${amazonSkus.length} for Amazon (Job: ${jobIdAmz}). `;
+                            msg += `Amazon: ${amazonSkus.length} products (Job: ${jobIdAmz}). `;
                           }
                           if (flipkartSkus.length > 0) {
-                            const jobIdFkp = await productsService.triggerSync(MarketplaceSource.FLIPKART, flipkartSkus);
-                            msg += `Queued ${flipkartSkus.length} for Flipkart (Job: ${jobIdFkp}).`;
+                            const jobIdFlp = await productsService.triggerSync(MarketplaceSource.FLIPKART, flipkartSkus);
+                            msg += `Flipkart: ${flipkartSkus.length} products (Job: ${jobIdFlp}).`;
                           }
                           return {
+                            records: context.records || [],
                             notice: {
-                              message: `Bulk Sync queued. ${msg}`,
+                              message: `Successfully queued sync. ${msg}`,
                               type: 'success',
                             },
                           };
                         } catch (err) {
                           return {
+                            records: context.records || [],
                             notice: {
                               message: `Failed to queue bulk sync: ${err.message}`,
                               type: 'error',

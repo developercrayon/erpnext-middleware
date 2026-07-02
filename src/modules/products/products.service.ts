@@ -96,10 +96,10 @@ export class ProductsService {
     return String(job.id);
   }
 
-  async triggerFetchFromERPNext(): Promise<string> {
+  async triggerFetchFromERPNext(sku?: string): Promise<string> {
     const job = await this.productsQueue.add(
       JOB_NAMES.FETCH_PRODUCTS,
-      {},
+      { sku },
       QUEUE_DEFAULT_OPTIONS,
     );
 

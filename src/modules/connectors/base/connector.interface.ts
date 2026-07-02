@@ -53,6 +53,7 @@ export interface FetchProductsParams {
   nextToken?: string;
   pageSize?: number;
   category?: string;
+  sku?: string;
 }
 
 export interface UpdateResult {

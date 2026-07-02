@@ -101,6 +101,13 @@ export class ERPNextConnector extends BaseConnector {
     params?: FetchProductsParams,
   ): Promise<ConnectorResult<PaginatedResult<NormalizedProduct>>> {
     try {
+      const filters: any[] = [
+        ['custom_sync_marketplace', '=', 1]
+      ];
+      if (params?.sku) {
+        filters.push(['item_code', '=', params.sku]);
+      }
+
       const response = await this.http.get(`${this.baseUrl}/api/resource/Item`, {
         headers: this.authHeaders,
         params: {
@@ -111,9 +118,7 @@ export class ERPNextConnector extends BaseConnector {
             'custom_amazon_price', 'custom_flipkart_price', 'custom_amazon', 'custom_flipkart', 'valuation_rate', 'custom_mrp', 'custom_amazon_product_type',
             'country_of_origin', 'custom_material', 'custom_item_type_name', 'custom_model_name', 'default_item_manufacturer', 'variant_of'
           ]),
-          filters: JSON.stringify([
-            ['custom_sync_marketplace', '=', 1]
-          ]),
+          filters: JSON.stringify(filters),
           limit_page_length: params?.pageSize || 100,
         },
       });

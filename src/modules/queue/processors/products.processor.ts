@@ -3,7 +3,9 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { QUEUE_NAMES, JOB_NAMES } from '../queue.constants';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { QUEUE_NAMES, JOB_NAMES, QUEUE_DEFAULT_OPTIONS } from '../queue.constants';
 import { ERPNextService } from '../../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector';
@@ -20,6 +22,7 @@ export class ProductsProcessor {
     private readonly erpnextService: ERPNextService,
     private readonly amazonConnector: AmazonConnector,
     private readonly flipkartConnector: FlipkartConnector,
+    @InjectQueue(QUEUE_NAMES.PRODUCTS) private readonly productsQueue: Queue,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
     @InjectRepository(ErrorLog)
@@ -31,10 +34,14 @@ export class ProductsProcessor {
    */
   @Process(JOB_NAMES.FETCH_PRODUCTS)
   async fetchProductsFromERPNext(job: Job): Promise<void> {
-    this.logger.log(`Executing background job: Fetch Products from ERPNext`);
+    const skuFilter = job.data?.sku;
+    this.logger.log(`Executing background job: Fetch Products from ERPNext${skuFilter ? ' (SKU: ' + skuFilter + ')' : ''}`);
 
     try {
-      const result = await this.erpnextService['connector']?.fetchProducts({ pageSize: 500 });
+      const result = await this.erpnextService['connector']?.fetchProducts({ 
+        pageSize: 500,
+        sku: skuFilter
+      });
       if (!result?.success) {
         throw new Error(`Failed to fetch products from ERPNext: ${result?.error || 'Unknown error'}`);
       }
@@ -82,6 +89,20 @@ export class ProductsProcessor {
       }
 
       this.logger.log(`Products fetched from ERPNext: ${upserted}/${products.length}`);
+      
+      // Auto-sync single product if triggered by Webhook
+      if (skuFilter && products.length > 0) {
+        const p = products[0];
+        if (p.customAmazon) {
+          await this.productsQueue.add(JOB_NAMES.SYNC_PRODUCTS, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, QUEUE_DEFAULT_OPTIONS);
+          this.logger.log(`Auto-queued Amazon sync for ${skuFilter}`);
+        }
+        if (p.customFlipkart) {
+          await this.productsQueue.add(JOB_NAMES.SYNC_PRODUCTS, { source: MarketplaceSource.FLIPKART, skus: [skuFilter] }, QUEUE_DEFAULT_OPTIONS);
+          this.logger.log(`Auto-queued Flipkart sync for ${skuFilter}`);
+        }
+      }
+
     } catch (error) {
       throw error;
     }

@@ -199,15 +199,14 @@ export class AmazonConnector extends BaseConnector {
 
       if (product.isParent) {
         payload.attributes.parentage_level = [{ value: 'parent' }];
-        if (product.children && product.children.length > 0) {
-          payload.attributes.child_relationship = product.children.map(child => ({
-            child_sku: child.sku,
-            relationship_type: 'variation',
-            variation_theme: { name: child.variationTheme || product.variationTheme || 'COLOR' }
-          }));
-        }
+        payload.attributes.variation_theme = [{ name: product.variationTheme || 'COLOR' }];
       } else if (product.variantOf) {
         payload.attributes.parentage_level = [{ value: 'child' }];
+        payload.attributes.child_parent_sku_relationship = [{
+          parent_sku: product.variantOf,
+          relationship_type: 'variation',
+          variation_theme: { name: product.variationTheme || 'COLOR' }
+        }];
       }
 
       if (product.brand) {
@@ -303,8 +302,17 @@ export class AmazonConnector extends BaseConnector {
           if (sizeAttr) sizeVal = sizeAttr.value;
         }
 
-        payload.attributes.color = [{ value: colorVal, language_tag: 'en_IN' }];
-        payload.attributes.size = [{ value: sizeVal, language_tag: 'en_IN' }];
+        if (!product.isParent) {
+          payload.attributes.color = [{ 
+            value: colorVal, 
+            language_tag: 'en_IN',
+            standardized_values: [colorVal.toLowerCase()] 
+          }];
+          payload.attributes.size = [{ 
+            value: sizeVal, 
+            language_tag: 'en_IN' 
+          }];
+        }
         payload.attributes.batteries_required = [{ value: false }];
         payload.attributes.supplier_declared_dg_hz_regulation = [{ value: 'not_applicable' }];
         payload.attributes.care_instructions = [{ value: 'Hand wash only', language_tag: 'en_IN' }];

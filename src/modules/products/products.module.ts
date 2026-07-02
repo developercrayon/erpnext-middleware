@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { ProductsController } from './products.controller';
+import { ProductsWebhookController } from './webhooks.controller';
 import { ProductsService } from './products.service';
 import { Product } from '../../database/entities/product.entity';
 import { QUEUE_NAMES } from '../queue/queue.constants';
@@ -20,7 +21,7 @@ import { QueueJob } from '../../database/entities/operational.entity';
     AmazonModule,
     FlipkartModule,
   ],
-  controllers: [ProductsController],
+  controllers: [ProductsController, ProductsWebhookController],
   providers: [ProductsService],
   exports: [ProductsService],
 })
