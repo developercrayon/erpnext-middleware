@@ -76,6 +76,11 @@ export interface NormalizedProduct {
   customAmazon?: boolean;
   customFlipkart?: boolean;
   valuationRate?: number;
+  isParent?: boolean;
+  variantOf?: string;
+  variationTheme?: string;
+  variantAttributes?: { name: string; value: string }[];
+  children?: NormalizedProduct[];
   rawPayload?: Record<string, any>;
 }
 

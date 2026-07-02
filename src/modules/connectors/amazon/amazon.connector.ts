@@ -197,6 +197,19 @@ export class AmazonConnector extends BaseConnector {
         },
       };
 
+      if (product.isParent) {
+        payload.attributes.parentage_level = [{ value: 'parent' }];
+        if (product.children && product.children.length > 0) {
+          payload.attributes.child_relationship = product.children.map(child => ({
+            child_sku: child.sku,
+            relationship_type: 'variation',
+            variation_theme: { name: child.variationTheme || product.variationTheme || 'COLOR' }
+          }));
+        }
+      } else if (product.variantOf) {
+        payload.attributes.parentage_level = [{ value: 'child' }];
+      }
+
       if (product.brand) {
         payload.attributes.brand = [{ value: product.brand, language_tag: 'en_IN' }];
       }
@@ -210,35 +223,49 @@ export class AmazonConnector extends BaseConnector {
       }
       
       const mainImage = product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null);
-      if (mainImage) {
-        payload.attributes.main_product_image_locator = [{ 
-          marketplace_id: this.marketplaceId,
-          media_location: mainImage 
-        }];
-      }
+      const allImages = product.images && product.images.length > 0 ? product.images : (mainImage ? [mainImage] : []);
+      const otherImages = allImages.filter(img => img !== mainImage);
 
-      // If there are additional images, add them to other_product_image_locator_N
-      if (product.images && product.images.length > 0) {
-        const otherImages = product.images.filter(img => img !== mainImage);
-        for (let i = 0; i < Math.min(otherImages.length, 8); i++) {
-          const key = `other_product_image_locator_${i + 1}`;
-          payload.attributes[key] = [{
+      if (mainImage) {
+        if (requirements === 'LISTING') {
+          // Full listing: use product image locators (these appear in the product detail page)
+          payload.attributes.main_product_image_locator = [{
+            marketplace_id: this.marketplaceId,
+            media_location: mainImage
+          }];
+          // Additional images for product detail page
+          for (let i = 0; i < Math.min(otherImages.length, 8); i++) {
+            payload.attributes[`other_product_image_locator_${i + 1}`] = [{
+              marketplace_id: this.marketplaceId,
+              media_location: otherImages[i]
+            }];
+          }
+        }
+        // Both LISTING and LISTING_OFFER_ONLY: use offer image locators (these appear in the cart/list)
+        payload.attributes.main_offer_image_locator = [{
+          marketplace_id: this.marketplaceId,
+          media_location: mainImage
+        }];
+        for (let i = 0; i < Math.min(otherImages.length, 5); i++) {
+          payload.attributes[`other_offer_image_locator_${i + 1}`] = [{
             marketplace_id: this.marketplaceId,
             media_location: otherImages[i]
           }];
         }
       }
 
-      if (product.upc) {
-        payload.attributes.externally_assigned_product_identifier = [{
-          type: 'upc',
-          value: product.upc,
-        }];
-      } else if (product.attributes?.ean) {
-        payload.attributes.externally_assigned_product_identifier = [{
-          type: 'ean',
-          value: product.attributes.ean
-        }];
+      if (!product.isParent) {
+        if (product.upc) {
+          payload.attributes.externally_assigned_product_identifier = [{
+            type: 'upc',
+            value: product.upc,
+          }];
+        } else if (product.attributes?.ean) {
+          payload.attributes.externally_assigned_product_identifier = [{
+            type: 'ean',
+            value: product.attributes.ean
+          }];
+        }
       }
 
       // To create a "Draft/Inactive" listing on Amazon, we set purchasable to false
@@ -265,8 +292,19 @@ export class AmazonConnector extends BaseConnector {
         payload.attributes.unit_count = [{ value: 1, type: { value: 'count', language_tag: 'en_IN' } }];
         payload.attributes.included_components = [{ value: '1 Mug', language_tag: 'en_IN' }];
         payload.attributes.bullet_point = [{ value: 'High quality product', language_tag: 'en_IN' }];
-        payload.attributes.color = [{ value: 'White', language_tag: 'en_IN' }];
-        payload.attributes.size = [{ value: 'Standard', language_tag: 'en_IN' }];
+        let colorVal = 'White';
+        let sizeVal = 'Standard';
+        
+        if (product.variantAttributes) {
+          const colorAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color');
+          if (colorAttr) colorVal = colorAttr.value;
+          
+          const sizeAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'size');
+          if (sizeAttr) sizeVal = sizeAttr.value;
+        }
+
+        payload.attributes.color = [{ value: colorVal, language_tag: 'en_IN' }];
+        payload.attributes.size = [{ value: sizeVal, language_tag: 'en_IN' }];
         payload.attributes.batteries_required = [{ value: false }];
         payload.attributes.supplier_declared_dg_hz_regulation = [{ value: 'not_applicable' }];
         payload.attributes.care_instructions = [{ value: 'Hand wash only', language_tag: 'en_IN' }];
@@ -319,7 +357,7 @@ export class AmazonConnector extends BaseConnector {
       }
 
       const response = await this.http.put(
-        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${product.sku}`,
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(product.sku)}`,
         payload,
         {
           headers: this.spApiHeaders,
@@ -391,7 +429,7 @@ export class AmazonConnector extends BaseConnector {
         for (const item of batch) {
           try {
             await this.http.patch(
-              `${this.endpoint}/fba/inventory/v1/items/${item.sku}`,
+              `${this.endpoint}/fba/inventory/v1/items/${encodeURIComponent(item.sku)}`,
               { quantity: item.availableQty },
               { headers: this.spApiHeaders },
             );
@@ -419,7 +457,7 @@ export class AmazonConnector extends BaseConnector {
       for (const item of items) {
         try {
           await this.http.put(
-            `${this.endpoint}/products/pricing/v0/listings/${item.sku}/offers`,
+            `${this.endpoint}/products/pricing/v0/listings/${encodeURIComponent(item.sku)}/offers`,
             {
               marketplaceId: this.marketplaceId,
               listingPrice: { amount: item.sellingPrice, currencyCode: 'INR' },

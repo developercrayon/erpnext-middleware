@@ -6,3 +6,18 @@ dist/
 coverage/
 *.log
 logs/*.json
+
+# Scratch and test files
+check-*.js
+test-*.js
+alter-*.js
+fetch-*.js
+find-*.js
+clear-*.js
+get-*.js
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.build.json
+!nest-cli.json

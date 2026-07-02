@@ -60,8 +60,10 @@ export class HttpClientService {
         const duration = Date.now() - ((error.config as any)?.metadata?.startTime || Date.now());
         const status = error.response?.status;
         const url = error.config?.url;
-        const message = error.response?.data?.message || error.message;
-        this.logger.error(`← ${status || 'ERR'} ${url} — ${message}`);
+        const responseData = error.response?.data;
+        const message = responseData?.errors?.[0]?.message || responseData?.message || error.message;
+        // Log full response body for debugging (especially Amazon 403s)
+        this.logger.error(`← ${status || 'ERR'} ${url} — ${message}`, responseData ? JSON.stringify(responseData) : '');
         this.saveLog(error.config, error.response, duration, error).catch(err => this.logger.error('Failed to save API Log', err));
         return Promise.reject(this.normalizeError(error));
       },
@@ -78,16 +80,22 @@ export class HttpClientService {
     else if (urlStr.includes('flipkart')) service = 'FLIPKART';
     else if (urlStr.includes('erpnext') || urlStr.includes(this.config.get('erpnext.baseUrl') || '')) service = 'ERPNEXT';
 
+    // Safely parse request body - JSON.parse is synchronous, not a Promise
+    let requestBody = config.data;
+    if (typeof config.data === 'string') {
+      try { requestBody = JSON.parse(config.data); } catch { requestBody = config.data; }
+    }
+
     const logEntry = this.apiLogRepo.create({
       service,
       method: (config.method || 'GET').toUpperCase(),
       url: urlStr,
       requestHeaders: config.headers,
-      requestBody: typeof config.data === 'string' ? JSON.parse(config.data).catch(()=>config.data) : config.data,
+      requestBody,
       responseStatus: response?.status || null,
       responseBody: response?.data || null,
       durationMs: duration,
-      error: error ? error.message : null,
+      error: error ? (error.message || String(error)) : null,
     });
     
     await this.apiLogRepo.save(logEntry);

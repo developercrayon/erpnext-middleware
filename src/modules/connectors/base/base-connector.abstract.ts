@@ -54,8 +54,15 @@ export abstract class BaseConnector implements IConnector {
    * Wraps an error in a failed ConnectorResult
    */
   protected failure(error: string | Error, statusCode?: number): ConnectorResult<never> {
-    const message = error instanceof Error ? error.message : error;
+    let message = error instanceof Error ? error.message : error;
     const stack = error instanceof Error ? error.stack : undefined;
+    // If the error has a response body (from HTTP errors), include it for better diagnostics
+    const data = (error as any)?.data;
+    if (data && typeof data === 'object') {
+      const details = data.errors?.map?.((e: any) => e.message).join('; ')
+        || data.error_description || data.message || data.reason;
+      if (details) message = `${message}: ${details}`;
+    }
     this.logger.error(`Connector error: ${message}`, stack);
     return { success: false, error: message, statusCode };
   }

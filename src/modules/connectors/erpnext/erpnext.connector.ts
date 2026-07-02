@@ -109,7 +109,7 @@ export class ERPNextConnector extends BaseConnector {
             'brand', 'stock_uom', 'gst_hsn_code', 'weight_per_unit', 'weight_uom',
             'has_variants', 'standard_rate', 'image', 'custom_thumbnail_image',
             'custom_amazon_price', 'custom_flipkart_price', 'custom_amazon', 'custom_flipkart', 'valuation_rate', 'custom_mrp', 'custom_amazon_product_type',
-            'country_of_origin', 'custom_material', 'custom_item_type_name', 'custom_model_name', 'default_item_manufacturer'
+            'country_of_origin', 'custom_material', 'custom_item_type_name', 'custom_model_name', 'default_item_manufacturer', 'variant_of'
           ]),
           filters: JSON.stringify([
             ['custom_sync_marketplace', '=', 1]
@@ -130,6 +130,9 @@ export class ERPNextConnector extends BaseConnector {
 
         let upc = '';
         let amazonAsin = '';
+        let variantAttributes: { name: string; value: string }[] = [];
+        let variationTheme: string | undefined = undefined;
+
         try {
           const fullItemRes = await this.http.get(`${this.baseUrl}/api/resource/Item/${encodeURIComponent(item.item_code)}`, { headers: this.authHeaders });
           const fullItem = fullItemRes.data?.data;
@@ -143,7 +146,55 @@ export class ERPNextConnector extends BaseConnector {
                 upc = fullItem.barcodes[0].barcode; // Fallback to first barcode
               }
             }
+            if (fullItem.attributes && fullItem.attributes.length > 0) {
+              variantAttributes = fullItem.attributes.map((a: any) => ({
+                name: a.attribute,
+                value: a.attribute_value,
+              }));
+              
+              // Determine Variation Theme
+              const hasColor = variantAttributes.some(a => a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color');
+              const hasSize = variantAttributes.some(a => a.name.toLowerCase() === 'size');
+              
+              if (hasColor && hasSize) variationTheme = 'COLOR_SIZE';
+              else if (hasColor) variationTheme = 'COLOR';
+              else if (hasSize) variationTheme = 'SIZE';
+            }
           }
+
+          // Fetch attached images
+          const fetchImagesForCode = async (code: string) => {
+            const filesRes = await this.http.get(`${this.baseUrl}/api/resource/File`, {
+              headers: this.authHeaders,
+              params: {
+                fields: JSON.stringify(['file_url']),
+                filters: JSON.stringify([
+                  ['attached_to_doctype', '=', 'Item'],
+                  ['attached_to_name', '=', code]
+                ])
+              }
+            });
+            const files = filesRes.data?.data;
+            if (files && files.length > 0) {
+              for (const f of files) {
+                if (f.file_url) {
+                  const cleanImage = f.file_url.startsWith('/') ? f.file_url.substring(1) : f.file_url;
+                  const imgUrl = cleanImage.startsWith('http') ? cleanImage : `${this.baseUrl.replace(/\/$/, '')}/${cleanImage}`;
+                  if (!images.includes(imgUrl)) {
+                    images.push(imgUrl);
+                  }
+                }
+              }
+            }
+          };
+
+          await fetchImagesForCode(item.item_code);
+
+          // Image Inheritance for variants
+          if (images.length === 0 && item.variant_of) {
+             await fetchImagesForCode(item.variant_of);
+          }
+
         } catch (e) {
           // Ignore individual fetch error, continue with empty upc and asin
         }
@@ -166,6 +217,10 @@ export class ERPNextConnector extends BaseConnector {
           upc: upc,
           amazonAsin: amazonAsin,
           valuationRate: item.valuation_rate || 0,
+          isParent: item.has_variants === 1,
+          variantOf: item.variant_of || undefined,
+          variationTheme,
+          variantAttributes: variantAttributes.length > 0 ? variantAttributes : undefined,
           thumbnailUrl: images.length > 0 ? images[0] : undefined,
           images: images,
           rawPayload: item,

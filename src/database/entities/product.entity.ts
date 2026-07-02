@@ -101,6 +101,18 @@ export class Product {
   @Column({ name: 'status', type: 'enum', enum: ProductStatus, default: ProductStatus.ACTIVE })
   status: ProductStatus;
 
+  @Column({ name: 'is_parent', type: 'boolean', default: false })
+  isParent: boolean;
+
+  @Column({ name: 'variant_of', type: 'varchar', nullable: true })
+  variantOf: string;
+
+  @Column({ name: 'variation_theme', type: 'varchar', nullable: true })
+  variationTheme: string;
+
+  @Column({ name: 'variant_attributes', type: 'jsonb', nullable: true })
+  variantAttributes: { name: string; value: string }[];
+
   @Column({ name: 'is_amazon_listed', type: 'boolean', default: false })
   isAmazonListed: boolean;
 

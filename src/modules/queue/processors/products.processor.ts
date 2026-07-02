@@ -10,6 +10,7 @@ import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector'
 import { Product } from '../../../database/entities/product.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
 import { MarketplaceSource } from '../../../database/entities/order.entity';
+import { NormalizedProduct } from '../../connectors/base/connector.types';
 
 @Processor(QUEUE_NAMES.PRODUCTS)
 export class ProductsProcessor {
@@ -63,7 +64,12 @@ export class ProductsProcessor {
               customFlipkart: p.customFlipkart,
               amazonProductType: p.amazonProductType || null,
               upc: p.upc || null,
+              thumbnailUrl: p.thumbnailUrl || (p.images && p.images.length > 0 ? p.images[0] : null),
               images: p.images,
+              isParent: p.isParent || false,
+              variantOf: p.variantOf || null,
+              variationTheme: p.variationTheme || null,
+              variantAttributes: p.variantAttributes || null,
               attributes: p.rawPayload,
               lastSyncedAt: new Date(),
             },
@@ -100,6 +106,13 @@ export class ProductsProcessor {
       return;
     }
 
+    // Sort products: Parents (isParent = true, variantOf = null) first, then children
+    products.sort((a, b) => {
+      if (a.isParent && !b.isParent) return -1;
+      if (!a.isParent && b.isParent) return 1;
+      return 0;
+    });
+
     const marketplaces = source
       ? [source]
       : [MarketplaceSource.AMAZON, MarketplaceSource.FLIPKART];
@@ -127,12 +140,12 @@ export class ProductsProcessor {
               ? getPrice(product.customFlipkartPrice, product.sellingPrice, product.costPrice)
               : getPrice(0, product.sellingPrice, product.costPrice);
 
-          const normalizedProduct = {
+          const normalizedProduct: NormalizedProduct = {
             sku: product.sku,
             amazonAsin: product.amazonAsin,
             amazonProductType: product.amazonProductType,
             upc: product.upc,
-            thumbnailUrl: product.thumbnailUrl,
+            thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
             flipkartSku: product.flipkartSku,
             name: product.name,
             description: product.description,
@@ -140,10 +153,31 @@ export class ProductsProcessor {
             brand: product.brand,
             mrp: product.mrp,
             sellingPrice: sellingPrice,
+            isParent: product.isParent,
+            variantOf: product.variantOf,
+            variationTheme: product.variationTheme,
+            variantAttributes: product.variantAttributes,
             attributes: product.attributes,
             images: product.images,
             rawPayload: product,
           };
+
+          if (product.isParent) {
+             const childProducts = products.filter(p => p.variantOf === product.sku);
+             normalizedProduct.children = childProducts.map(cp => ({
+               sku: cp.sku,
+               amazonAsin: cp.amazonAsin,
+               amazonProductType: cp.amazonProductType,
+               upc: cp.upc,
+               name: cp.name,
+               mrp: cp.mrp,
+               sellingPrice: cp.sellingPrice,
+               isParent: cp.isParent,
+               variantOf: cp.variantOf,
+               variationTheme: cp.variationTheme,
+               variantAttributes: cp.variantAttributes,
+             }));
+          }
 
           const result = await connector.createListing(normalizedProduct, true); // true = isDraft
 
