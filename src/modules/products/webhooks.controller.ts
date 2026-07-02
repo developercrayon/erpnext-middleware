@@ -23,13 +23,17 @@ export class ProductsWebhookController {
       throw new UnauthorizedException('Invalid webhook secret');
     }
 
-    // ERPNext sends the document in the body. If it's wrapped, it might be in payload.data or just the payload itself.
-    // The Item code is typically in payload.name or payload.item_code.
-    const itemCode = payload.item_code || payload.name;
+    // ERPNext might send the doc directly, or wrap it in 'data', 'message', or 'doc'
+    let doc = payload;
+    if (payload.data && typeof payload.data === 'object') doc = payload.data;
+    else if (payload.message && typeof payload.message === 'object') doc = payload.message;
+    else if (payload.doc && typeof payload.doc === 'object') doc = payload.doc;
+
+    const itemCode = doc.item_code || doc.name;
     
     if (!itemCode) {
-      this.logger.warn('Received webhook without item_code or name');
-      return { success: false, message: 'Missing item_code' };
+      this.logger.warn(`Received webhook without item_code. Payload: ${JSON.stringify(payload).substring(0, 500)}`);
+      return { success: false, message: 'Missing item_code', receivedKeys: Object.keys(payload) };
     }
 
     this.logger.log(`Received ERPNext webhook for item: ${itemCode}`);
