@@ -92,7 +92,6 @@ export class AppController {
             <p>Integration hub connecting ERPNext with Amazon and Flipkart marketplaces.</p>
             <div class="buttons">
               <a href="/admin" class="btn">Admin Login</a>
-              <a href="/api/docs" class="btn">API Docs</a>
             </div>
           </div>
         </div>

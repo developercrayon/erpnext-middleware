@@ -100,6 +100,7 @@ export class AmazonConnector extends BaseConnector {
         MarketplaceIds: this.marketplaceId,
         OrderStatuses: params?.status || 'Unshipped,PartiallyShipped',
         MaxResultsPerPage: params?.pageSize || 100,
+        dataElements: 'buyerInfo,shippingAddress',
       };
 
       if (params?.fromDate) {
