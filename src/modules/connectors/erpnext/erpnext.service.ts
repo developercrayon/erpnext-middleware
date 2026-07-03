@@ -60,10 +60,6 @@ export class ERPNextService {
       })),
       custom_marketplace_order_id: order.marketplaceOrderId,
       custom_marketplace_source: order.source,
-      // Shipping address as address details
-      shipping_address_name: order.shippingAddress
-        ? `${order.shippingAddress.name} - ${order.marketplaceOrderId}`
-        : undefined,
     };
 
     const result = await this.connector.createSalesOrder(soPayload);
