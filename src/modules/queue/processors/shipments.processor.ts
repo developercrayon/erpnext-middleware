@@ -7,7 +7,7 @@ import { QUEUE_NAMES, JOB_NAMES } from '../queue.constants';
 import { ERPNextService } from '../../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector';
-import { ShipmentSync } from '../../../database/entities/sync.entity';
+import { SyncResourceType, ItemSyncLog } from '../../../database/entities/operational.entity';
 import { MarketplaceSource } from '../../../database/entities/order.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
 import { OrdersService } from '../../orders/orders.service';
@@ -21,8 +21,8 @@ export class ShipmentsProcessor {
     private readonly erpnextService: ERPNextService,
     private readonly amazonConnector: AmazonConnector,
     private readonly flipkartConnector: FlipkartConnector,
-    @InjectRepository(ShipmentSync)
-    private readonly shipmentSyncRepo: Repository<ShipmentSync>,
+    @InjectRepository(ItemSyncLog)
+    private readonly itemSyncLogRepo: Repository<ItemSyncLog>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
   ) {}
@@ -39,14 +39,17 @@ export class ShipmentsProcessor {
         ? this.amazonConnector
         : this.flipkartConnector;
 
-    const syncLog = await this.shipmentSyncRepo.save({
-      orderId,
-      marketplaceOrderId: order.marketplaceOrderId,
+    const syncLog = await this.itemSyncLogRepo.save({
+      resourceType: SyncResourceType.SHIPMENT,
+      referenceId: orderId,
       source: order.source,
-      trackingNumber,
-      carrier,
-      carrierService,
       syncStatus: 'IN_PROGRESS',
+      details: {
+        marketplaceOrderId: order.marketplaceOrderId,
+        trackingNumber,
+        carrier,
+        carrierService,
+      }
     });
 
     try {
@@ -71,19 +74,18 @@ export class ShipmentsProcessor {
           trackingNumber,
           carrier,
         );
-        await this.shipmentSyncRepo.update(syncLog.id, {
-          erpnextDeliveryNoteId: dnId,
-        });
+        syncLog.details = { ...syncLog.details, erpnextDeliveryNoteId: dnId };
+        await this.itemSyncLogRepo.save(syncLog);
       }
 
-      await this.shipmentSyncRepo.update(syncLog.id, {
+      await this.itemSyncLogRepo.update(syncLog.id, {
         syncStatus: 'SYNCED',
-        shippedAt: new Date(),
+        syncedAt: new Date(),
       });
 
       this.logger.log(`Shipment created for order ${orderId}: ${result.data?.shipmentId}`);
     } catch (error) {
-      await this.shipmentSyncRepo.update(syncLog.id, {
+      await this.itemSyncLogRepo.update(syncLog.id, {
         syncStatus: 'FAILED',
         errorMessage: error.message,
       });

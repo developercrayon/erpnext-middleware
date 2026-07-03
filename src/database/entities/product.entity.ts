@@ -98,6 +98,9 @@ export class Product {
   @Column({ name: 'custom_flipkart', type: 'boolean', default: false })
   customFlipkart: boolean;
 
+  @Column({ name: 'available_qty', type: 'decimal', precision: 12, scale: 3, default: 0 })
+  availableQty: number;
+
   @Column({ name: 'status', type: 'enum', enum: ProductStatus, default: ProductStatus.ACTIVE })
   status: ProductStatus;
 

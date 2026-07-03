@@ -7,7 +7,7 @@ import { QUEUE_NAMES, JOB_NAMES } from '../queue.constants';
 import { ERPNextService } from '../../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector';
-import { PriceSync } from '../../../database/entities/sync.entity';
+import { SyncHistory, SyncResourceType, ItemSyncLog } from '../../../database/entities/operational.entity';
 import { MarketplaceSource } from '../../../database/entities/order.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
 
@@ -19,8 +19,8 @@ export class PricingProcessor {
     private readonly erpnextService: ERPNextService,
     private readonly amazonConnector: AmazonConnector,
     private readonly flipkartConnector: FlipkartConnector,
-    @InjectRepository(PriceSync)
-    private readonly priceSyncRepo: Repository<PriceSync>,
+    @InjectRepository(ItemSyncLog)
+    private readonly itemSyncLogRepo: Repository<ItemSyncLog>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
   ) {}
@@ -52,29 +52,43 @@ export class PricingProcessor {
       const connector =
         mp === MarketplaceSource.AMAZON ? this.amazonConnector : this.flipkartConnector;
 
-      const syncLog = await this.priceSyncRepo.save({
-        sku: 'batch',
-        source: mp,
-        syncStatus: 'IN_PROGRESS',
-      });
+      for (const item of priceItems) {
+        await this.itemSyncLogRepo.save({
+          resourceType: SyncResourceType.PRICE,
+          referenceId: item.sku,
+          source: mp,
+          syncStatus: 'IN_PROGRESS',
+          details: { priceAfter: item.sellingPrice }
+        });
+      }
 
       try {
         const result = await connector.updatePrice(priceItems);
 
-        await this.priceSyncRepo.update(syncLog.id, {
-          syncStatus: result.success ? 'SYNCED' : 'FAILED',
-          syncedAt: new Date(),
-          errorMessage: result.success ? null : result.error,
-        });
+        for (const item of priceItems) {
+          await this.itemSyncLogRepo.update(
+            { resourceType: SyncResourceType.PRICE, referenceId: item.sku, source: mp, syncStatus: 'IN_PROGRESS' },
+            {
+              syncStatus: result.success ? 'SYNCED' : 'FAILED',
+              syncedAt: new Date(),
+              errorMessage: result.success ? null : result.error,
+            }
+          );
+        }
 
         this.logger.log(
           `Prices synced to ${mp}: ${result.data?.success}/${result.data?.total} items`,
         );
       } catch (error) {
-        await this.priceSyncRepo.update(syncLog.id, {
-          syncStatus: 'FAILED',
-          errorMessage: error.message,
-        });
+        for (const item of priceItems) {
+          await this.itemSyncLogRepo.update(
+            { resourceType: SyncResourceType.PRICE, referenceId: item.sku, source: mp, syncStatus: 'IN_PROGRESS' },
+            {
+              syncStatus: 'FAILED',
+              errorMessage: error.message,
+            }
+          );
+        }
         throw error;
       }
     }

@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
 import { PricingController } from './pricing.controller';
 import { PricingService } from './pricing.service';
-import { PriceSync } from '../../database/entities/sync.entity';
+import { ItemSyncLog, QueueJob } from '../../database/entities/operational.entity';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AuthModule } from '../auth/auth.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
@@ -12,7 +12,7 @@ import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PriceSync]),
+    TypeOrmModule.forFeature([ItemSyncLog, QueueJob]),
     BullModule.registerQueue({ name: QUEUE_NAMES.PRICING }),
     AuthModule,
     ERPNextModule,

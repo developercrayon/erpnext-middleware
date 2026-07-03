@@ -3,13 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { ShipmentSync } from '../../database/entities/sync.entity';
+
 import { ERPNextService } from '../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../connectors/flipkart/flipkart.connector';
 import { OrdersService } from '../orders/orders.service';
 import { QUEUE_NAMES, JOB_NAMES, QUEUE_DEFAULT_OPTIONS } from '../queue/queue.constants';
 import { MarketplaceSource } from '../../database/entities/order.entity';
+import { SyncResourceType, ItemSyncLog } from '../../database/entities/operational.entity';
 import { CreateShipmentDto, ShipmentQueryDto } from './dto/shipment.dto';
 
 @Injectable()
@@ -17,8 +18,8 @@ export class ShipmentsService {
   private readonly logger = new Logger(ShipmentsService.name);
 
   constructor(
-    @InjectRepository(ShipmentSync)
-    private readonly shipmentSyncRepo: Repository<ShipmentSync>,
+    @InjectRepository(ItemSyncLog)
+    private readonly shipmentSyncRepo: Repository<ItemSyncLog>,
     private readonly erpnextService: ERPNextService,
     private readonly ordersService: OrdersService,
     private readonly amazonConnector: AmazonConnector,
@@ -29,14 +30,14 @@ export class ShipmentsService {
 
   // ─── Query Methods ────────────────────────────────────────────────────────
 
-  async findAll(query: ShipmentQueryDto): Promise<{ data: ShipmentSync[]; total: number }> {
+  async findAll(query: ShipmentQueryDto): Promise<{ data: ItemSyncLog[]; total: number }> {
     const { source, syncStatus, page = 1, pageSize = 20 } = query;
 
-    const where: any = {};
+    const where: any = { resourceType: SyncResourceType.SHIPMENT };
     if (source) where.source = source;
     if (syncStatus) where.syncStatus = syncStatus;
 
-    const options: FindManyOptions<ShipmentSync> = {
+    const options: FindManyOptions<ItemSyncLog> = {
       where,
       order: { createdAt: 'DESC' },
       take: pageSize,
@@ -47,12 +48,12 @@ export class ShipmentsService {
     return { data, total };
   }
 
-  async findById(id: string): Promise<ShipmentSync | null> {
+  async findById(id: string): Promise<ItemSyncLog | null> {
     return this.shipmentSyncRepo.findOne({ where: { id } });
   }
 
-  async findByOrderId(orderId: string): Promise<ShipmentSync[]> {
-    return this.shipmentSyncRepo.find({ where: { orderId } });
+  async findByOrderId(orderId: string): Promise<ItemSyncLog[]> {
+    return this.shipmentSyncRepo.find({ where: { referenceId: orderId, resourceType: SyncResourceType.SHIPMENT } });
   }
 
   // ─── Sync Trigger ─────────────────────────────────────────────────────────
@@ -101,18 +102,18 @@ export class ShipmentsService {
   // ─── Stats ────────────────────────────────────────────────────────────────
 
   async getStats(): Promise<Record<string, any>> {
-    const total = await this.shipmentSyncRepo.count();
+    const total = await this.shipmentSyncRepo.count({ where: { resourceType: SyncResourceType.SHIPMENT } });
     const amazon = await this.shipmentSyncRepo.count({
-      where: { source: MarketplaceSource.AMAZON },
+      where: { source: MarketplaceSource.AMAZON, resourceType: SyncResourceType.SHIPMENT },
     });
     const flipkart = await this.shipmentSyncRepo.count({
-      where: { source: MarketplaceSource.FLIPKART },
+      where: { source: MarketplaceSource.FLIPKART, resourceType: SyncResourceType.SHIPMENT },
     });
     const pending = await this.shipmentSyncRepo.count({
-      where: { syncStatus: 'PENDING' },
+      where: { syncStatus: 'PENDING', resourceType: SyncResourceType.SHIPMENT },
     });
     const failed = await this.shipmentSyncRepo.count({
-      where: { syncStatus: 'FAILED' },
+      where: { syncStatus: 'FAILED', resourceType: SyncResourceType.SHIPMENT },
     });
 
     return { total, amazon, flipkart, pending, failed };

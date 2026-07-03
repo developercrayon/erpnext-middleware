@@ -11,6 +11,7 @@ import { AmazonConnector } from '../../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector';
 import { Product } from '../../../database/entities/product.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
+import { SyncHistory, SyncResourceType } from '../../../database/entities/operational.entity';
 import { MarketplaceSource } from '../../../database/entities/order.entity';
 import { NormalizedProduct } from '../../connectors/base/connector.types';
 
@@ -23,10 +24,13 @@ export class ProductsProcessor {
     private readonly amazonConnector: AmazonConnector,
     private readonly flipkartConnector: FlipkartConnector,
     @InjectQueue(QUEUE_NAMES.PRODUCTS) private readonly productsQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.INVENTORY) private readonly inventoryQueue: Queue,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
+    @InjectRepository(SyncHistory)
+    private readonly syncHistoryRepo: Repository<SyncHistory>,
   ) { }
 
   /**
@@ -144,6 +148,15 @@ export class ProductsProcessor {
       let successCount = 0;
       let failureCount = 0;
 
+      const syncHistory = this.syncHistoryRepo.create({
+        resourceType: SyncResourceType.PRODUCT,
+        source: mp,
+        status: 'IN_PROGRESS',
+        itemsTotal: products.length,
+        startedAt: new Date(),
+      });
+      await this.syncHistoryRepo.save(syncHistory);
+
       for (const product of products) {
         if (mp === MarketplaceSource.AMAZON && !product.customAmazon) continue;
         if (mp === MarketplaceSource.FLIPKART && !product.customFlipkart) continue;
@@ -232,6 +245,24 @@ export class ProductsProcessor {
       }
 
       this.logger.log(`Finished syncing products to ${mp}: ${successCount} succeeded, ${failureCount} failed.`);
+      
+      syncHistory.status = failureCount > 0 ? (successCount === 0 ? 'FAILED' : 'PARTIAL') : 'COMPLETED';
+      syncHistory.itemsSynced = successCount;
+      syncHistory.itemsFailed = failureCount;
+      syncHistory.completedAt = new Date();
+      syncHistory.durationMs = syncHistory.completedAt.getTime() - syncHistory.startedAt.getTime();
+      await this.syncHistoryRepo.save(syncHistory);
+
+      // Auto-Sync Chain: If products were successfully pushed, queue an inventory sync for them immediately
+      if (successCount > 0) {
+        const successSkus = products.map(p => p.sku);
+        await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, {
+          source: mp,
+          skus: successSkus
+        });
+        this.logger.log(`Auto-queued inventory sync to ${mp} for ${successCount} products`);
+      }
+
       if (failureCount > 0) {
         throw new Error(`Sync to ${mp} finished with ${failureCount} failures. See Error Logs for details.`);
       }

@@ -64,6 +64,37 @@ export class SyncHistory {
   updatedAt: Date;
 }
 
+@Entity('item_sync_logs')
+@Index(['resourceType', 'source', 'referenceId', 'createdAt'])
+export class ItemSyncLog {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'resource_type', type: 'enum', enum: SyncResourceType })
+  resourceType: SyncResourceType;
+
+  @Column({ name: 'source', type: 'varchar' })
+  source: string;
+
+  @Column({ name: 'reference_id', type: 'varchar' })
+  referenceId: string;
+
+  @Column({ name: 'sync_status', type: 'varchar', default: 'PENDING' })
+  syncStatus: string;
+
+  @Column({ name: 'error_message', type: 'text', nullable: true })
+  errorMessage: string;
+
+  @Column({ name: 'details', type: 'jsonb', nullable: true })
+  details: Record<string, any>;
+
+  @Column({ name: 'synced_at', type: 'timestamptz', nullable: true })
+  syncedAt: Date;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+}
+
 export enum QueueJobStatus {
   WAITING = 'WAITING',
   ACTIVE = 'ACTIVE',

@@ -14,10 +14,9 @@ import { OrdersModule } from '../orders/orders.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
 import { AmazonModule } from '../connectors/amazon/amazon.module';
 import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
-import { QueueJob } from '../../database/entities/operational.entity';
+import { QueueJob, SyncHistory, ItemSyncLog } from '../../database/entities/operational.entity';
 import { ErrorLog } from '../../database/entities/logs.entity';
-import { Inventory, InventorySync } from '../../database/entities/inventory.entity';
-import { PriceSync, ShipmentSync } from '../../database/entities/sync.entity';
+import { Inventory } from '../../database/entities/inventory.entity';
 import { Product } from '../../database/entities/product.entity';
 
 const queues = Object.values(QUEUE_NAMES).map((name) =>
@@ -58,10 +57,9 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
       QueueJob,
       ErrorLog,
       Inventory,
-      InventorySync,
-      PriceSync,
-      ShipmentSync,
+      ItemSyncLog,
       Product,
+      SyncHistory,
     ]),
     OrdersModule,
     ERPNextModule,

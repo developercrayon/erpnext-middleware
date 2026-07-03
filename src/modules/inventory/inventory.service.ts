@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { Inventory, InventorySync } from '../../database/entities/inventory.entity';
+import { Inventory } from '../../database/entities/inventory.entity';
 import { ERPNextService } from '../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../connectors/flipkart/flipkart.connector';
@@ -11,6 +11,7 @@ import { QUEUE_NAMES, JOB_NAMES, QUEUE_DEFAULT_OPTIONS } from '../queue/queue.co
 import { MarketplaceSource } from '../../database/entities/order.entity';
 import { InventoryQueryDto } from './dto/inventory.dto';
 import { ConfigService } from '@nestjs/config';
+import { QueueJob, QueueJobStatus, ItemSyncLog, SyncResourceType } from '../../database/entities/operational.entity';
 
 @Injectable()
 export class InventoryService {
@@ -19,14 +20,16 @@ export class InventoryService {
   constructor(
     @InjectRepository(Inventory)
     private readonly inventoryRepo: Repository<Inventory>,
-    @InjectRepository(InventorySync)
-    private readonly inventorySyncRepo: Repository<InventorySync>,
+    @InjectRepository(ItemSyncLog)
+    private readonly itemSyncLogRepo: Repository<ItemSyncLog>,
     private readonly erpnextService: ERPNextService,
     private readonly amazonConnector: AmazonConnector,
     private readonly flipkartConnector: FlipkartConnector,
     private readonly config: ConfigService,
     @InjectQueue(QUEUE_NAMES.INVENTORY)
     private readonly inventoryQueue: Queue,
+    @InjectRepository(QueueJob)
+    private readonly queueJobRepo: Repository<QueueJob>,
   ) {}
 
   // ─── Query Methods ────────────────────────────────────────────────────────
@@ -62,7 +65,41 @@ export class InventoryService {
       { source, skus, warehouse },
       QUEUE_DEFAULT_OPTIONS,
     );
+    
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.INVENTORY,
+        jobName: JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE,
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: job.opts?.attempts || 3,
+      });
+    } catch (e) {}
+
     this.logger.log(`Inventory sync job queued: ${job.id}`);
+    return String(job.id);
+  }
+
+  async triggerFetch(skus?: string[]): Promise<string> {
+    const job = await this.inventoryQueue.add(
+      JOB_NAMES.FETCH_INVENTORY_FROM_ERPNEXT,
+      { skus },
+      QUEUE_DEFAULT_OPTIONS,
+    );
+    
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.INVENTORY,
+        jobName: JOB_NAMES.FETCH_INVENTORY_FROM_ERPNEXT,
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: job.opts?.attempts || 3,
+      });
+    } catch (e) {}
+
+    this.logger.log(`Inventory fetch job queued: ${job.id}`);
     return String(job.id);
   }
 
@@ -122,8 +159,9 @@ export class InventoryService {
 
   // ─── Sync History ─────────────────────────────────────────────────────────
 
-  async getSyncHistory(limit = 50): Promise<InventorySync[]> {
-    return this.inventorySyncRepo.find({
+  async getSyncHistory(limit = 50): Promise<ItemSyncLog[]> {
+    return this.itemSyncLogRepo.find({
+      where: { resourceType: SyncResourceType.INVENTORY },
       order: { createdAt: 'DESC' },
       take: limit,
     });

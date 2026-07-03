@@ -64,7 +64,7 @@ import { AdminModule } from './admin/admin.module';
       useFactory: (config: ConfigService) => {
         const redisUrl = config.get<string>('redis.url');
         return {
-          prefix: process.env.NODE_ENV === 'development' ? 'bull-dev' : 'bull',
+          prefix: process.env.NODE_ENV === 'development' ? 'bull-local' : 'bull',
           ...(redisUrl ? { url: redisUrl } : {
             redis: {
               host: config.get<string>('redis.host') || 'localhost',

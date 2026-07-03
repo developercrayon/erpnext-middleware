@@ -48,36 +48,3 @@ export class Inventory {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-
-@Entity('inventory_syncs')
-export class InventorySync {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ name: 'sku', type: 'varchar' })
-  sku: string;
-
-  @Column({ name: 'source', type: 'enum', enum: MarketplaceSource })
-  source: MarketplaceSource;
-
-  @Column({ name: 'warehouse', type: 'varchar', nullable: true })
-  warehouse: string;
-
-  @Column({ name: 'qty_before', type: 'decimal', precision: 12, scale: 3, nullable: true })
-  qtyBefore: number;
-
-  @Column({ name: 'qty_after', type: 'decimal', precision: 12, scale: 3, nullable: true })
-  qtyAfter: number;
-
-  @Column({ name: 'sync_status', type: 'varchar', default: 'PENDING' })
-  syncStatus: string;
-
-  @Column({ name: 'error_message', type: 'text', nullable: true })
-  errorMessage: string;
-
-  @Column({ name: 'synced_at', type: 'timestamptz', nullable: true })
-  syncedAt: Date;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-}

@@ -7,10 +7,9 @@ import { HttpClientService } from '../shared/http-client.service';
 import { Order, MarketplaceSource } from '../database/entities/order.entity';
 import { OrderItem } from '../database/entities/order-item.entity';
 import { Product } from '../database/entities/product.entity';
-import { Inventory, InventorySync } from '../database/entities/inventory.entity';
-import { PriceSync, ShipmentSync } from '../database/entities/sync.entity';
+import { Inventory } from '../database/entities/inventory.entity';
 import { ConnectorLog, WebhookLog, ApiLog, ErrorLog } from '../database/entities/logs.entity';
-import { SyncHistory, QueueJob, Settings } from '../database/entities/operational.entity';
+import { SyncHistory, QueueJob, Settings, ItemSyncLog } from '../database/entities/operational.entity';
 
 import { OrdersModule } from '../modules/orders/orders.module';
 import { ProductsModule } from '../modules/products/products.module';
@@ -62,9 +61,7 @@ export class AdminModule {
           OrderItem,
           Product,
           Inventory,
-          InventorySync,
-          PriceSync,
-          ShipmentSync,
+          ItemSyncLog,
           ConnectorLog,
           WebhookLog,
           ApiLog,
@@ -230,6 +227,10 @@ export class AdminModule {
                     },
                     images: {
                       isVisible: { list: false, show: true, edit: false, filter: false },
+                    },
+                    availableQty: {
+                      isVisible: { list: true, show: true, edit: false, filter: true },
+                      position: 7,
                     }
                   },
                   actions: { new: { isAccessible: false },
@@ -453,6 +454,30 @@ export class AdminModule {
                         }
                       },
                     },
+                    fetchLatestStock: {
+                      actionType: 'resource',
+                      component: false,
+                      icon: 'Download',
+                      isVisible: true,
+                      handler: async (request, response, context) => {
+                        try {
+                          const jobId = await inventoryService.triggerFetch();
+                          return {
+                            notice: {
+                              message: `Job ${jobId} queued to fetch all latest quantities from ERPNext.`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            notice: {
+                              message: `Failed to queue ERPNext inventory fetch: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
                     syncAllToMarketplaces: {
                       actionType: 'resource',
                       component: false,
@@ -477,12 +502,64 @@ export class AdminModule {
                         }
                       },
                     },
+                    pushAllStockToMarketplaces: {
+                      actionType: 'resource',
+                      component: false,
+                      icon: 'CloudUpload',
+                      isVisible: true,
+                      handler: async (request, response, context) => {
+                        try {
+                          const jobId = await inventoryService.triggerSync();
+                          return {
+                            notice: {
+                              message: `Job ${jobId} queued to push all stock to marketplaces.`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            notice: {
+                              message: `Failed to queue stock push: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
+                    syncStockOnly: {
+                      actionType: 'record',
+                      component: false,
+                      icon: 'Box',
+                      isVisible: true,
+                      handler: async (request, response, context) => {
+                        const { record } = context;
+                        const sku = record.param('sku');
+                        try {
+                          const jobId = await inventoryService.triggerSync(undefined, [sku]);
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Inventory sync for SKU ${sku} queued (Job ID: ${jobId}).`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Failed to queue inventory sync: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
                   },
                 },
               },
               {
                 resource: Inventory,
-                options: { navigation: null,
+                options: { navigation: false,
                   sort: { sortBy: 'createdAt', direction: 'desc' },
                   actions: { new: { isAccessible: false },
                     syncSkuInventory: {
@@ -541,48 +618,18 @@ export class AdminModule {
                 },
               },
               {
-                resource: InventorySync,
-                options: { navigation: null, sort: { sortBy: 'createdAt', direction: 'desc' }, actions: { new: { isAccessible: false } } },
-              },
-              {
-                resource: PriceSync,
-                options: { navigation: null,
+                resource: ItemSyncLog,
+                options: {
+                  navigation: { name: 'Logs', icon: 'Activity' },
                   sort: { sortBy: 'createdAt', direction: 'desc' },
-                  actions: { new: { isAccessible: false },
-                    syncAllPrices: {
-                      actionType: 'resource',
-                      component: false,
-                      icon: 'Sync',
-                      isVisible: true,
-                      handler: async (request, response, context) => {
-                        try {
-                          const jobId = await pricingService.triggerSync();
-                          return {
-                            notice: {
-                              message: `Job ${jobId} queued to sync all prices to marketplaces.`,
-                              type: 'success',
-                            },
-                          };
-                        } catch (err) {
-                          return {
-                            notice: {
-                              message: `Failed to queue price sync: ${err.message}`,
-                              type: 'error',
-                            },
-                          };
-                        }
-                      },
-                    },
-                  },
+                  actions: { new: { isAccessible: false } },
+                  listProperties: ['resourceType', 'source', 'referenceId', 'syncStatus', 'syncedAt'],
+                  filterProperties: ['resourceType', 'source', 'referenceId', 'syncStatus'],
                 },
               },
               {
-                resource: ShipmentSync,
-                options: { navigation: null, sort: { sortBy: 'createdAt', direction: 'desc' }, actions: { new: { isAccessible: false } } },
-              },
-              {
                 resource: SyncHistory,
-                options: { navigation: null, sort: { sortBy: 'createdAt', direction: 'desc' }, actions: { new: { isAccessible: false } } },
+                options: { navigation: { name: 'Logs', icon: 'Activity' }, sort: { sortBy: 'createdAt', direction: 'desc' }, actions: { new: { isAccessible: false } } },
               },
               {
                 resource: QueueJob,
@@ -603,7 +650,7 @@ export class AdminModule {
               {
                 resource: ConnectorLog,
                 options: { 
-                  navigation: null, 
+                  navigation: { name: 'Logs', icon: 'Activity' }, 
                   listProperties: ['id', 'connector', 'action', 'level', 'message', 'createdAt'],
                   sort: { sortBy: 'createdAt', direction: 'desc' }, 
                   actions: { new: { isAccessible: false } } 
@@ -612,7 +659,7 @@ export class AdminModule {
               {
                 resource: WebhookLog,
                 options: { 
-                  navigation: null, 
+                  navigation: { name: 'Logs', icon: 'Activity' }, 
                   listProperties: ['id', 'source', 'eventType', 'processed', 'createdAt'],
                   sort: { sortBy: 'createdAt', direction: 'desc' }, 
                   actions: { new: { isAccessible: false } } 
@@ -621,7 +668,7 @@ export class AdminModule {
               {
                 resource: ApiLog,
                 options: { 
-                  navigation: null, 
+                  navigation: { name: 'Logs', icon: 'Activity' }, 
                   listProperties: ['id', 'service', 'method', 'url', 'responseStatus', 'createdAt'],
                   sort: { sortBy: 'createdAt', direction: 'desc' }, 
                   actions: { new: { isAccessible: false } } 
@@ -630,7 +677,7 @@ export class AdminModule {
               {
                 resource: ErrorLog,
                 options: { 
-                  navigation: null, 
+                  navigation: { name: 'Logs', icon: 'Activity' }, 
                   listProperties: ['id', 'source', 'context', 'message', 'createdAt'],
                   sort: { sortBy: 'createdAt', direction: 'desc' }, 
                   actions: { new: { isAccessible: false } } 
