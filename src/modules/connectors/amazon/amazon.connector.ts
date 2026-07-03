@@ -436,12 +436,40 @@ export class AmazonConnector extends BaseConnector {
       for (const batch of batches) {
         for (const item of batch) {
           try {
-            await this.http.patch(
-              `${this.endpoint}/fba/inventory/v1/items/${encodeURIComponent(item.sku)}`,
-              { quantity: item.availableQty },
-              { headers: this.spApiHeaders },
+            const res = await this.http.patch(
+              `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(item.sku)}`,
+              {
+                productType: 'PRODUCT',
+                patches: [
+                  {
+                    op: 'replace',
+                    path: '/attributes/fulfillment_availability',
+                    value: [
+                      {
+                        fulfillment_channel_code: 'DEFAULT',
+                        quantity: item.availableQty
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                headers: this.spApiHeaders,
+                params: { marketplaceIds: this.marketplaceId, issueLocale: 'en_IN' }
+              },
             );
-            result.success++;
+
+            const issues = res.data?.issues || [];
+            this.logger.debug(`Amazon PATCH response for ${item.sku}: ` + JSON.stringify(res.data));
+            
+            const errors = issues.filter((i: any) => i.severity === 'ERROR');
+            
+            if (errors.length > 0) {
+              result.failed++;
+              result.errors.push({ sku: item.sku, error: errors.map((e: any) => e.message).join(' | ') });
+            } else {
+              result.success++;
+            }
           } catch (err) {
             result.failed++;
             result.errors.push({ sku: item.sku, error: err.message });
@@ -464,15 +492,48 @@ export class AmazonConnector extends BaseConnector {
 
       for (const item of items) {
         try {
-          await this.http.put(
-            `${this.endpoint}/products/pricing/v0/listings/${encodeURIComponent(item.sku)}/offers`,
+          const res = await this.http.patch(
+            `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(item.sku)}`,
             {
-              marketplaceId: this.marketplaceId,
-              listingPrice: { amount: item.sellingPrice, currencyCode: 'INR' },
+              productType: 'PRODUCT',
+              patches: [
+                {
+                  op: 'replace',
+                  path: '/attributes/purchasable_offer',
+                  value: [
+                    {
+                      currency: 'INR',
+                      our_price: [
+                        {
+                          schedule: [
+                            {
+                              value_with_tax: item.sellingPrice
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
             },
-            { headers: this.spApiHeaders },
+            {
+              headers: this.spApiHeaders,
+              params: { marketplaceIds: this.marketplaceId, issueLocale: 'en_IN' }
+            },
           );
-          result.success++;
+
+          const issues = res.data?.issues || [];
+          this.logger.debug(`Amazon PATCH response for price ${item.sku}: ` + JSON.stringify(res.data));
+          
+          const errors = issues.filter((i: any) => i.severity === 'ERROR');
+          
+          if (errors.length > 0) {
+            result.failed++;
+            result.errors.push({ sku: item.sku, error: errors.map((e: any) => e.message).join(' | ') });
+          } else {
+            result.success++;
+          }
         } catch (err) {
           result.failed++;
           result.errors.push({ sku: item.sku, error: err.message });

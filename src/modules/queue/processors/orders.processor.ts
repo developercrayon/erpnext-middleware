@@ -68,8 +68,9 @@ export class OrdersProcessor {
     let page = 0;
 
     do {
+      const parsedFromDate = fromDate ? new Date(fromDate) : new Date(Date.now() - 24 * 60 * 60 * 1000);
       const result = await connector.fetchOrders({
-        fromDate: fromDate || new Date(Date.now() - 24 * 60 * 60 * 1000),
+        fromDate: parsedFromDate,
         nextToken,
         pageSize: 50,
       });

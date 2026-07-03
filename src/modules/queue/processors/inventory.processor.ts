@@ -108,35 +108,48 @@ export class InventoryProcessor {
 
         // Upsert inventory records and detailed sync logs
         if (result.success) {
+          const errorsMap = new Map(
+            (result.data?.errors || []).map((e: any) => [e.sku, e.error])
+          );
+
           for (const item of inventoryItems) {
-            await this.inventoryRepo.upsert(
-              {
-                sku: item.sku,
-                warehouse: item.warehouse,
-                source: mp,
-                availableQty: item.availableQty,
-                marketplaceQty: item.availableQty,
-                lastSyncedAt: new Date(),
-              },
-              ['sku', 'warehouse', 'source'],
-            );
+            const errorMsg = errorsMap.get(item.sku);
+            const isSuccess = !errorMsg;
+
+            if (isSuccess) {
+              await this.inventoryRepo.upsert(
+                {
+                  sku: item.sku,
+                  warehouse: item.warehouse,
+                  source: mp,
+                  availableQty: item.availableQty,
+                  marketplaceQty: item.availableQty,
+                  lastSyncedAt: new Date(),
+                },
+                ['sku', 'warehouse', 'source'],
+              );
+            }
             
             await this.itemSyncLogRepo.save({
               resourceType: SyncResourceType.INVENTORY,
               referenceId: item.sku,
               source: mp,
-              syncStatus: 'SYNCED',
+              syncStatus: isSuccess ? 'SYNCED' : 'FAILED',
+              errorMessage: isSuccess ? null : errorMsg,
               syncedAt: new Date(),
               details: { warehouse: item.warehouse, qtyAfter: item.availableQty }
             });
           }
           
           // Also update Product.availableQty so it's visible in the Product UI
+          // Only for successful ones
           for (const item of inventoryItems) {
-            await this.productRepo.update(
-              { sku: item.sku },
-              { availableQty: item.availableQty }
-            );
+            if (!errorsMap.has(item.sku)) {
+              await this.productRepo.update(
+                { sku: item.sku },
+                { availableQty: item.availableQty }
+              );
+            }
           }
         } else {
           // If the batch completely failed, record it

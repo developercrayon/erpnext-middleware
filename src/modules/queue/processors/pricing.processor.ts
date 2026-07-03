@@ -65,13 +65,20 @@ export class PricingProcessor {
       try {
         const result = await connector.updatePrice(priceItems);
 
+        const errorsMap = new Map(
+          (result.data?.errors || []).map((e: any) => [e.sku, e.error])
+        );
+
         for (const item of priceItems) {
+          const errorMsg = errorsMap.get(item.sku);
+          const isSuccess = result.success && !errorMsg;
+
           await this.itemSyncLogRepo.update(
             { resourceType: SyncResourceType.PRICE, referenceId: item.sku, source: mp, syncStatus: 'IN_PROGRESS' },
             {
-              syncStatus: result.success ? 'SYNCED' : 'FAILED',
+              syncStatus: isSuccess ? 'SYNCED' : 'FAILED',
               syncedAt: new Date(),
-              errorMessage: result.success ? null : result.error,
+              errorMessage: isSuccess ? null : (errorMsg || result.error),
             }
           );
         }

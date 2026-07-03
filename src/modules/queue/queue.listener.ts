@@ -30,11 +30,11 @@ export class QueueListenerService implements OnModuleInit {
     ];
 
     for (const { name, queue } of queues) {
-      // Use local (non-global) events so we have access to the full Job object
-      queue.on('waiting', (jobId: string) => this.handleWaiting(name, queue, jobId));
-      queue.on('active', (job: any) => this.handleActive(name, job));
-      queue.on('completed', (job: any) => this.handleCompleted(name, job));
-      queue.on('failed', (job: any, error: Error) => this.handleFailed(name, job, error?.message || 'Unknown error'));
+      // Use global events to catch status changes across different Node instances or workers
+      queue.on('global:waiting', (jobId: string) => this.handleGlobalEvent(name, queue, jobId, QueueJobStatus.WAITING));
+      queue.on('global:active', (jobId: string) => this.handleGlobalEvent(name, queue, jobId, QueueJobStatus.ACTIVE));
+      queue.on('global:completed', (jobId: string) => this.handleGlobalEvent(name, queue, jobId, QueueJobStatus.COMPLETED));
+      queue.on('global:failed', (jobId: string, err: string) => this.handleGlobalEvent(name, queue, jobId, QueueJobStatus.FAILED, err));
     }
     
     this.logger.log('Queue listeners initialized');
@@ -61,33 +61,27 @@ export class QueueListenerService implements OnModuleInit {
     }
   }
 
-  private async handleWaiting(queueName: string, queue: Queue, jobId: string) {
-    // For waiting, we only have the jobId — fetch the full job object
-    const job = await queue.getJob(jobId);
-    if (job) {
-      await this.saveJobRecord(queueName, job, { status: QueueJobStatus.WAITING });
-    } else {
-      // Fallback: save minimal record without fetching
-      await this.saveJobRecord(queueName, { id: jobId, name: 'unknown', attemptsMade: 0, opts: {} }, { status: QueueJobStatus.WAITING });
+  private async handleGlobalEvent(queueName: string, queue: Queue, jobId: string, status: QueueJobStatus, errorMsg?: string) {
+    let job;
+    try {
+      job = await queue.getJob(jobId);
+    } catch (e) {
+      // If job is already removed or inaccessible, we fall back
     }
-  }
 
-  private async handleActive(queueName: string, job: any) {
-    await this.saveJobRecord(queueName, job, { status: QueueJobStatus.ACTIVE, processedAt: new Date() });
-  }
+    const updateData: Partial<QueueJob> = { status };
+    if (status === QueueJobStatus.ACTIVE) updateData.processedAt = new Date();
+    if (status === QueueJobStatus.COMPLETED || status === QueueJobStatus.FAILED) {
+      updateData.completedAt = new Date();
+    }
+    if (status === QueueJobStatus.FAILED && errorMsg) {
+      updateData.errorMessage = errorMsg;
+    }
 
-  private async handleCompleted(queueName: string, job: any) {
-    await this.saveJobRecord(queueName, job, { 
-      status: QueueJobStatus.COMPLETED, 
-      completedAt: new Date()
-    });
-  }
-
-  private async handleFailed(queueName: string, job: any, error: string) {
-    await this.saveJobRecord(queueName, job, { 
-      status: QueueJobStatus.FAILED, 
-      errorMessage: error,
-      completedAt: new Date()
-    });
+    if (job) {
+      await this.saveJobRecord(queueName, job, updateData);
+    } else {
+      await this.saveJobRecord(queueName, { id: jobId, name: 'unknown' }, updateData);
+    }
   }
 }

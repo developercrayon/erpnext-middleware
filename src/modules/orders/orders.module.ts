@@ -6,6 +6,7 @@ import { OrdersService } from './orders.service';
 import { Order } from '../../database/entities/order.entity';
 import { OrderItem } from '../../database/entities/order-item.entity';
 import { WebhookLog } from '../../database/entities/logs.entity';
+import { QueueJob } from '../../database/entities/operational.entity';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AuthModule } from '../auth/auth.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
@@ -14,7 +15,7 @@ import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, WebhookLog]),
+    TypeOrmModule.forFeature([Order, OrderItem, WebhookLog, QueueJob]),
     BullModule.registerQueue({ name: QUEUE_NAMES.ORDERS }),
     AuthModule,
     ERPNextModule,

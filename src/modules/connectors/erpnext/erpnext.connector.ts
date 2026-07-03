@@ -282,7 +282,10 @@ export class ERPNextConnector extends BaseConnector {
       );
       this.logger.log(`Sales Order created: ${response.data?.data?.name}`);
       return this.success(response.data?.data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response && error.response.data) {
+        this.logger.error(`ERPNext Sales Order Creation Failed: ${JSON.stringify(error.response.data)}`);
+      }
       return this.failure(error);
     }
   }

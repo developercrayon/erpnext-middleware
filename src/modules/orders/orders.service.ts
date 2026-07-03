@@ -6,9 +6,10 @@ import { Queue } from 'bull';
 import { Order, MarketplaceSource, OrderStatus, SyncStatus } from '../../database/entities/order.entity';
 import { OrderItem } from '../../database/entities/order-item.entity';
 import { WebhookLog } from '../../database/entities/logs.entity';
+import { QueueJob, QueueJobStatus } from '../../database/entities/operational.entity';
 import { NormalizedOrder } from '../connectors/base/connector.types';
 import { OrderQueryDto } from './dto/order.dto';
-import { QUEUE_NAMES } from '../queue/queue.constants';
+import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
 import { generateCorrelationId } from '../../utils/crypto.util';
 
 @Injectable()
@@ -24,6 +25,8 @@ export class OrdersService {
     private readonly webhookLogRepo: Repository<WebhookLog>,
     @InjectQueue(QUEUE_NAMES.ORDERS)
     private readonly ordersQueue: Queue,
+    @InjectRepository(QueueJob)
+    private readonly queueJobRepo: Repository<QueueJob>,
   ) {}
 
   // ─── Webhook Ingestion ────────────────────────────────────────────────────
@@ -68,6 +71,19 @@ export class OrdersService {
         removeOnFail: false,
       },
     );
+
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.ORDERS,
+        jobName: 'process-webhook-order',
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: 3,
+      });
+    } catch (e) {
+      // Ignore unique constraint violation
+    }
 
     this.logger.log(
       `Webhook queued: source=${source} event=${eventType} jobId=${job.id} correlationId=${correlationId}`,
@@ -203,6 +219,20 @@ export class OrdersService {
       { orderId: order.id, source: order.source },
       { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
     );
+    
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.ORDERS,
+        jobName: 'sync-order-to-erpnext',
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: 3,
+      });
+    } catch (e) {
+      // Ignore
+    }
+    
     await this.markInProgress(order.id);
     return String(job.id);
   }
@@ -213,6 +243,20 @@ export class OrdersService {
       { source, fromDate: fromDate || new Date(Date.now() - 24 * 60 * 60 * 1000) },
       { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
     );
+    
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.ORDERS,
+        jobName: 'fetch-marketplace-orders',
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: 3,
+      });
+    } catch (e) {
+      // Ignore
+    }
+    
     this.logger.log(`Manual order fetch queued for ${source}: jobId=${job.id}`);
     return String(job.id);
   }

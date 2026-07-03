@@ -49,7 +49,7 @@ export class ERPNextService {
       transaction_date: orderDate,
       delivery_date: order.promisedDeliveryDate
         ? new Date(order.promisedDeliveryDate).toISOString().split('T')[0]
-        : undefined,
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       items: order.items.map((item) => ({
         item_code: item.sku,
         item_name: item.productName,
