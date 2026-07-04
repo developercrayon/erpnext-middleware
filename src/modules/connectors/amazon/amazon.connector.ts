@@ -273,76 +273,162 @@ export class AmazonConnector extends BaseConnector {
       // via putListingsItem. Price and Inventory are updated via their respective feeds.
 
       if (requirements === 'LISTING') {
+      if (requirements === 'LISTING') {
         const erp = product.attributes || {};
+        const raw = product.rawPayload || {};
         
-        // Dynamically mapped fields from ERPNext
-        // Amazon expects 'IN' instead of 'India'
+        // Helper function for text attributes
+        const setStringValue = (amazonField: string, erpVal: any, language_tag?: string) => {
+          if (erpVal) {
+            payload.attributes[amazonField] = language_tag 
+              ? [{ value: erpVal.toString(), language_tag }]
+              : [{ value: erpVal.toString() }];
+          }
+        };
+
+        // Helper function for child tables
+        const setChildTable = (amazonField: string, erpArray: any[], fieldName: string, language_tag?: string) => {
+          if (erpArray && Array.isArray(erpArray) && erpArray.length > 0) {
+            const mapped = erpArray.map(item => {
+               if (item[fieldName]) {
+                 return language_tag 
+                   ? { value: item[fieldName].toString(), language_tag }
+                   : { value: item[fieldName].toString() };
+               }
+               return null;
+            }).filter(i => i !== null);
+            if (mapped.length > 0) {
+              payload.attributes[amazonField] = mapped;
+            }
+          }
+        };
+
+        // Country of Origin
         let country = erp.country_of_origin;
-        if (!country || country.toLowerCase() === 'india') country = 'IN';
+        if (country && country.toLowerCase() === 'india') country = 'IN';
+        setStringValue('country_of_origin', country);
+
+        // Core fields
+        setStringValue('item_type_name', erp.custom_item_type_name, 'en_IN');
+        setStringValue('model_name', erp.custom_model_name);
+        setStringValue('manufacturer', erp.default_item_manufacturer || product.brand);
+        setStringValue('model_number', raw.custom_model_number || product.sku);
+        setStringValue('style', raw.custom_style);
         
-        payload.attributes.country_of_origin = [{ value: country }];
-        payload.attributes.material = [{ value: erp.custom_material || 'Ceramic', language_tag: 'en_IN' }];
-        payload.attributes.item_type_name = [{ value: erp.custom_item_type_name || 'Coffee Mug', language_tag: 'en_IN' }];
-        payload.attributes.model_name = [{ value: erp.custom_model_name || product.sku }];
-        payload.attributes.manufacturer = [{ value: erp.default_item_manufacturer || product.brand || 'Generic' }];
+        if (raw.custom_number_of_items) {
+           payload.attributes.number_of_items = [{ value: parseInt(raw.custom_number_of_items, 10) }];
+        }
+        if (raw.custom_number_of_pieces) {
+           payload.attributes.number_of_pieces = [{ value: parseInt(raw.custom_number_of_pieces, 10) }];
+        }
         
-        // Fallbacks for the remaining mandatory Amazon SP-API fields
-        payload.attributes.model_number = [{ value: product.sku }];
-        payload.attributes.number_of_items = [{ value: 1 }];
-        payload.attributes.unit_count = [{ value: 1, type: { value: 'count', language_tag: 'en_IN' } }];
-        payload.attributes.included_components = [{ value: '1 Mug', language_tag: 'en_IN' }];
-        payload.attributes.bullet_point = [{ value: 'High quality product', language_tag: 'en_IN' }];
-        let colorVal = 'White';
-        let sizeVal = 'Standard';
+        setStringValue('item_shape', raw.custom_marketplace);
+        setStringValue('rtip_manufacturer_contact_information', raw.custom__manufacturer_contact_information);
+        
+        if (raw.custom_required_assembly !== undefined && raw.custom_required_assembly !== null && raw.custom_required_assembly !== '') {
+           payload.attributes.assembly_required = [{ value: Boolean(raw.custom_required_assembly) }];
+        }
+        
+        setStringValue('shelf_type', raw.custom__shelf_type);
+        if (raw.custom_number_of_shelves) {
+           payload.attributes.number_of_shelves = [{ value: parseInt(raw.custom_number_of_shelves, 10) }];
+        }
+        setStringValue('assembly_instructions', raw.custom_assembly_instructions, 'en_IN');
+        setStringValue('mounting_type', raw.custom_mounting_type, 'en_IN');
+        setStringValue('finish_type', raw.custom_finish_type, 'en_IN');
+        
+        if (raw.custom__external_product_information || erp.gst_hsn_code) {
+           payload.attributes.external_product_information = [{
+             entity: 'HSN Code',
+             value: raw.custom__external_product_information || erp.gst_hsn_code
+           }];
+        }
+
+        if (raw.custom_number_of_packs) {
+           payload.attributes.unit_count = [{ value: parseFloat(raw.custom_number_of_packs), type: { value: 'count', language_tag: 'en_IN' } }];
+        }
+
+        if (raw.custom_shelf_thickness) {
+           payload.attributes.shelf_thickness = [{ value: parseFloat(raw.custom_shelf_thickness), unit: 'centimeters' }];
+        }
+
+        // Child Tables
+        setChildTable('bullet_point', raw.custom_amazon_bullet_point, 'bullet_point', 'en_IN');
+        setChildTable('special_feature', raw.custom_special_features, 'feature', 'en_IN');
+        setChildTable('material', raw.custom_select_material, 'material', 'en_IN');
+        setChildTable('care_instructions', raw.custom_care_instructions, 'care_instructions', 'en_IN');
+        setChildTable('included_components', raw.custom_included_components, 'title', 'en_IN');
+        setChildTable('specific_uses_for_product', raw.custom_specific_uses_for_product, 'title', 'en_IN');
+        setChildTable('recommended_uses_for_product', raw.custom_recommended_uses_for_product, 'title', 'en_IN');
+        setChildTable('room_type', raw.custom_room_type, 'title', 'en_IN');
+        setChildTable('packer_contact_information', raw.custom_packer_contact_information, 'title', 'en_IN');
+
+        // Color & Size (from variant attributes + custom fields)
+        let colorVal = raw.custom_color || null;
+        let sizeVal = null;
         
         if (product.variantAttributes) {
           const colorAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color');
-          if (colorAttr) colorVal = colorAttr.value;
+          if (colorAttr && !colorVal) colorVal = colorAttr.value;
           
           const sizeAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'size');
           if (sizeAttr) sizeVal = sizeAttr.value;
         }
 
         if (!product.isParent) {
-          payload.attributes.color = [{ 
-            value: colorVal, 
-            language_tag: 'en_IN',
-            standardized_values: [colorVal.toLowerCase()] 
-          }];
-          payload.attributes.size = [{ 
-            value: sizeVal, 
-            language_tag: 'en_IN' 
-          }];
+          if (colorVal) {
+            payload.attributes.color = [{ 
+              value: colorVal, 
+              language_tag: 'en_IN',
+              standardized_values: [colorVal.toLowerCase()] 
+            }];
+          }
+          if (sizeVal) {
+            payload.attributes.size = [{ 
+              value: sizeVal, 
+              language_tag: 'en_IN' 
+            }];
+          }
         }
+        
+        // Minimum required fields for safety
         payload.attributes.batteries_required = [{ value: false }];
         payload.attributes.supplier_declared_dg_hz_regulation = [{ value: 'not_applicable' }];
-        payload.attributes.care_instructions = [{ value: 'Hand wash only', language_tag: 'en_IN' }];
-        payload.attributes.rtip_manufacturer_contact_information = [{ value: 'contact@brand.com' }];
-        payload.attributes.packer_contact_information = [{ value: 'contact@brand.com', language_tag: 'en_IN' }];
         
-        payload.attributes.external_product_information = [{
-          entity: 'HSN Code',
-          value: erp.gst_hsn_code || '610510'
-        }];
-
-        // Units - strictly match schema formats
-        payload.attributes.item_dimensions = [{
-          height: { value: 10, unit: 'centimeters' },
-          length: { value: 10, unit: 'centimeters' },
-          width: { value: 10, unit: 'centimeters' }
-        }];
-        payload.attributes.item_width_height = [{
-          height: { value: 10, unit: 'centimeters' },
-          width: { value: 10, unit: 'centimeters' }
-        }];
-        payload.attributes.item_package_dimensions = [{
-          height: { value: 12, unit: 'centimeters' },
-          length: { value: 12, unit: 'centimeters' },
-          width: { value: 12, unit: 'centimeters' }
-        }];
-        payload.attributes.item_weight = [{ value: 0.5, unit: 'kilograms' }];
-        payload.attributes.item_package_weight = [{ value: 0.6, unit: 'kilograms' }];
-        payload.attributes.capacity = [{ value: 350, unit: 'milliliters' }];
+        // Dimensions
+        const depth = raw.custom_depth ? parseFloat(raw.custom_depth) : null;
+        const width = raw.custom_width ? parseFloat(raw.custom_width) : null;
+        const height = raw.custom_height ? parseFloat(raw.custom_height) : null;
+        
+        let dimUnit = 'centimeters';
+        if (raw.custom_unit) {
+          const u = raw.custom_unit.toString().toLowerCase().trim();
+          if (u === 'cm' || u === 'centimeter' || u === 'centimeters') dimUnit = 'centimeters';
+          else if (u === 'inch' || u === 'in' || u === 'inches') dimUnit = 'inches';
+          else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') dimUnit = 'millimeters';
+          else if (u === 'm' || u === 'meter' || u === 'meters') dimUnit = 'meters';
+          else if (u === 'ft' || u === 'foot' || u === 'feet') dimUnit = 'feet';
+        }
+        
+        if (depth !== null && width !== null && height !== null) {
+          payload.attributes.item_dimensions = [{
+            height: { value: height, unit: dimUnit },
+            length: { value: depth, unit: dimUnit },
+            width: { value: width, unit: dimUnit }
+          }];
+        }
+        if (width !== null && height !== null) {
+          payload.attributes.item_width_height = [{
+            height: { value: height, unit: dimUnit },
+            width: { value: width, unit: dimUnit }
+          }];
+        }
+        
+        // Weight
+        if (erp.weight_per_unit) {
+          payload.attributes.item_weight = [{ value: parseFloat(erp.weight_per_unit), unit: 'kilograms' }];
+        }
+      }
       }
 
       payload.attributes.condition_type = [{ value: 'new_new', marketplace_id: this.marketplaceId }];

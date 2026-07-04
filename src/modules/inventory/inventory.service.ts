@@ -96,6 +96,7 @@ export class InventoryService {
         status: QueueJobStatus.WAITING,
         attempts: 0,
         maxAttempts: job.opts?.attempts || 3,
+        createdDate: new Date(),
       });
     } catch (e) {}
 

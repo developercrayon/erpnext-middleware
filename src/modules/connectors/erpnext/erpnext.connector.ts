@@ -101,148 +101,196 @@ export class ERPNextConnector extends BaseConnector {
     params?: FetchProductsParams,
   ): Promise<ConnectorResult<PaginatedResult<NormalizedProduct>>> {
     try {
+      // Trim trailing slash to avoid double-slash in URL construction
+      const baseUrl = this.baseUrl.replace(/\/$/, '');
+
       const filters: any[] = [
-        ['custom_sync_marketplace', '=', 1]
+        ['custom_sync_marketplace', '=', 1],
       ];
       if (params?.sku) {
         filters.push(['item_code', '=', params.sku]);
       }
 
-      const response = await this.http.get(`${this.baseUrl}/api/resource/Item`, {
-        headers: this.authHeaders,
-        params: {
-          fields: JSON.stringify([
-            'name', 'item_name', 'item_code', 'description', 'item_group',
-            'brand', 'stock_uom', 'gst_hsn_code', 'weight_per_unit', 'weight_uom',
-            'has_variants', 'standard_rate', 'image', 'custom_thumbnail_image',
-            'custom_amazon_price', 'custom_flipkart_price', 'custom_amazon', 'custom_flipkart', 'valuation_rate', 'custom_mrp', 'custom_amazon_product_type',
-            'country_of_origin', 'custom_material', 'custom_item_type_name', 'custom_model_name', 'default_item_manufacturer', 'variant_of'
-          ]),
-          filters: JSON.stringify(filters),
-          limit_page_length: params?.pageSize || 100,
-        },
-      });
+      // ── Step 1: Fetch item list with ONLY guaranteed standard fields ──────
+      // Using custom fields in the list query causes ERPNext DataError (HTTP 500)
+      // if the field doesn't exist. All custom fields are read per-item below.
+      let listResponse: any;
+      try {
+        listResponse = await this.http.get(`${baseUrl}/api/resource/Item`, {
+          headers: this.authHeaders,
+          params: {
+            fields: JSON.stringify([
+              // Standard fields
+              'name', 'item_code', 'item_name', 'description',
+              'item_group', 'brand', 'gst_hsn_code',
+              'weight_per_unit', 'weight_uom', 'stock_uom',
+              'has_variants', 'variant_of',
+              'standard_rate', 'valuation_rate',
+              'image', 'country_of_origin',
+              // Confirmed valid custom fields (verified against live ERPNext)
+              // ❌ custom_amazon_asin  — NOT valid in list query (read from full item fetch)
+              // ❌ custom_material     — does not exist in this ERPNext
+              'custom_sync_marketplace',
+              'custom_thumbnail_image',
+              'custom_amazon',
+              'custom_flipkart',
+              'custom_mrp',
+              'custom_amazon_price',
+              'custom_flipkart_price',
+              'custom_amazon_product_type',
+              'custom_item_type_name',
+              'custom_model_name',
+              'default_item_manufacturer',
+            ]),
+            filters: JSON.stringify(filters),
+            limit_page_length: params?.pageSize || 500,
+          },
+        });
+      } catch (httpErr: any) {
+        const status = httpErr?.status || 'unknown';
+        const body = httpErr?.data || httpErr?.response?.data;
+        const bodyStr = body ? JSON.stringify(body) : httpErr.message;
+        this.logger.error(`ERPNext Item list failed — HTTP ${status}: ${bodyStr}`);
+        throw new Error(`HTTP ${status} from ERPNext /api/resource/Item — ${bodyStr}`);
+      }
 
-      const itemsData = response.data?.data || [];
-      const items: NormalizedProduct[] = await Promise.all(itemsData.map(async (item: any) => {
+      const itemsData: any[] = listResponse.data?.data || [];
+      this.logger.log(`ERPNext returned ${itemsData.length} items for sync`);
+
+      // ── Step 2: Enrich each item with barcodes, attributes, and images ──
+      const items: NormalizedProduct[] = await Promise.all(itemsData.map(async (listItem: any) => {
         let images: string[] = [];
-        const mainImage = item.image || item.custom_thumbnail_image;
-        if (mainImage) {
-          const cleanImage = mainImage.startsWith('/') ? mainImage.substring(1) : mainImage;
-          const imgUrl = cleanImage.startsWith('http') ? cleanImage : `${this.baseUrl.replace(/\/$/, '')}/${cleanImage}`;
-          images.push(imgUrl);
+
+        // Build image list — prefer custom_thumbnail_image, fall back to image
+        const thumbSrc = listItem.custom_thumbnail_image || listItem.image;
+        if (thumbSrc) {
+          const clean = thumbSrc.startsWith('/') ? thumbSrc.substring(1) : thumbSrc;
+          images.push(clean.startsWith('http') ? clean : `${baseUrl}/${clean}`);
         }
 
+        // Custom fields are now in the list response directly ✅
+        const customAmazon   = listItem.custom_amazon   === 1 || listItem.custom_amazon   === true;
+        const customFlipkart = listItem.custom_flipkart === 1 || listItem.custom_flipkart === true;
+        const customMrp      = listItem.custom_mrp || 0;
+        const customAmazonPrice      = listItem.custom_amazon_price   || undefined;
+        const customFlipkartPrice    = listItem.custom_flipkart_price || undefined;
+        const customAmazonProductType = listItem.custom_amazon_product_type || undefined;
+
+        // These require the full item doc (not available as list fields)
         let upc = '';
         let amazonAsin = '';
         let variantAttributes: { name: string; value: string }[] = [];
-        let variationTheme: string | undefined = undefined;
+        let variationTheme: string | undefined;
 
         try {
-          const fullItemRes = await this.http.get(`${this.baseUrl}/api/resource/Item/${encodeURIComponent(item.item_code)}`, { headers: this.authHeaders });
-          const fullItem = fullItemRes.data?.data;
-          if (fullItem) {
-            amazonAsin = fullItem.custom_amazon_asin || '';
-            if (fullItem.barcodes && fullItem.barcodes.length > 0) {
-              const upcBarcode = fullItem.barcodes.find((b: any) => b.barcode_type === 'UPC');
-              if (upcBarcode) {
-                upc = upcBarcode.barcode;
-              } else {
-                upc = fullItem.barcodes[0].barcode; // Fallback to first barcode
-              }
+          // Full item fetch — returns entire document, gets barcodes/attributes/amazon_asin
+          const fullRes = await this.http.get(
+            `${baseUrl}/api/resource/Item/${encodeURIComponent(listItem.item_code)}`,
+            { headers: this.authHeaders },
+          );
+          const full = fullRes.data?.data;
+
+          if (full) {
+            // Amazon ASIN (custom_amazon_asin not valid in list query but exists in full doc)
+            amazonAsin = full.custom_amazon_asin || '';
+
+            // UPC from barcodes child table
+            if (full.barcodes?.length > 0) {
+              const upcEntry = full.barcodes.find((b: any) => b.barcode_type === 'UPC');
+              upc = upcEntry ? upcEntry.barcode : full.barcodes[0].barcode;
             }
-            if (fullItem.attributes && fullItem.attributes.length > 0) {
-              variantAttributes = fullItem.attributes.map((a: any) => ({
+
+            // Variant attributes
+            if (full.attributes?.length > 0) {
+              variantAttributes = full.attributes.map((a: any) => ({
                 name: a.attribute,
                 value: a.attribute_value,
               }));
-              
-              // Determine Variation Theme
-              const hasColor = variantAttributes.some(a => a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color');
+              const hasColor = variantAttributes.some(a =>
+                a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color',
+              );
               const hasSize = variantAttributes.some(a => a.name.toLowerCase() === 'size');
-              
               if (hasColor && hasSize) variationTheme = 'COLOR_SIZE';
               else if (hasColor) variationTheme = 'COLOR';
               else if (hasSize) variationTheme = 'SIZE';
             }
           }
 
-          // Fetch attached images
-          const fetchImagesForCode = async (code: string) => {
-            const filesRes = await this.http.get(`${this.baseUrl}/api/resource/File`, {
-              headers: this.authHeaders,
-              params: {
-                fields: JSON.stringify(['file_url']),
-                filters: JSON.stringify([
-                  ['attached_to_doctype', '=', 'Item'],
-                  ['attached_to_name', '=', code]
-                ])
-              }
-            });
-            const files = filesRes.data?.data;
-            if (files && files.length > 0) {
-              for (const f of files) {
+          // ── Step 3: Fetch attached File records for images ──────────────
+          const addImagesForCode = async (code: string) => {
+            try {
+              const filesRes = await this.http.get(`${baseUrl}/api/resource/File`, {
+                headers: this.authHeaders,
+                params: {
+                  fields: JSON.stringify(['file_url']),
+                  filters: JSON.stringify([
+                    ['attached_to_doctype', '=', 'Item'],
+                    ['attached_to_name', '=', code],
+                  ]),
+                },
+              });
+              for (const f of filesRes.data?.data || []) {
                 if (f.file_url) {
-                  const cleanImage = f.file_url.startsWith('/') ? f.file_url.substring(1) : f.file_url;
-                  const imgUrl = cleanImage.startsWith('http') ? cleanImage : `${this.baseUrl.replace(/\/$/, '')}/${cleanImage}`;
-                  if (!images.includes(imgUrl)) {
-                    images.push(imgUrl);
-                  }
+                  const clean = f.file_url.startsWith('/') ? f.file_url.substring(1) : f.file_url;
+                  const url = clean.startsWith('http') ? clean : `${baseUrl}/${clean}`;
+                  if (!images.includes(url)) images.push(url);
                 }
               }
-            }
+            } catch { /* ignore image fetch errors */ }
           };
 
-          await fetchImagesForCode(item.item_code);
+          await addImagesForCode(listItem.item_code);
 
-          // Image Inheritance for variants
-          if (images.length === 0 && item.variant_of) {
-             await fetchImagesForCode(item.variant_of);
+          // Image inheritance: if no images found, try parent template
+          if (images.length === 0 && listItem.variant_of) {
+            await addImagesForCode(listItem.variant_of);
           }
 
-        } catch (e) {
-          // Ignore individual fetch error, continue with empty upc and asin
+        } catch (e: any) {
+          this.logger.warn(`Could not fully fetch item ${listItem.item_code}: ${e.message}`);
         }
 
         return {
-          sku: item.item_code,
-          name: item.item_name,
-          description: item.description,
-          category: item.item_group,
-          brand: item.brand,
-          mrp: item.custom_mrp || 0,
-          sellingPrice: item.standard_rate || 0,
-          hsnCode: item.gst_hsn_code,
-          weight: item.weight_per_unit,
-          customAmazonPrice: item.custom_amazon_price,
-          customFlipkartPrice: item.custom_flipkart_price,
-          customAmazon: item.custom_amazon === 1,
-          customFlipkart: item.custom_flipkart === 1,
-          amazonProductType: item.custom_amazon_product_type,
-          upc: upc,
-          amazonAsin: amazonAsin,
-          valuationRate: item.valuation_rate || 0,
-          isParent: item.has_variants === 1,
-          variantOf: item.variant_of || undefined,
+          sku: listItem.item_code,
+          name: listItem.item_name,
+          description: listItem.description,
+          category: listItem.item_group,
+          brand: listItem.brand,
+          mrp: customMrp || listItem.standard_rate || 0,
+          sellingPrice: listItem.standard_rate || 0,
+          hsnCode: listItem.gst_hsn_code,
+          weight: listItem.weight_per_unit,
+          customAmazon,
+          customFlipkart,
+          customAmazonPrice,
+          customFlipkartPrice,
+          amazonProductType: customAmazonProductType,
+          upc,
+          amazonAsin,
+          valuationRate: listItem.valuation_rate || 0,
+          isParent: listItem.has_variants === 1,
+          variantOf: listItem.variant_of || undefined,
           variationTheme,
           variantAttributes: variantAttributes.length > 0 ? variantAttributes : undefined,
           thumbnailUrl: images.length > 0 ? images[0] : undefined,
-          images: images,
-          rawPayload: item,
+          images,
+          rawPayload: listItem,
         };
+
       }));
 
       return this.success({
         items,
         total: items.length,
         page: 1,
-        pageSize: params?.pageSize || 100,
+        pageSize: params?.pageSize || 500,
         hasMore: false,
       });
     } catch (error) {
       return this.failure(error);
     }
   }
+
 
   // ─── Inventory ────────────────────────────────────────────────────────────
 

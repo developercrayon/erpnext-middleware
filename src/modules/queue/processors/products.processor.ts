@@ -42,7 +42,7 @@ export class ProductsProcessor {
     this.logger.log(`Executing background job: Fetch Products from ERPNext${skuFilter ? ' (SKU: ' + skuFilter + ')' : ''}`);
 
     try {
-      const result = await this.erpnextService['connector']?.fetchProducts({ 
+      const result = await this.erpnextService.fetchProducts({ 
         pageSize: 500,
         sku: skuFilter
       });
@@ -51,7 +51,18 @@ export class ProductsProcessor {
       }
 
       const products = result.data?.items || [];
+      
+      const syncHistory = this.syncHistoryRepo.create({
+        resourceType: SyncResourceType.PRODUCT,
+        source: 'ERPNEXT',
+        status: 'IN_PROGRESS',
+        itemsTotal: products.length,
+        startedAt: new Date(),
+      });
+      await this.syncHistoryRepo.save(syncHistory);
+
       let upserted = 0;
+      let failed = 0;
 
       for (const p of products) {
         try {
@@ -88,9 +99,17 @@ export class ProductsProcessor {
           );
           upserted++;
         } catch (err) {
+          failed++;
           this.logger.error(`Failed to upsert product ${p.sku}: ${err.message}`);
         }
       }
+      
+      syncHistory.status = failed > 0 ? (upserted === 0 ? 'FAILED' : 'PARTIAL') : 'COMPLETED';
+      syncHistory.itemsSynced = upserted;
+      syncHistory.itemsFailed = failed;
+      syncHistory.completedAt = new Date();
+      syncHistory.durationMs = syncHistory.completedAt.getTime() - syncHistory.startedAt.getTime();
+      await this.syncHistoryRepo.save(syncHistory);
 
       this.logger.log(`Products fetched from ERPNext: ${upserted}/${products.length}`);
       

@@ -1,19 +1,29 @@
-const { Client } = require('pg');
-const c = new Client({ connectionString: 'postgresql://inkreatix:inkreatix@194.163.134.149:3455/inkreatix' });
-c.connect().then(async () => {
-  const r2 = await c.query("SELECT id, status, job_name, created_date, updated_at FROM queue_jobs ORDER BY created_date DESC LIMIT 5");
-  console.log("Queue jobs:");
-  console.table(r2.rows);
+require('dotenv').config();
+const { DataSource } = require('typeorm');
+const { QueueJob } = require('./dist/database/entities/operational.entity');
+
+async function checkDb() {
+  const ds = new DataSource({
+    type: 'postgres',
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '5432'),
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    entities: [QueueJob],
+  });
+
+  await ds.initialize();
+  const repo = ds.getRepository(QueueJob);
+  const jobs = await repo.find({
+    order: { createdDate: 'DESC' },
+    take: 10
+  });
+
+  console.log('Top 10 Queue Jobs in DB:');
+  jobs.forEach(j => console.log(`${j.id} | ${j.bullJobId} | ${j.queueName} | ${j.jobName} | ${j.status} | err: ${j.errorMessage}`));
   
-  const r3 = await c.query("SELECT id, message, created_at FROM error_logs ORDER BY created_at DESC LIMIT 5");
-  console.log("Errors:");
-  console.table(r3.rows);
+  await ds.destroy();
+}
 
-  const r4 = await c.query("SELECT sku, \"amazonAsin\" FROM products WHERE sku LIKE '%Woodwolf%'");
-  console.log("amazonAsin:");
-  console.table(r4.rows);
-
-  c.end();
-});
-
-
+checkDb().catch(console.error);

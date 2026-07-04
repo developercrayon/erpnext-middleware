@@ -159,4 +159,11 @@ export class ERPNextService {
   async authenticate() {
     return this.connector.authenticate();
   }
+
+  /**
+   * Fetches products from ERPNext via the connector
+   */
+  async fetchProducts(params?: { pageSize?: number; sku?: string }) {
+    return this.connector.fetchProducts(params);
+  }
 }

@@ -634,7 +634,7 @@ export class AdminModule {
               {
                 resource: QueueJob,
                 options: { 
-                  navigation: null, 
+                  navigation: { name: 'Operational', icon: 'List' }, 
                   actions: { new: { isAccessible: false } },
                   listProperties: ['id', 'queueName', 'jobName', 'status', 'attempts', 'createdDate', 'completedAt'],
                   sort: {
@@ -650,7 +650,7 @@ export class AdminModule {
               {
                 resource: ConnectorLog,
                 options: { 
-                  navigation: { name: 'Logs', icon: 'Activity' }, 
+                  navigation: false, 
                   listProperties: ['id', 'connector', 'action', 'level', 'message', 'createdAt'],
                   sort: { sortBy: 'createdAt', direction: 'desc' }, 
                   actions: { new: { isAccessible: false } } 

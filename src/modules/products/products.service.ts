@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions, ILike } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { v4 as uuidv4 } from 'uuid';
 import { Product, ProductStatus } from '../../database/entities/product.entity';
 import { ERPNextService } from '../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../connectors/amazon/amazon.connector';
@@ -73,7 +74,7 @@ export class ProductsService {
     const job = await this.productsQueue.add(
       JOB_NAMES.SYNC_PRODUCTS,
       { source, skus },
-      QUEUE_DEFAULT_OPTIONS,
+      { ...QUEUE_DEFAULT_OPTIONS, jobId: uuidv4() },
     );
     
     // Synchronously insert the DB record so it immediately appears in the UI
@@ -89,7 +90,7 @@ export class ProductsService {
         maxAttempts: job.opts?.attempts || 3,
       });
     } catch (e) {
-      // Ignore unique constraint violation (means listener already saved it as COMPLETED/ACTIVE)
+      this.logger.error(`Failed to insert QueueJob record: ${e.message}`, e.stack);
     }
 
     this.logger.log(`Product sync job queued: ${job.id}`);
@@ -100,7 +101,7 @@ export class ProductsService {
     const job = await this.productsQueue.add(
       JOB_NAMES.FETCH_PRODUCTS,
       { sku },
-      QUEUE_DEFAULT_OPTIONS,
+      { ...QUEUE_DEFAULT_OPTIONS, jobId: uuidv4() },
     );
 
     // Synchronously insert the DB record so it immediately appears in the UI
@@ -114,7 +115,7 @@ export class ProductsService {
         maxAttempts: job.opts?.attempts || 3,
       });
     } catch (e) {
-      // Ignore unique constraint violation
+      this.logger.error(`Failed to insert QueueJob record: ${e.message}`, e.stack);
     }
 
     this.logger.log(`Fetch products from ERPNext job queued: ${job.id}`);

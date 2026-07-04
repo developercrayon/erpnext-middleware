@@ -20,7 +20,7 @@ export class QueueListenerService implements OnModuleInit {
     private readonly queueJobRepo: Repository<QueueJob>,
   ) {}
 
- onModuleInit() {
+  onModuleInit() {
     const queues = [
       { name: QUEUE_NAMES.ORDERS, queue: this.ordersQueue },
       { name: QUEUE_NAMES.PRODUCTS, queue: this.productsQueue },
