@@ -225,12 +225,20 @@ export class AmazonConnector extends BaseConnector {
       }
       
       if (product.description) {
-        // Amazon expects plain text, but user requested string output of HTML
-        payload.attributes.product_description = [{ value: product.description.trim(), language_tag: 'en_IN' }];
+        // Amazon expects plain text. Strip HTML tags from rich text editor output.
+        const plainTextDescription = product.description
+          .replace(/<br\s*[\/]?>/gi, '\n') // Replace <br> with newlines
+          .replace(/<\/p>/gi, '\n\n') // Replace </p> with double newlines
+          .replace(/<[^>]+>/g, '') // Strip remaining HTML tags
+          .replace(/&nbsp;/g, ' ') // Decode common entities
+          .replace(/&amp;/g, '&')
+          .trim();
+        payload.attributes.product_description = [{ value: plainTextDescription, language_tag: 'en_IN' }];
       }
 
-      if (product.customAmazonBulletPoint && Array.isArray(product.customAmazonBulletPoint) && product.customAmazonBulletPoint.length > 0) {
-        payload.attributes.bullet_point = product.customAmazonBulletPoint
+      const bulletPoints = product.customAmazonBulletPoint || product.rawPayload?.customAmazonBulletPoint;
+      if (bulletPoints && Array.isArray(bulletPoints) && bulletPoints.length > 0) {
+        payload.attributes.bullet_point = bulletPoints
           .filter(bp => bp && bp.bullet_point)
           .map(bp => ({ value: bp.bullet_point, language_tag: 'en_IN' }));
       }
