@@ -184,15 +184,15 @@ export class AmazonConnector extends BaseConnector {
   async createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>> {
     try {
       await this.ensureAuthenticated();
-      
+
       // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
       let productType = product.amazonProductType || product.attributes?.amazonProductType || 'PRODUCT';
-      
+
       // Map invalid ERPNext product types to valid Amazon SP-API product types
       const productTypeMap: Record<string, string> = {
         'HOME_FURNITURE_AND_DECOR': 'SHELF',
       };
-      
+
       if (productTypeMap[productType]) {
         productType = productTypeMap[productType];
       }
@@ -203,7 +203,6 @@ export class AmazonConnector extends BaseConnector {
         productType,
         requirements,
         attributes: {
-          condition_type: [{ value: 'new_new' }],
           item_name: [{ value: product.name, language_tag: 'en_IN' }],
         },
       };
@@ -223,7 +222,7 @@ export class AmazonConnector extends BaseConnector {
       if (product.brand) {
         payload.attributes.brand = [{ value: product.brand, language_tag: 'en_IN' }];
       }
-      
+
       if (product.description) {
         // Amazon expects plain text. Strip HTML tags from rich text editor output.
         const plainTextDescription = product.description
@@ -242,7 +241,9 @@ export class AmazonConnector extends BaseConnector {
           .filter(bp => bp && bp.bullet_point)
           .map(bp => ({ value: bp.bullet_point, language_tag: 'en_IN' }));
       }
-      
+
+
+
       const mainImage = product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null);
       const allImages = product.images && product.images.length > 0 ? product.images : (mainImage ? [mainImage] : []);
       const otherImages = allImages.filter(img => img !== mainImage);
@@ -294,165 +295,179 @@ export class AmazonConnector extends BaseConnector {
       // via putListingsItem. Price and Inventory are updated via their respective feeds.
 
       if (requirements === 'LISTING') {
-      if (requirements === 'LISTING') {
-        const erp = product.attributes || {};
-        const raw = product.rawPayload || {};
-        
-        // Helper function for text attributes
-        const setStringValue = (amazonField: string, erpVal: any, language_tag?: string) => {
-          if (erpVal) {
-            payload.attributes[amazonField] = language_tag 
-              ? [{ value: erpVal.toString(), language_tag }]
-              : [{ value: erpVal.toString() }];
-          }
-        };
+        if (requirements === 'LISTING') {
+          const erp = product.attributes || {};
+          const raw = product.rawPayload || {};
 
-        // Helper function for child tables
-        const setChildTable = (amazonField: string, erpArray: any[], fieldName: string, language_tag?: string) => {
-          if (erpArray && Array.isArray(erpArray) && erpArray.length > 0) {
-            const mapped = erpArray.map(item => {
-               if (item[fieldName]) {
-                 return language_tag 
-                   ? { value: item[fieldName].toString(), language_tag }
-                   : { value: item[fieldName].toString() };
-               }
-               return null;
-            }).filter(i => i !== null);
-            if (mapped.length > 0) {
-              payload.attributes[amazonField] = mapped;
+          // Helper function for text attributes
+          const setStringValue = (amazonField: string, erpVal: any, language_tag?: string) => {
+            if (erpVal) {
+              payload.attributes[amazonField] = language_tag
+                ? [{ value: erpVal.toString(), language_tag }]
+                : [{ value: erpVal.toString() }];
+            }
+          };
+
+          // Helper function for child tables
+          const setChildTable = (amazonField: string, erpArray: any[], fieldName: string, language_tag?: string) => {
+            if (erpArray && Array.isArray(erpArray) && erpArray.length > 0) {
+              const mapped = erpArray.map(item => {
+                if (item[fieldName]) {
+                  return language_tag
+                    ? { value: item[fieldName].toString(), language_tag }
+                    : { value: item[fieldName].toString() };
+                }
+                return null;
+              }).filter(i => i !== null);
+              if (mapped.length > 0) {
+                payload.attributes[amazonField] = mapped;
+              }
+            }
+          };
+
+          // Country of Origin
+          let country = erp.country_of_origin;
+          if (country && country.toLowerCase() === 'india') country = 'IN';
+          setStringValue('country_of_origin', country);
+
+          // Core fields
+          setStringValue('item_type_name', raw.customItemTypeName || product.customItemTypeName, 'en_IN');
+          setStringValue('model_name', raw.customModelName || product.customModelName);
+          setStringValue('manufacturer', erp.default_item_manufacturer || product.brand);
+          setStringValue('model_number', raw.customModelNumber || product.customModelNumber || product.sku);
+          setStringValue('style', raw.customStyle || product.customStyle);
+
+          const numItems = raw.customNumberOfItems || product.customNumberOfItems;
+          if (numItems) {
+            payload.attributes.number_of_items = [{ value: parseInt(numItems, 10) }];
+          }
+
+          const numPieces = raw.customNumberOfPieces || product.customNumberOfPieces;
+          if (numPieces) {
+            payload.attributes.number_of_pieces = [{ value: parseInt(numPieces, 10) }];
+          }
+
+          setStringValue('item_shape', raw.customItemShape || product.customItemShape);
+          setStringValue('rtip_manufacturer_contact_information', raw.customManufacturerContactInfo || product.customManufacturerContactInfo);
+
+          const reqAssembly = raw.customRequiredAssembly !== undefined ? raw.customRequiredAssembly : product.customRequiredAssembly;
+          if (reqAssembly !== undefined && reqAssembly !== null && reqAssembly !== '') {
+            payload.attributes.assembly_required = [{ value: Boolean(reqAssembly) }];
+          }
+
+          setStringValue('shelf_type', raw.customShelfType || product.customShelfType);
+
+          const numShelves = raw.customNumberOfShelves || product.customNumberOfShelves;
+          if (numShelves) {
+            payload.attributes.number_of_shelves = [{ value: parseInt(numShelves, 10) }];
+          }
+
+          setStringValue('assembly_instructions', raw.customAssemblyInstructions || product.customAssemblyInstructions, 'en_IN');
+          setStringValue('mounting_type', raw.customMountingType || product.customMountingType, 'en_IN');
+          setStringValue('finish_type', raw.customFinishType || product.customFinishType, 'en_IN');
+
+          const extInfo = raw.customExternalProductInformation || product.customExternalProductInformation || erp.gst_hsn_code;
+          if (extInfo) {
+            payload.attributes.external_product_information = [{
+              entity: 'HSN Code',
+              value: extInfo
+            }];
+          }
+
+          const numPacks = raw.customNumberOfPacks || product.customNumberOfPacks;
+          if (numPacks) {
+            payload.attributes.unit_count = [{ value: parseFloat(numPacks), type: { value: 'count', language_tag: 'en_IN' } }];
+          }
+
+          const shelfThickness = raw.customShelfThickness || product.customShelfThickness;
+          if (shelfThickness) {
+            payload.attributes.shelf_thickness = [{ value: parseFloat(shelfThickness), unit: 'centimeters' }];
+          }
+
+
+          // Child Tables
+          setChildTable('bullet_point', raw.customAmazonBulletPoint || product.customAmazonBulletPoint, 'bullet_point', 'en_IN');
+          setChildTable('special_feature', raw.customSpecialFeature || product.customSpecialFeature, 'special_feature', 'en_IN');
+          setChildTable('material', raw.customSelectMaterial || product.customSelectMaterial, 'material', 'en_IN');
+          setChildTable('care_instructions', raw.customCareInstructions || product.customCareInstructions, 'care_instruction', 'en_IN');
+          setChildTable('included_components', raw.customIncludedComponents || product.customIncludedComponents, 'included_components', 'en_IN');
+          setChildTable('specific_uses_for_product', raw.customSpecificUsesForProduct || product.customSpecificUsesForProduct, 'title_key', 'en_IN');
+          setChildTable('recommended_uses_for_product', raw.customRecommendedUsesForProduct || product.customRecommendedUsesForProduct, 'title', 'en_IN');
+          setChildTable('room_type', raw.customRoomType || product.customRoomType, 'room_type', 'en_IN');
+          setChildTable('packer_contact_information', raw.customPackerContactInformation || product.customPackerContactInformation, 'title_key', 'en_IN');
+
+          // Color & Size (from variant attributes + custom fields)
+          let colorVal = raw.customColor || product.customColor || null;
+          let sizeVal = raw.customSize || null;
+
+          if (product.variantAttributes) {
+            const colorAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color');
+            if (colorAttr && !colorVal) colorVal = colorAttr.value;
+
+            const sizeAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'size');
+            if (sizeAttr) sizeVal = sizeAttr.value;
+          }
+
+          if (!product.isParent) {
+            if (colorVal) {
+              payload.attributes.color = [{
+                value: colorVal,
+                language_tag: 'en_IN',
+                standardized_values: [colorVal.toLowerCase()]
+              }];
+            }
+            if (sizeVal) {
+              payload.attributes.size = [{
+                value: sizeVal,
+                language_tag: 'en_IN'
+              }];
             }
           }
-        };
 
-        // Country of Origin
-        let country = erp.country_of_origin;
-        if (country && country.toLowerCase() === 'india') country = 'IN';
-        setStringValue('country_of_origin', country);
+          // Minimum required fields for safety
+          payload.attributes.batteries_required = [{ value: false }];
+          payload.attributes.supplier_declared_dg_hz_regulation = [{ value: 'not_applicable' }];
 
-        // Core fields
-        setStringValue('item_type_name', erp.custom_item_type_name, 'en_IN');
-        setStringValue('model_name', erp.custom_model_name);
-        setStringValue('manufacturer', erp.default_item_manufacturer || product.brand);
-        setStringValue('model_number', raw.custom_model_number || product.sku);
-        setStringValue('style', raw.custom_style);
-        
-        if (raw.custom_number_of_items) {
-           payload.attributes.number_of_items = [{ value: parseInt(raw.custom_number_of_items, 10) }];
-        }
-        if (raw.custom_number_of_pieces) {
-           payload.attributes.number_of_pieces = [{ value: parseInt(raw.custom_number_of_pieces, 10) }];
-        }
-        
-        setStringValue('item_shape', raw.custom_item_shape);
-        setStringValue('rtip_manufacturer_contact_information', raw.custom__manufacturer_contact_information);
-        
-        if (raw.custom_required_assembly !== undefined && raw.custom_required_assembly !== null && raw.custom_required_assembly !== '') {
-           payload.attributes.assembly_required = [{ value: Boolean(raw.custom_required_assembly) }];
-        }
-        
-        setStringValue('shelf_type', raw.custom__shelf_type);
-        if (raw.custom_number_of_shelves) {
-           payload.attributes.number_of_shelves = [{ value: parseInt(raw.custom_number_of_shelves, 10) }];
-        }
-        setStringValue('assembly_instructions', raw.custom_assembly_instructions, 'en_IN');
-        setStringValue('mounting_type', raw.custom_mounting_type, 'en_IN');
-        setStringValue('finish_type', raw.custom_finish_type, 'en_IN');
-        
-        if (raw.custom__external_product_information || erp.gst_hsn_code) {
-           payload.attributes.external_product_information = [{
-             entity: 'HSN Code',
-             value: raw.custom__external_product_information || erp.gst_hsn_code
-           }];
-        }
+          // Dimensions
+          const dVal = raw.customDepth || product.customDepth;
+          const wVal = raw.customWidth || product.customWidth;
+          const hVal = raw.customHeight || product.customHeight;
+          const depth = dVal ? parseFloat(dVal) : null;
+          const width = wVal ? parseFloat(wVal) : null;
+          const height = hVal ? parseFloat(hVal) : null;
 
-        if (raw.custom_number_of_packs) {
-           payload.attributes.unit_count = [{ value: parseFloat(raw.custom_number_of_packs), type: { value: 'count', language_tag: 'en_IN' } }];
-        }
+          let dimUnit = 'centimeters';
+          const rawUnit = raw.customUnit || product.customUnit;
+          if (rawUnit) {
+            const u = rawUnit.toString().toLowerCase().trim();
+            if (u === 'cm' || u === 'centimeter' || u === 'centimeters') dimUnit = 'centimeters';
+            else if (u === 'inch' || u === 'in' || u === 'inches') dimUnit = 'inches';
+            else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') dimUnit = 'millimeters';
+            else if (u === 'm' || u === 'meter' || u === 'meters') dimUnit = 'meters';
+            else if (u === 'ft' || u === 'foot' || u === 'feet') dimUnit = 'feet';
+          }
 
-        if (raw.custom_shelf_thickness) {
-           payload.attributes.shelf_thickness = [{ value: parseFloat(raw.custom_shelf_thickness), unit: 'centimeters' }];
-        }
-
-        // Child Tables
-        setChildTable('bullet_point', raw.custom_amazon_bullet_point, 'bullet_point', 'en_IN');
-        setChildTable('special_feature', raw.custom_special_feature, 'special_feature', 'en_IN');
-        setChildTable('material', raw.custom_select_material, 'material', 'en_IN');
-        setChildTable('care_instructions', raw.custom_care_instructions, 'care_instruction', 'en_IN');
-        setChildTable('included_components', raw.custom_included_components, 'included_components', 'en_IN');
-        setChildTable('specific_uses_for_product', raw.custom_specific_uses_for_product, 'title_key', 'en_IN');
-        setChildTable('recommended_uses_for_product', raw.custom_recommended_uses_for_product, 'title', 'en_IN');
-        setChildTable('room_type', raw.custom_room_type, 'room_type', 'en_IN');
-        setChildTable('packer_contact_information', raw.custom_packer_contact_information, 'title_key', 'en_IN');
-
-        // Color & Size (from variant attributes + custom fields)
-        let colorVal = raw.custom_color || null;
-        let sizeVal = null;
-        
-        if (product.variantAttributes) {
-          const colorAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color');
-          if (colorAttr && !colorVal) colorVal = colorAttr.value;
-          
-          const sizeAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'size');
-          if (sizeAttr) sizeVal = sizeAttr.value;
-        }
-
-        if (!product.isParent) {
-          if (colorVal) {
-            payload.attributes.color = [{ 
-              value: colorVal, 
-              language_tag: 'en_IN',
-              standardized_values: [colorVal.toLowerCase()] 
+          if (depth !== null && width !== null && height !== null) {
+            payload.attributes.item_dimensions = [{
+              height: { value: height, unit: dimUnit },
+              length: { value: depth, unit: dimUnit },
+              width: { value: width, unit: dimUnit }
             }];
           }
-          if (sizeVal) {
-            payload.attributes.size = [{ 
-              value: sizeVal, 
-              language_tag: 'en_IN' 
+          if (width !== null && height !== null) {
+            payload.attributes.item_width_height = [{
+              height: { value: height, unit: dimUnit },
+              width: { value: width, unit: dimUnit }
             }];
           }
-        }
-        
-        // Minimum required fields for safety
-        payload.attributes.batteries_required = [{ value: false }];
-        payload.attributes.supplier_declared_dg_hz_regulation = [{ value: 'not_applicable' }];
-        
-        // Dimensions
-        const depth = raw.custom_depth ? parseFloat(raw.custom_depth) : null;
-        const width = raw.custom_width ? parseFloat(raw.custom_width) : null;
-        const height = raw.custom_height ? parseFloat(raw.custom_height) : null;
-        
-        let dimUnit = 'centimeters';
-        if (raw.custom_unit) {
-          const u = raw.custom_unit.toString().toLowerCase().trim();
-          if (u === 'cm' || u === 'centimeter' || u === 'centimeters') dimUnit = 'centimeters';
-          else if (u === 'inch' || u === 'in' || u === 'inches') dimUnit = 'inches';
-          else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') dimUnit = 'millimeters';
-          else if (u === 'm' || u === 'meter' || u === 'meters') dimUnit = 'meters';
-          else if (u === 'ft' || u === 'foot' || u === 'feet') dimUnit = 'feet';
-        }
-        
-        if (depth !== null && width !== null && height !== null) {
-          payload.attributes.item_dimensions = [{
-            height: { value: height, unit: dimUnit },
-            length: { value: depth, unit: dimUnit },
-            width: { value: width, unit: dimUnit }
-          }];
-        }
-        if (width !== null && height !== null) {
-          payload.attributes.item_width_height = [{
-            height: { value: height, unit: dimUnit },
-            width: { value: width, unit: dimUnit }
-          }];
-        }
-        
-        // Weight
-        if (erp.weight_per_unit) {
-          payload.attributes.item_weight = [{ value: parseFloat(erp.weight_per_unit), unit: 'kilograms' }];
-        }
-      }
-      }
 
-      payload.attributes.condition_type = [{ value: 'new_new', marketplace_id: this.marketplaceId }];
+          // Weight
+          const weightVal = raw.weight || product.weight || erp.weight_per_unit;
+          if (weightVal !== undefined && weightVal !== null && weightVal !== '') {
+            payload.attributes.item_weight = [{ value: parseFloat(weightVal), unit: 'kilograms' }];
+          }
+        }
+      }
 
       // If the product has an ASIN, provide it. Otherwise, Amazon might reject it for LISTING_OFFER_ONLY.
       if (product.amazonAsin) {
@@ -472,6 +487,10 @@ export class AmazonConnector extends BaseConnector {
         payload.attributes.supplier_declared_has_product_identifier_exemption = [{ value: true }];
       }
 
+      this.logger.debug(`PUT Listings attributes for ${product.sku}: ` + JSON.stringify(payload.attributes, null, 2));
+
+      console.log(payload)
+
       const response = await this.http.put(
         `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(product.sku)}`,
         payload,
@@ -484,6 +503,11 @@ export class AmazonConnector extends BaseConnector {
       // SP-API returns 200/202 but might contain submission issues in the body
       const data = response.data || {};
       const issues = data.issues || [];
+
+      if (issues.length > 0) {
+        this.logger.warn(`Amazon Sync Issues for ${product.sku}: ` + JSON.stringify(issues));
+      }
+
       const errors = issues.filter((i: any) => i.severity === 'ERROR');
 
       if (errors.length > 0) {
@@ -517,7 +541,7 @@ export class AmazonConnector extends BaseConnector {
           params: { marketplaceIds: this.marketplaceId },
         }
       );
-      
+
       const summaries = response.data?.summaries || [];
       if (summaries.length > 0 && summaries[0].asin) {
         return summaries[0].asin;
@@ -569,9 +593,9 @@ export class AmazonConnector extends BaseConnector {
 
             const issues = res.data?.issues || [];
             this.logger.debug(`Amazon PATCH response for ${item.sku}: ` + JSON.stringify(res.data));
-            
+
             const errors = issues.filter((i: any) => i.severity === 'ERROR');
-            
+
             if (errors.length > 0) {
               result.failed++;
               result.errors.push({ sku: item.sku, error: errors.map((e: any) => e.message).join(' | ') });
@@ -633,9 +657,9 @@ export class AmazonConnector extends BaseConnector {
 
           const issues = res.data?.issues || [];
           this.logger.debug(`Amazon PATCH response for price ${item.sku}: ` + JSON.stringify(res.data));
-          
+
           const errors = issues.filter((i: any) => i.severity === 'ERROR');
-          
+
           if (errors.length > 0) {
             result.failed++;
             result.errors.push({ sku: item.sku, error: errors.map((e: any) => e.message).join(' | ') });

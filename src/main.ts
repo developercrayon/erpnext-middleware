@@ -59,8 +59,9 @@ async function bootstrap() {
       crossOriginEmbedderPolicy: false,
     }),
   );
+  const appUrl = config.get<string>('app.url') || '*';
   app.enableCors({
-    origin: config.get<string>('app.url') || '*',
+    origin: [appUrl, 'http://localhost:3001', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-correlation-id'],
     credentials: true,
