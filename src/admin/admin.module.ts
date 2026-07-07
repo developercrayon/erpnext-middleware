@@ -35,6 +35,7 @@ export class AdminModule {
       // IST timezone date components — override AdminJS default datetime rendering globally
       DateIstList: componentLoader.override('DefaultDatetimeListProperty', './components/date-ist.jsx'),
       DateIstShow: componentLoader.override('DefaultDatetimeShowProperty', './components/date-ist.jsx'),
+      JsonArrayList: componentLoader.add('JsonArrayList', './components/json-array-list.jsx'),
     };
     const AdminJSTypeorm = await eval('import("@adminjs/typeorm")');
 
@@ -128,13 +129,87 @@ export class AdminModule {
             locale: {
               language: 'en',
               translations: {
-                en: { labels: { navigation: '' }, components: {
+                en: { 
+                  labels: { navigation: '' }, 
+                  components: {
                     Login: {
                       welcomeMessage: "From customized printing to premium office gifts and modern corporate packaging, we create products that add value to your brand and everyday life. Whether you're designing items for internal use or building your online merchandise store, our high-quality, fully customizable goods help your brand stand out with style and purpose.",
                     },
                   },
-                },
-              },
+                  resources: {
+                    Product: {
+                      properties: {
+                        customItemTypeName: 'Item Type Name',
+                        customModelName: 'Model Name',
+                        customStyle: 'Style',
+                        customNumberOfItems: 'Number Of Items',
+                        customColor: 'Color',
+                        customNumberOfPieces: 'Number Of Pieces',
+                        customModelNumber: 'Model Number',
+                        customManufacturerContactInfo: 'Manufacturer Contact Info',
+                        customRequiredAssembly: 'Required Assembly',
+                        customDepth: 'Depth',
+                        customWidth: 'Width',
+                        customHeight: 'Height',
+                        customNumberOfPacks: 'Number Of Packs',
+                        customExternalProductInformation: 'External Product Information',
+                        customShelfThickness: 'Shelf Thickness',
+                        customAssemblyInstructions: 'Assembly Instructions',
+                        customUnit: 'Unit',
+                        customItemShape: 'Item Shape',
+                        customShelfType: 'Shelf Type',
+                        customNumberOfShelves: 'Number Of Shelves',
+                        customMountingType: 'Mounting Type',
+                        customFinishType: 'Finish Type',
+                        customSelectMaterial: 'Select Material',
+                        customIncludedComponents: 'Included Components',
+                        customAmazonBulletPoint: 'Amazon Bullet Point',
+                        customPackerContactInformation: 'Packer Contact Information',
+                        customSpecificUsesForProduct: 'Specific Uses For Product',
+                        customRecommendedUsesForProduct: 'Recommended Uses For Product',
+                        customRoomType: 'Room Type',
+                        customSpecialFeature: 'Special Feature',
+                        customCareInstructions: 'Care Instructions'
+                      }
+                    },
+                    product: {
+                      properties: {
+                        customItemTypeName: 'Item Type Name',
+                        customModelName: 'Model Name',
+                        customStyle: 'Style',
+                        customNumberOfItems: 'Number Of Items',
+                        customColor: 'Color',
+                        customNumberOfPieces: 'Number Of Pieces',
+                        customModelNumber: 'Model Number',
+                        customManufacturerContactInfo: 'Manufacturer Contact Info',
+                        customRequiredAssembly: 'Required Assembly',
+                        customDepth: 'Depth',
+                        customWidth: 'Width',
+                        customHeight: 'Height',
+                        customNumberOfPacks: 'Number Of Packs',
+                        customExternalProductInformation: 'External Product Information',
+                        customShelfThickness: 'Shelf Thickness',
+                        customAssemblyInstructions: 'Assembly Instructions',
+                        customUnit: 'Unit',
+                        customItemShape: 'Item Shape',
+                        customShelfType: 'Shelf Type',
+                        customNumberOfShelves: 'Number Of Shelves',
+                        customMountingType: 'Mounting Type',
+                        customFinishType: 'Finish Type',
+                        customSelectMaterial: 'Select Material',
+                        customIncludedComponents: 'Included Components',
+                        customAmazonBulletPoint: 'Amazon Bullet Point',
+                        customPackerContactInformation: 'Packer Contact Information',
+                        customSpecificUsesForProduct: 'Specific Uses For Product',
+                        customRecommendedUsesForProduct: 'Recommended Uses For Product',
+                        customRoomType: 'Room Type',
+                        customSpecialFeature: 'Special Feature',
+                        customCareInstructions: 'Care Instructions'
+                      }
+                    }
+                  }
+                }
+              }
             },
             resources: [
               {
@@ -199,7 +274,7 @@ export class AdminModule {
               },
               {
                 resource: OrderItem,
-                options: { navigation: null, actions: { new: { isAccessible: false } } },
+                options: { navigation: false, actions: { new: { isAccessible: false } } },
               },
               {
                 resource: Product,
@@ -231,7 +306,38 @@ export class AdminModule {
                     availableQty: {
                       isVisible: { list: true, show: true, edit: false, filter: true },
                       position: 7,
-                    }
+                    },
+                    customItemTypeName: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Item Type Name' },
+                    customModelName: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Model Name' },
+                    customStyle: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Style' },
+                    customNumberOfItems: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Number Of Items' },
+                    customColor: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Color' },
+                    customNumberOfPieces: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Number Of Pieces' },
+                    customModelNumber: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Model Number' },
+                    customManufacturerContactInfo: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Manufacturer Contact Info' },
+                    customRequiredAssembly: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Required Assembly' },
+                    customDepth: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Depth' },
+                    customWidth: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Width' },
+                    customHeight: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Height' },
+                    customNumberOfPacks: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Number Of Packs' },
+                    customExternalProductInformation: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'External Product Information' },
+                    customShelfThickness: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Shelf Thickness' },
+                    customAssemblyInstructions: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Assembly Instructions' },
+                    customUnit: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Unit' },
+                    customItemShape: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Item Shape' },
+                    customShelfType: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Shelf Type' },
+                    customNumberOfShelves: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Number Of Shelves' },
+                    customMountingType: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Mounting Type' },
+                    customFinishType: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Finish Type' },
+                    customSelectMaterial: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Select Material', components: { show: Components.JsonArrayList } },
+                    customIncludedComponents: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Included Components', components: { show: Components.JsonArrayList } },
+                    customAmazonBulletPoint: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Amazon Bullet Point', components: { show: Components.JsonArrayList } },
+                    customPackerContactInformation: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Packer Contact Information', components: { show: Components.JsonArrayList } },
+                    customSpecificUsesForProduct: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Specific Uses For Product', components: { show: Components.JsonArrayList } },
+                    customRecommendedUsesForProduct: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Recommended Uses For Product', components: { show: Components.JsonArrayList } },
+                    customRoomType: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Room Type', components: { show: Components.JsonArrayList } },
+                    customSpecialFeature: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Special Feature', components: { show: Components.JsonArrayList } },
+                    customCareInstructions: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Care Instructions', components: { show: Components.JsonArrayList } }
                   },
                   actions: { new: { isAccessible: false },
                     syncToAmazon: {

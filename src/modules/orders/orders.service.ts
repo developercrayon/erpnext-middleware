@@ -103,8 +103,11 @@ export class OrdersService {
       },
     });
 
+    let isNewOrder = false;
+
     if (!order) {
       order = this.orderRepo.create();
+      isNewOrder = true;
     }
 
     order.marketplaceOrderId = normalized.marketplaceOrderId;
@@ -139,6 +142,24 @@ export class OrdersService {
         }),
       );
       await this.orderItemRepo.save(items);
+    }
+
+    if (isNewOrder && normalized.source === MarketplaceSource.AMAZON) {
+      const webhookUrl = process.env.WEBHOOK;
+      if (webhookUrl) {
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: `🛍️ **New Amazon Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}\n**Customer:** ${savedOrder.customerName}\n**Total:** ${savedOrder.currency} ${savedOrder.total}`
+            })
+          });
+          this.logger.log(`Successfully sent Discord webhook for new Amazon order ${savedOrder.marketplaceOrderId}`);
+        } catch (e) {
+          this.logger.error(`Failed to trigger Discord webhook: ${e.message}`);
+        }
+      }
     }
 
     return savedOrder;

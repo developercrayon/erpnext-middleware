@@ -98,6 +98,99 @@ export class Product {
   @Column({ name: 'custom_flipkart', type: 'boolean', default: false })
   customFlipkart: boolean;
 
+  @Column({ name: 'custom_item_type_name', type: 'varchar', nullable: true })
+  customItemTypeName: string;
+
+  @Column({ name: 'custom_model_name', type: 'varchar', nullable: true })
+  customModelName: string;
+
+  @Column({ name: 'custom_style', type: 'varchar', nullable: true })
+  customStyle: string;
+
+  @Column({ name: 'custom_number_of_items', type: 'int', nullable: true })
+  customNumberOfItems: number;
+
+  @Column({ name: 'custom_color', type: 'varchar', nullable: true })
+  customColor: string;
+
+  @Column({ name: 'custom_number_of_pieces', type: 'int', nullable: true })
+  customNumberOfPieces: number;
+
+  @Column({ name: 'custom_model_number', type: 'varchar', nullable: true })
+  customModelNumber: string;
+
+  @Column({ name: 'custom_manufacturer_contact_info', type: 'varchar', nullable: true })
+  customManufacturerContactInfo: string;
+
+  @Column({ name: 'custom_required_assembly', type: 'boolean', nullable: true })
+  customRequiredAssembly: boolean;
+
+  @Column({ name: 'custom_depth', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  customDepth: number;
+
+  @Column({ name: 'custom_width', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  customWidth: number;
+
+  @Column({ name: 'custom_height', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  customHeight: number;
+
+  @Column({ name: 'custom_number_of_packs', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  customNumberOfPacks: number;
+
+  @Column({ name: 'custom_external_product_information', type: 'varchar', nullable: true })
+  customExternalProductInformation: string;
+
+  @Column({ name: 'custom_shelf_thickness', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  customShelfThickness: number;
+
+  @Column({ name: 'custom_assembly_instructions', type: 'varchar', nullable: true })
+  customAssemblyInstructions: string;
+
+  @Column({ name: 'custom_unit', type: 'varchar', nullable: true })
+  customUnit: string;
+
+  @Column({ name: 'custom_item_shape', type: 'varchar', nullable: true })
+  customItemShape: string;
+
+  @Column({ name: 'custom_shelf_type', type: 'varchar', nullable: true })
+  customShelfType: string;
+
+  @Column({ name: 'custom_number_of_shelves', type: 'int', nullable: true })
+  customNumberOfShelves: number;
+
+  @Column({ name: 'custom_mounting_type', type: 'varchar', nullable: true })
+  customMountingType: string;
+
+  @Column({ name: 'custom_finish_type', type: 'varchar', nullable: true })
+  customFinishType: string;
+
+  @Column({ name: 'custom_select_material', type: 'jsonb', nullable: true })
+  customSelectMaterial: any;
+
+  @Column({ name: 'custom_included_components', type: 'jsonb', nullable: true })
+  customIncludedComponents: any;
+
+  @Column({ name: 'custom_amazon_bullet_point', type: 'jsonb', nullable: true })
+  customAmazonBulletPoint: any;
+
+  @Column({ name: 'custom_packer_contact_information', type: 'jsonb', nullable: true })
+  customPackerContactInformation: any;
+
+  @Column({ name: 'custom_specific_uses_for_product', type: 'jsonb', nullable: true })
+  customSpecificUsesForProduct: any;
+
+  @Column({ name: 'custom_recommended_uses_for_product', type: 'jsonb', nullable: true })
+  customRecommendedUsesForProduct: any;
+
+  @Column({ name: 'custom_room_type', type: 'jsonb', nullable: true })
+  customRoomType: any;
+
+  @Column({ name: 'custom_special_feature', type: 'jsonb', nullable: true })
+  customSpecialFeature: any;
+
+  @Column({ name: 'custom_care_instructions', type: 'jsonb', nullable: true })
+  customCareInstructions: any;
+
   @Column({ name: 'available_qty', type: 'decimal', precision: 12, scale: 3, default: 0 })
   availableQty: number;
 

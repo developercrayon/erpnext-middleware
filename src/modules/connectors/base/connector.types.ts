@@ -81,6 +81,37 @@ export interface NormalizedProduct {
   variationTheme?: string;
   variantAttributes?: { name: string; value: string }[];
   children?: NormalizedProduct[];
+  customItemTypeName?: string;
+  customModelName?: string;
+  customStyle?: string;
+  customNumberOfItems?: number;
+  customColor?: string;
+  customNumberOfPieces?: number;
+  customModelNumber?: string;
+  customManufacturerContactInfo?: string;
+  customRequiredAssembly?: boolean;
+  customDepth?: number;
+  customWidth?: number;
+  customHeight?: number;
+  customNumberOfPacks?: number;
+  customExternalProductInformation?: string;
+  customShelfThickness?: number;
+  customAssemblyInstructions?: string;
+  customUnit?: string;
+  customItemShape?: string;
+  customShelfType?: string;
+  customNumberOfShelves?: number;
+  customMountingType?: string;
+  customFinishType?: string;
+  customSelectMaterial?: any;
+  customIncludedComponents?: any;
+  customAmazonBulletPoint?: any;
+  customPackerContactInformation?: any;
+  customSpecificUsesForProduct?: any;
+  customRecommendedUsesForProduct?: any;
+  customRoomType?: any;
+  customSpecialFeature?: any;
+  customCareInstructions?: any;
   rawPayload?: Record<string, any>;
 }
 

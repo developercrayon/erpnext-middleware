@@ -7,3 +7,5 @@ import DefaultDatetimeListProperty from '../src/admin/components/date-ist'
 AdminJS.UserComponents.DefaultDatetimeListProperty = DefaultDatetimeListProperty
 import DefaultDatetimeShowProperty from '../src/admin/components/date-ist'
 AdminJS.UserComponents.DefaultDatetimeShowProperty = DefaultDatetimeShowProperty
+import JsonArrayList from '../src/admin/components/json-array-list'
+AdminJS.UserComponents.JsonArrayList = JsonArrayList

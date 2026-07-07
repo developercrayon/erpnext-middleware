@@ -186,7 +186,17 @@ export class AmazonConnector extends BaseConnector {
       await this.ensureAuthenticated();
       
       // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
-      const productType = product.amazonProductType || product.attributes?.amazonProductType || 'PRODUCT';
+      let productType = product.amazonProductType || product.attributes?.amazonProductType || 'PRODUCT';
+      
+      // Map invalid ERPNext product types to valid Amazon SP-API product types
+      const productTypeMap: Record<string, string> = {
+        'HOME_FURNITURE_AND_DECOR': 'SHELF',
+      };
+      
+      if (productTypeMap[productType]) {
+        productType = productTypeMap[productType];
+      }
+
       const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
 
       const payload: any = {
@@ -215,11 +225,14 @@ export class AmazonConnector extends BaseConnector {
       }
       
       if (product.description) {
-        // Amazon expects plain text; strip HTML tags that come from ERPNext
-        const plainDesc = product.description.replace(/<[^>]*>?/gm, '').trim();
-        if (plainDesc) {
-          payload.attributes.product_description = [{ value: plainDesc, language_tag: 'en_IN' }];
-        }
+        // Amazon expects plain text, but user requested string output of HTML
+        payload.attributes.product_description = [{ value: product.description.trim(), language_tag: 'en_IN' }];
+      }
+
+      if (product.customAmazonBulletPoint && Array.isArray(product.customAmazonBulletPoint) && product.customAmazonBulletPoint.length > 0) {
+        payload.attributes.bullet_point = product.customAmazonBulletPoint
+          .filter(bp => bp && bp.bullet_point)
+          .map(bp => ({ value: bp.bullet_point, language_tag: 'en_IN' }));
       }
       
       const mainImage = product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null);
@@ -322,7 +335,7 @@ export class AmazonConnector extends BaseConnector {
            payload.attributes.number_of_pieces = [{ value: parseInt(raw.custom_number_of_pieces, 10) }];
         }
         
-        setStringValue('item_shape', raw.custom_marketplace);
+        setStringValue('item_shape', raw.custom_item_shape);
         setStringValue('rtip_manufacturer_contact_information', raw.custom__manufacturer_contact_information);
         
         if (raw.custom_required_assembly !== undefined && raw.custom_required_assembly !== null && raw.custom_required_assembly !== '') {
@@ -354,14 +367,14 @@ export class AmazonConnector extends BaseConnector {
 
         // Child Tables
         setChildTable('bullet_point', raw.custom_amazon_bullet_point, 'bullet_point', 'en_IN');
-        setChildTable('special_feature', raw.custom_special_features, 'feature', 'en_IN');
+        setChildTable('special_feature', raw.custom_special_feature, 'special_feature', 'en_IN');
         setChildTable('material', raw.custom_select_material, 'material', 'en_IN');
-        setChildTable('care_instructions', raw.custom_care_instructions, 'care_instructions', 'en_IN');
-        setChildTable('included_components', raw.custom_included_components, 'title', 'en_IN');
-        setChildTable('specific_uses_for_product', raw.custom_specific_uses_for_product, 'title', 'en_IN');
+        setChildTable('care_instructions', raw.custom_care_instructions, 'care_instruction', 'en_IN');
+        setChildTable('included_components', raw.custom_included_components, 'included_components', 'en_IN');
+        setChildTable('specific_uses_for_product', raw.custom_specific_uses_for_product, 'title_key', 'en_IN');
         setChildTable('recommended_uses_for_product', raw.custom_recommended_uses_for_product, 'title', 'en_IN');
-        setChildTable('room_type', raw.custom_room_type, 'title', 'en_IN');
-        setChildTable('packer_contact_information', raw.custom_packer_contact_information, 'title', 'en_IN');
+        setChildTable('room_type', raw.custom_room_type, 'room_type', 'en_IN');
+        setChildTable('packer_contact_information', raw.custom_packer_contact_information, 'title_key', 'en_IN');
 
         // Color & Size (from variant attributes + custom fields)
         let colorVal = raw.custom_color || null;
