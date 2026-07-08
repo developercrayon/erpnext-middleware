@@ -304,6 +304,7 @@ export class ERPNextConnector extends BaseConnector {
           customRoomType: full?.custom_room_type ?? listItem.custom_room_type,
           customSpecialFeature: full?.custom_special_feature ?? listItem.custom_special_feature,
           customCareInstructions: full?.custom_care_instructions ?? listItem.custom_care_instructions,
+          attributes: { ...listItem, ...(full || {}) },
           rawPayload: full ? { ...listItem, ...full } : listItem,
         };
 
@@ -321,6 +322,30 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+
+  // ─── Schema / Meta ────────────────────────────────────────────────────────
+  
+  async getItemFields(): Promise<ConnectorResult<{ fieldname: string; label: string; fieldtype: string }[]>> {
+    try {
+      const baseUrl = this.baseUrl.replace(/\/$/, '');
+      const customFieldsRes = await this.http.get(`${baseUrl}/api/resource/Custom Field`, {
+        headers: this.authHeaders,
+        params: {
+          filters: JSON.stringify([['dt', '=', 'Item']]),
+          fields: JSON.stringify(['fieldname', 'label', 'fieldtype']),
+          limit_page_length: 500,
+        },
+      });
+
+      const stdFields: any[] = [];
+      const customFields = customFieldsRes.data?.data || [];
+
+      return this.success([...stdFields, ...customFields]);
+    } catch (error) {
+      this.logger.error(`Failed to fetch Item fields: ${error.message}`);
+      return this.failure(error);
+    }
+  }
 
   // ─── Inventory ────────────────────────────────────────────────────────────
 

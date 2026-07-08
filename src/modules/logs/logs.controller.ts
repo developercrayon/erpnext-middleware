@@ -6,6 +6,8 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Delete,
+  Body,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -47,6 +49,22 @@ export class LogsController {
   @ApiOperation({ summary: 'Query application and integration error logs' })
   async getErrorLogs(@Query() query: ErrorLogQueryDto) {
     return this.logsService.getErrorLogs(query);
+  }
+
+  @Get('errors/:id')
+  @ApiOperation({ summary: 'Get a single error log by ID' })
+  async getErrorLogById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.logsService.getErrorLogById(id);
+  }
+
+  @Delete('errors')
+  @ApiOperation({ summary: 'Delete multiple error logs' })
+  async deleteErrorLogs(@Body() body: { ids: string[] }) {
+    if (!body.ids || !Array.isArray(body.ids)) {
+      return { success: false, message: 'Invalid ids array' };
+    }
+    await this.logsService.deleteErrorLogs(body.ids);
+    return { success: true, message: `Deleted ${body.ids.length} error logs` };
   }
 
   @Get('history')

@@ -189,7 +189,7 @@ export class ProductsService {
             customRoomType: p.customRoomType || null,
             customSpecialFeature: p.customSpecialFeature || null,
             customCareInstructions: p.customCareInstructions || null,
-            attributes: p.rawPayload,
+            attributes: p.attributes || p.rawPayload || null,
             lastSyncedAt: new Date(),
           },
           ['sku'],

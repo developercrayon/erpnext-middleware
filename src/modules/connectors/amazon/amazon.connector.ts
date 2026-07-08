@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpClientService } from '../../../shared/http-client.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { FieldMapping } from '../../../database/entities/mapping.entity';
 import { BaseConnector } from '../base/base-connector.abstract';
 import {
   ConnectorResult,
@@ -29,6 +32,8 @@ export class AmazonConnector extends BaseConnector {
   constructor(
     private readonly config: ConfigService,
     private readonly http: HttpClientService,
+    @InjectRepository(FieldMapping)
+    private readonly mappingRepo: Repository<FieldMapping>,
   ) {
     super('AmazonConnector');
     this.clientId = config.get<string>('amazon.clientId');
@@ -137,6 +142,57 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
+  // ─── Fetch Product Types ───────────────────────────────────────────────────────
+  
+  async fetchProductTypes(): Promise<ConnectorResult<string[]>> {
+    try {
+      await this.ensureAuthenticated();
+      const prodEndpoint = this.endpoint.replace('sandbox.', '');
+      const response = await this.http.get(
+        `${prodEndpoint}/definitions/2020-09-01/productTypes`,
+        {
+          headers: this.spApiHeaders,
+          params: { marketplaceIds: this.marketplaceId },
+        },
+      );
+      
+      const productTypes = response.data?.productTypes?.map((pt: any) => pt.name) || [];
+      return this.success(productTypes);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  // ─── Fetch Product Fields ──────────────────────────────────────────────────────
+
+  async fetchProductFields(productType: string): Promise<ConnectorResult<any>> {
+    try {
+      await this.ensureAuthenticated();
+      const prodEndpoint = this.endpoint.replace('sandbox.', '');
+      const response = await this.http.get(
+        `${prodEndpoint}/definitions/2020-09-01/productTypes/${encodeURIComponent(productType)}`,
+        {
+          headers: this.spApiHeaders,
+          params: {
+            marketplaceIds: this.marketplaceId,
+            requirements: 'LISTING',
+          },
+        },
+      );
+      const definition = response.data;
+      
+      // Amazon SP-API returns a link to download the actual JSON Schema
+      if (definition?.schema?.link?.resource) {
+        const schemaResponse = await require('axios').default.get(definition.schema.link.resource);
+        definition.schema = schemaResponse.data;
+      }
+      
+      return this.success(definition);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
   // ─── Fetch Products ───────────────────────────────────────────────────────
 
   async fetchProducts(
@@ -235,7 +291,7 @@ export class AmazonConnector extends BaseConnector {
         payload.attributes.product_description = [{ value: plainTextDescription, language_tag: 'en_IN' }];
       }
 
-      const bulletPoints = product.customAmazonBulletPoint || product.rawPayload?.customAmazonBulletPoint;
+      const bulletPoints = product.customAmazonBulletPoint || product.attributes?.customAmazonBulletPoint;
       if (bulletPoints && Array.isArray(bulletPoints) && bulletPoints.length > 0) {
         payload.attributes.bullet_point = bulletPoints
           .filter(bp => bp && bp.bullet_point)
@@ -297,7 +353,7 @@ export class AmazonConnector extends BaseConnector {
       if (requirements === 'LISTING') {
         if (requirements === 'LISTING') {
           const erp = product.attributes || {};
-          const raw = product.rawPayload || {};
+          const raw = product.attributes || {};
 
           // Helper function for text attributes
           const setStringValue = (amazonField: string, erpVal: any, language_tag?: string) => {
@@ -468,6 +524,55 @@ export class AmazonConnector extends BaseConnector {
           }
         }
       }
+
+      // --- DYNAMIC FIELD MAPPING ---
+      try {
+        const mappings = await this.mappingRepo.find({ where: { marketplace: MarketplaceSource.AMAZON } });
+        const erp = product.attributes || {};
+        const raw = product.attributes || {};
+        
+        for (const mapping of mappings) {
+          // Attempt to get value from ERPNext payload
+          let val = erp[mapping.erpnextField];
+          if (val === undefined || val === null) {
+            val = raw[mapping.erpnextField];
+          }
+          if (val === undefined || val === null) {
+            val = product[mapping.erpnextField as keyof NormalizedProduct];
+          }
+
+          // Apply fallback/default value if configured
+          if ((val === undefined || val === null || val === '') && mapping.useDefault) {
+            val = mapping.defaultValue;
+          }
+
+          if (val !== undefined && val !== null && val !== '') {
+             if (mapping.dataType === 'CHILD_TABLE' || mapping.dataType === 'CHILD_TABLE_ARRAY') {
+                if (Array.isArray(val) && val.length > 0) {
+                  // For child tables, try to extract 'title' or 'bullet_point' or 'title_key' if it's an object array
+                  const mappedArray = val.map(v => {
+                    if (typeof v === 'object') {
+                      return { value: (v.title || v.title_key || v.bullet_point || v.special_feature || Object.values(v)[0] || '').toString(), language_tag: 'en_IN' };
+                    }
+                    return { value: v.toString(), language_tag: 'en_IN' };
+                  });
+                  if (mappedArray.length > 0) {
+                     payload.attributes[mapping.marketplaceField] = mappedArray;
+                  }
+                } else if (typeof val === 'string') {
+                  // Comma separated? Or just single value
+                   payload.attributes[mapping.marketplaceField] = [{ value: val.toString(), language_tag: 'en_IN' }];
+                }
+             } else {
+               // Standard string/number/boolean mapping
+               payload.attributes[mapping.marketplaceField] = [{ value: val.toString(), language_tag: 'en_IN' }];
+             }
+          }
+        }
+      } catch (err) {
+        this.logger.error(`Failed to apply dynamic mappings: ${err.message}`);
+      }
+      // --- END DYNAMIC FIELD MAPPING ---
 
       // If the product has an ASIN, provide it. Otherwise, Amazon might reject it for LISTING_OFFER_ONLY.
       if (product.amazonAsin) {

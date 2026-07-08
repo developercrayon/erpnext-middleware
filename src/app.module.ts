@@ -12,6 +12,8 @@ import { DatabaseModule } from './database/database.module';
 import { ERPNextModule } from './modules/connectors/erpnext/erpnext.module';
 import { AmazonModule } from './modules/connectors/amazon/amazon.module';
 import { FlipkartModule } from './modules/connectors/flipkart/flipkart.module';
+import { MappingModule } from './modules/mapping/mapping.module';
+import { AmazonProductTypesModule } from './modules/amazon-product-types/amazon-product-types.module';
 
 // Business Modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -88,6 +90,8 @@ import { AdminModule } from './admin/admin.module';
     ERPNextModule,
     AmazonModule,
     FlipkartModule,
+    MappingModule,
+    AmazonProductTypesModule,
 
     // ─── Business Modules ─────────────────────────────────────────────────────
     AuthModule,

@@ -117,6 +117,18 @@ export class LogsService {
     return { data, total };
   }
 
+  async getErrorLogById(id: string): Promise<ErrorLog> {
+    const errorLog = await this.errorLogRepo.findOne({ where: { id } });
+    if (!errorLog) {
+      throw new NotFoundException(`Error log ${id} not found`);
+    }
+    return errorLog;
+  }
+
+  async deleteErrorLogs(ids: string[]): Promise<void> {
+    await this.errorLogRepo.delete(ids);
+  }
+
   async resolveError(id: string): Promise<ErrorLog> {
     const errorLog = await this.errorLogRepo.findOne({ where: { id } });
     if (!errorLog) {

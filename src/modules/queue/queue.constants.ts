@@ -5,6 +5,7 @@ export const QUEUE_NAMES = {
   PRICING: 'pricing',
   SHIPMENTS: 'shipments',
   RETRY: 'retry',
+  AMAZON_PRODUCT_TYPES: 'amazon-product-types',
 } as const;
 
 export const JOB_NAMES = {
@@ -21,6 +22,8 @@ export const JOB_NAMES = {
   // Products
   SYNC_PRODUCTS: 'sync-products',
   FETCH_PRODUCTS: 'fetch-products',
+  FETCH_AMAZON_PRODUCT_TYPES: 'fetch-amazon-product-types',
+  FETCH_AMAZON_PRODUCT_FIELDS: 'fetch-amazon-product-fields',
 
   // Pricing
   SYNC_PRICES_TO_MARKETPLACE: 'sync-prices-to-marketplace',
