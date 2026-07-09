@@ -34,13 +34,61 @@ export class MappingService {
   }
 
   async create(dto: CreateMappingDto): Promise<FieldMapping> {
+    const existing = await this.mappingRepo.findOne({
+      where: {
+        marketplace: dto.marketplace,
+        productType: dto.productType,
+        marketplaceField: dto.marketplaceField,
+      },
+    });
+
+    if (existing) {
+      await this.mappingRepo.update(existing.id, dto);
+      return this.mappingRepo.findOne({ where: { id: existing.id } }) as Promise<FieldMapping>;
+    }
+
     const mapping = this.mappingRepo.create(dto);
     return this.mappingRepo.save(mapping);
   }
 
   async createBulk(mappings: CreateMappingDto[]): Promise<FieldMapping[]> {
-    const entities = this.mappingRepo.create(mappings);
-    return this.mappingRepo.save(entities);
+    if (!mappings || mappings.length === 0) return [];
+
+    const marketplace = mappings[0].marketplace;
+    const productType = mappings[0].productType;
+
+    const existingMappings = await this.mappingRepo.find({
+      where: { marketplace, productType },
+    });
+
+    const existingMap = new Map(
+      existingMappings.map(m => [`${m.marketplace}_${m.productType}_${m.marketplaceField}`, m])
+    );
+
+    const toUpdate: FieldMapping[] = [];
+    const toCreate: FieldMapping[] = [];
+
+    for (const dto of mappings) {
+      const key = `${dto.marketplace}_${dto.productType}_${dto.marketplaceField}`;
+      const existing = existingMap.get(key);
+
+      if (existing) {
+        Object.assign(existing, dto);
+        toUpdate.push(existing);
+      } else {
+        toCreate.push(this.mappingRepo.create(dto));
+      }
+    }
+
+    const savedEntities: FieldMapping[] = [];
+    if (toUpdate.length > 0) {
+      savedEntities.push(...await this.mappingRepo.save(toUpdate));
+    }
+    if (toCreate.length > 0) {
+      savedEntities.push(...await this.mappingRepo.save(toCreate));
+    }
+
+    return savedEntities;
   }
 
   async update(id: string, dto: UpdateMappingDto): Promise<FieldMapping> {
@@ -75,19 +123,7 @@ export class MappingService {
     }
 
     const entitiesToUpsert: any[] = [];
-    const standardFields = [
-      'sku', 'name', 'description', 'brand', 'category', 'mrp', 'sellingPrice', 'weight', 'hsnCode',
-    ];
 
-    // Prepare standard internal fallbacks
-    for (const f of standardFields) {
-      entitiesToUpsert.push({
-        name: f,
-        label: this.formatLabel(f),
-        fieldtype: 'Data',
-        isCustom: false,
-      });
-    }
 
     // Prepare ERPNext fields
     for (const f of result.data) {
@@ -102,8 +138,11 @@ export class MappingService {
     }
 
     if (entitiesToUpsert.length > 0) {
-      // Chunk the array if it's too large, but Postgres handles ~1000 items fine
-      await this.erpnextProductFieldRepo.upsert(entitiesToUpsert, ['name']);
+      const chunkSize = 30;
+      for (let i = 0; i < entitiesToUpsert.length; i += chunkSize) {
+        const chunk = entitiesToUpsert.slice(i, i + chunkSize);
+        await this.erpnextProductFieldRepo.upsert(chunk, ['name']);
+      }
     }
 
     return { message: 'ERPNext fields synced successfully', count: entitiesToUpsert.length };

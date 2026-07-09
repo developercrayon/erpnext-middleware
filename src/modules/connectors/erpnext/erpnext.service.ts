@@ -166,4 +166,20 @@ export class ERPNextService {
   async fetchProducts(params?: { pageSize?: number; sku?: string }) {
     return this.connector.fetchProducts(params);
   }
+
+  async updateItem(itemCode: string, fields: Record<string, any>): Promise<any> {
+    const result = await this.connector.updateItem(itemCode, fields);
+    if (!result.success) {
+      throw new Error(`Failed to update ERPNext item: ${result.error}`);
+    }
+    return result.data;
+  }
+
+  async getReferenceData(): Promise<any> {
+    const result = await this.connector.getReferenceData();
+    if (!result.success) {
+      throw new Error(`Failed to fetch reference data: ${result.error}`);
+    }
+    return result.data;
+  }
 }

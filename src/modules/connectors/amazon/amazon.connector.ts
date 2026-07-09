@@ -291,12 +291,7 @@ export class AmazonConnector extends BaseConnector {
         payload.attributes.product_description = [{ value: plainTextDescription, language_tag: 'en_IN' }];
       }
 
-      const bulletPoints = product.customAmazonBulletPoint || product.attributes?.customAmazonBulletPoint;
-      if (bulletPoints && Array.isArray(bulletPoints) && bulletPoints.length > 0) {
-        payload.attributes.bullet_point = bulletPoints
-          .filter(bp => bp && bp.bullet_point)
-          .map(bp => ({ value: bp.bullet_point, language_tag: 'en_IN' }));
-      }
+
 
 
 
@@ -350,184 +345,58 @@ export class AmazonConnector extends BaseConnector {
       // or omit inventory details entirely. We do not send purchasable_offer
       // via putListingsItem. Price and Inventory are updated via their respective feeds.
 
-      if (requirements === 'LISTING') {
-        if (requirements === 'LISTING') {
-          const erp = product.attributes || {};
-          const raw = product.attributes || {};
-
-          // Helper function for text attributes
-          const setStringValue = (amazonField: string, erpVal: any, language_tag?: string) => {
-            if (erpVal) {
-              payload.attributes[amazonField] = language_tag
-                ? [{ value: erpVal.toString(), language_tag }]
-                : [{ value: erpVal.toString() }];
-            }
-          };
-
-          // Helper function for child tables
-          const setChildTable = (amazonField: string, erpArray: any[], fieldName: string, language_tag?: string) => {
-            if (erpArray && Array.isArray(erpArray) && erpArray.length > 0) {
-              const mapped = erpArray.map(item => {
-                if (item[fieldName]) {
-                  return language_tag
-                    ? { value: item[fieldName].toString(), language_tag }
-                    : { value: item[fieldName].toString() };
-                }
-                return null;
-              }).filter(i => i !== null);
-              if (mapped.length > 0) {
-                payload.attributes[amazonField] = mapped;
-              }
-            }
-          };
-
-          // Country of Origin
-          let country = erp.country_of_origin;
-          if (country && country.toLowerCase() === 'india') country = 'IN';
-          setStringValue('country_of_origin', country);
-
-          // Core fields
-          setStringValue('item_type_name', raw.customItemTypeName || product.customItemTypeName, 'en_IN');
-          setStringValue('model_name', raw.customModelName || product.customModelName);
-          setStringValue('manufacturer', erp.default_item_manufacturer || product.brand);
-          setStringValue('model_number', raw.customModelNumber || product.customModelNumber || product.sku);
-          setStringValue('style', raw.customStyle || product.customStyle);
-
-          const numItems = raw.customNumberOfItems || product.customNumberOfItems;
-          if (numItems) {
-            payload.attributes.number_of_items = [{ value: parseInt(numItems, 10) }];
-          }
-
-          const numPieces = raw.customNumberOfPieces || product.customNumberOfPieces;
-          if (numPieces) {
-            payload.attributes.number_of_pieces = [{ value: parseInt(numPieces, 10) }];
-          }
-
-          setStringValue('item_shape', raw.customItemShape || product.customItemShape);
-          setStringValue('rtip_manufacturer_contact_information', raw.customManufacturerContactInfo || product.customManufacturerContactInfo);
-
-          const reqAssembly = raw.customRequiredAssembly !== undefined ? raw.customRequiredAssembly : product.customRequiredAssembly;
-          if (reqAssembly !== undefined && reqAssembly !== null && reqAssembly !== '') {
-            payload.attributes.assembly_required = [{ value: Boolean(reqAssembly) }];
-          }
-
-          setStringValue('shelf_type', raw.customShelfType || product.customShelfType);
-
-          const numShelves = raw.customNumberOfShelves || product.customNumberOfShelves;
-          if (numShelves) {
-            payload.attributes.number_of_shelves = [{ value: parseInt(numShelves, 10) }];
-          }
-
-          setStringValue('assembly_instructions', raw.customAssemblyInstructions || product.customAssemblyInstructions, 'en_IN');
-          setStringValue('mounting_type', raw.customMountingType || product.customMountingType, 'en_IN');
-          setStringValue('finish_type', raw.customFinishType || product.customFinishType, 'en_IN');
-
-          const extInfo = raw.customExternalProductInformation || product.customExternalProductInformation || erp.gst_hsn_code;
-          if (extInfo) {
-            payload.attributes.external_product_information = [{
-              entity: 'HSN Code',
-              value: extInfo
-            }];
-          }
-
-          const numPacks = raw.customNumberOfPacks || product.customNumberOfPacks;
-          if (numPacks) {
-            payload.attributes.unit_count = [{ value: parseFloat(numPacks), type: { value: 'count', language_tag: 'en_IN' } }];
-          }
-
-          const shelfThickness = raw.customShelfThickness || product.customShelfThickness;
-          if (shelfThickness) {
-            payload.attributes.shelf_thickness = [{ value: parseFloat(shelfThickness), unit: 'centimeters' }];
-          }
 
 
-          // Child Tables
-          setChildTable('bullet_point', raw.customAmazonBulletPoint || product.customAmazonBulletPoint, 'bullet_point', 'en_IN');
-          setChildTable('special_feature', raw.customSpecialFeature || product.customSpecialFeature, 'special_feature', 'en_IN');
-          setChildTable('material', raw.customSelectMaterial || product.customSelectMaterial, 'material', 'en_IN');
-          setChildTable('care_instructions', raw.customCareInstructions || product.customCareInstructions, 'care_instruction', 'en_IN');
-          setChildTable('included_components', raw.customIncludedComponents || product.customIncludedComponents, 'included_components', 'en_IN');
-          setChildTable('specific_uses_for_product', raw.customSpecificUsesForProduct || product.customSpecificUsesForProduct, 'title_key', 'en_IN');
-          setChildTable('recommended_uses_for_product', raw.customRecommendedUsesForProduct || product.customRecommendedUsesForProduct, 'title', 'en_IN');
-          setChildTable('room_type', raw.customRoomType || product.customRoomType, 'room_type', 'en_IN');
-          setChildTable('packer_contact_information', raw.customPackerContactInformation || product.customPackerContactInformation, 'title_key', 'en_IN');
+      // Dimensions and Weight
+      const erp = product.attributes || {};
+      const raw = product.attributes || {};
+      
+      const dVal = raw.customDepth || product.customDepth;
+      const wVal = raw.customWidth || product.customWidth;
+      const hVal = raw.customHeight || product.customHeight;
+      const depth = dVal ? parseFloat(dVal) : null;
+      const width = wVal ? parseFloat(wVal) : null;
+      const height = hVal ? parseFloat(hVal) : null;
 
-          // Color & Size (from variant attributes + custom fields)
-          let colorVal = raw.customColor || product.customColor || null;
-          let sizeVal = raw.customSize || null;
+      let dimUnit = 'centimeters';
+      const rawUnit = raw.customUnit || product.customUnit;
+      if (rawUnit) {
+        const u = rawUnit.toString().toLowerCase().trim();
+        if (u === 'cm' || u === 'centimeter' || u === 'centimeters') dimUnit = 'centimeters';
+        else if (u === 'inch' || u === 'in' || u === 'inches') dimUnit = 'inches';
+        else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') dimUnit = 'millimeters';
+        else if (u === 'm' || u === 'meter' || u === 'meters') dimUnit = 'meters';
+        else if (u === 'ft' || u === 'foot' || u === 'feet') dimUnit = 'feet';
+      }
 
-          if (product.variantAttributes) {
-            const colorAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color');
-            if (colorAttr && !colorVal) colorVal = colorAttr.value;
+      if (depth !== null && width !== null && height !== null) {
+        payload.attributes.item_dimensions = [{
+          height: { value: height, unit: dimUnit },
+          length: { value: depth, unit: dimUnit },
+          width: { value: width, unit: dimUnit }
+        }];
+      }
+      if (width !== null && height !== null) {
+        payload.attributes.item_width_height = [{
+          height: { value: height, unit: dimUnit },
+          width: { value: width, unit: dimUnit }
+        }];
+      }
 
-            const sizeAttr = product.variantAttributes.find(a => a.name.toLowerCase() === 'size');
-            if (sizeAttr) sizeVal = sizeAttr.value;
-          }
-
-          if (!product.isParent) {
-            if (colorVal) {
-              payload.attributes.color = [{
-                value: colorVal,
-                language_tag: 'en_IN',
-                standardized_values: [colorVal.toLowerCase()]
-              }];
-            }
-            if (sizeVal) {
-              payload.attributes.size = [{
-                value: sizeVal,
-                language_tag: 'en_IN'
-              }];
-            }
-          }
-
-          // Minimum required fields for safety
-          payload.attributes.batteries_required = [{ value: false }];
-          payload.attributes.supplier_declared_dg_hz_regulation = [{ value: 'not_applicable' }];
-
-          // Dimensions
-          const dVal = raw.customDepth || product.customDepth;
-          const wVal = raw.customWidth || product.customWidth;
-          const hVal = raw.customHeight || product.customHeight;
-          const depth = dVal ? parseFloat(dVal) : null;
-          const width = wVal ? parseFloat(wVal) : null;
-          const height = hVal ? parseFloat(hVal) : null;
-
-          let dimUnit = 'centimeters';
-          const rawUnit = raw.customUnit || product.customUnit;
-          if (rawUnit) {
-            const u = rawUnit.toString().toLowerCase().trim();
-            if (u === 'cm' || u === 'centimeter' || u === 'centimeters') dimUnit = 'centimeters';
-            else if (u === 'inch' || u === 'in' || u === 'inches') dimUnit = 'inches';
-            else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') dimUnit = 'millimeters';
-            else if (u === 'm' || u === 'meter' || u === 'meters') dimUnit = 'meters';
-            else if (u === 'ft' || u === 'foot' || u === 'feet') dimUnit = 'feet';
-          }
-
-          if (depth !== null && width !== null && height !== null) {
-            payload.attributes.item_dimensions = [{
-              height: { value: height, unit: dimUnit },
-              length: { value: depth, unit: dimUnit },
-              width: { value: width, unit: dimUnit }
-            }];
-          }
-          if (width !== null && height !== null) {
-            payload.attributes.item_width_height = [{
-              height: { value: height, unit: dimUnit },
-              width: { value: width, unit: dimUnit }
-            }];
-          }
-
-          // Weight
-          const weightVal = raw.weight || product.weight || erp.weight_per_unit;
-          if (weightVal !== undefined && weightVal !== null && weightVal !== '') {
-            payload.attributes.item_weight = [{ value: parseFloat(weightVal), unit: 'kilograms' }];
-          }
-        }
+      // Weight
+      const weightVal = raw.weight || product.weight || erp.weight_per_unit;
+      if (weightVal !== undefined && weightVal !== null && weightVal !== '') {
+        payload.attributes.item_weight = [{ value: parseFloat(weightVal), unit: 'kilograms' }];
       }
 
       // --- DYNAMIC FIELD MAPPING ---
       try {
-        const mappings = await this.mappingRepo.find({ where: { marketplace: MarketplaceSource.AMAZON } });
+        const mappings = await this.mappingRepo.find({ 
+          where: { 
+            marketplace: MarketplaceSource.AMAZON,
+            productType: productType
+          } 
+        });
         const erp = product.attributes || {};
         const raw = product.attributes || {};
         

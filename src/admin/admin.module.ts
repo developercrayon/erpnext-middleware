@@ -10,6 +10,7 @@ import { Product } from '../database/entities/product.entity';
 import { Inventory } from '../database/entities/inventory.entity';
 import { ConnectorLog, WebhookLog, ApiLog, ErrorLog } from '../database/entities/logs.entity';
 import { SyncHistory, QueueJob, Settings, ItemSyncLog } from '../database/entities/operational.entity';
+import { FieldMapping } from '../database/entities/mapping.entity';
 
 import { OrdersModule } from '../modules/orders/orders.module';
 import { ProductsModule } from '../modules/products/products.module';
@@ -70,6 +71,7 @@ export class AdminModule {
           SyncHistory,
           QueueJob,
           Settings,
+          FieldMapping,
         ];
 
         const patchEntity = (target: any) => {
@@ -787,6 +789,28 @@ export class AdminModule {
                   listProperties: ['id', 'source', 'context', 'message', 'createdAt'],
                   sort: { sortBy: 'createdAt', direction: 'desc' }, 
                   actions: { new: { isAccessible: false } } 
+                },
+              },
+              {
+                resource: FieldMapping,
+                options: {
+                  navigation: { name: 'Settings', icon: 'Settings' },
+                  properties: {
+                    marketplace: {
+                      isVisible: { list: true, show: true, edit: true, filter: true },
+                      type: 'string',
+                      availableValues: [
+                        { value: 'AMAZON', label: 'AMAZON' },
+                        { value: 'FLIPKART', label: 'FLIPKART' },
+                      ],
+                    },
+                    productType: { isVisible: { list: true, show: true, edit: true, filter: true } },
+                    erpnextField: { isVisible: { list: true, show: true, edit: true, filter: true } },
+                    marketplaceField: { isVisible: { list: true, show: true, edit: true, filter: true } },
+                    dataType: { isVisible: { list: true, show: true, edit: true, filter: true } },
+                    useDefault: { isVisible: { list: true, show: true, edit: true, filter: true } },
+                    defaultValue: { isVisible: { list: true, show: true, edit: true, filter: true } },
+                  },
                 },
               },
             ],

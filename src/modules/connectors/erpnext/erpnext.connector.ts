@@ -50,6 +50,21 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async updateItem(itemCode: string, fields: Record<string, any>): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.put(
+        `${this.baseUrl}/api/resource/Item/${encodeURIComponent(itemCode)}`,
+        fields,
+        { headers: this.authHeaders }
+      );
+      this.logger.log(`Successfully updated item ${itemCode} in ERPNext`);
+      return this.success(response.data?.data);
+    } catch (error: any) {
+      this.logger.error(`Failed to update item ${itemCode} in ERPNext: ${error.message}`);
+      return this.failure(error);
+    }
+  }
+
   // ─── Health Check ─────────────────────────────────────────────────────────
 
   async healthCheck(): Promise<ConnectorResult<{ status: string; latencyMs: number }>> {
@@ -337,7 +352,11 @@ export class ERPNextConnector extends BaseConnector {
         },
       });
 
-      const stdFields: any[] = [];
+      const docTypeRes = await this.http.get(`${baseUrl}/api/resource/DocType/Item`, {
+        headers: this.authHeaders,
+      });
+
+      const stdFields = docTypeRes.data?.data?.fields || [];
       const customFields = customFieldsRes.data?.data || [];
 
       return this.success([...stdFields, ...customFields]);
@@ -523,6 +542,78 @@ export class ERPNextConnector extends BaseConnector {
         },
       });
       return this.success(response.data?.data || []);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async getReferenceData(): Promise<ConnectorResult<any>> {
+    try {
+      const fetchList = async (doctype: string) => {
+        const response = await this.http.get(`${this.baseUrl}/api/resource/${doctype}`, {
+          headers: this.authHeaders,
+          params: {
+            fields: JSON.stringify(['name']),
+            limit_page_length: 1000,
+          },
+        });
+        return (response.data?.data || []).map((d: any) => d.name);
+      };
+
+      const [brands, itemGroups, uoms, hsnCodes] = await Promise.all([
+        fetchList('Brand').catch(() => []),
+        fetchList('Item Group').catch(() => []),
+        fetchList('UOM').catch(() => []),
+        fetchList('GST HSN Code').catch(() => []),
+      ]);
+
+      return this.success({
+        brands,
+        itemGroups,
+        uoms,
+        hsnCodes,
+      });
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async getItemSchema(): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.get(`${this.baseUrl}/api/method/frappe.desk.form.load.getdoctype?doctype=Item`, {
+        headers: this.authHeaders,
+      });
+      return this.success(response.data?.docs?.[0]?.fields || []);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async getFullItem(itemCode: string): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.get(`${this.baseUrl}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
+        headers: this.authHeaders,
+      });
+      return this.success(response.data?.data);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async getLinkOptions(doctype: string, query?: string): Promise<ConnectorResult<string[]>> {
+    try {
+      const params: any = {
+        fields: JSON.stringify(['name']),
+        limit_page_length: 100,
+      };
+      if (query) {
+        params.filters = JSON.stringify([['name', 'like', `%${query}%`]]);
+      }
+      const response = await this.http.get(`${this.baseUrl}/api/resource/${encodeURIComponent(doctype)}`, {
+        headers: this.authHeaders,
+        params,
+      });
+      return this.success((response.data?.data || []).map((d: any) => d.name));
     } catch (error) {
       return this.failure(error);
     }

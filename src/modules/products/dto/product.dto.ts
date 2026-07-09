@@ -6,6 +6,7 @@ import {
   IsBoolean,
   Min,
   IsArray,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -67,6 +68,28 @@ export class SyncProductsDto {
   @IsArray()
   @IsString({ each: true })
   skus?: string[];
+}
+
+export class UpdateProductDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsEnum(ProductStatus) status?: ProductStatus;
+  @IsOptional() @IsString() brand?: string;
+  @IsOptional() @IsString() category?: string;
+  @IsOptional() @IsString() hsnCode?: string;
+  @IsOptional() @IsNumber() gstRate?: number;
+  @IsOptional() @IsNumber() weight?: number;
+  @IsOptional() @IsString() weightUom?: string;
+  @IsOptional() @IsNumber() costPrice?: number;
+  @IsOptional() @IsNumber() sellingPrice?: number;
+  @IsOptional() @IsNumber() mrp?: number;
+  @IsOptional() @IsString() upc?: string;
+  @IsOptional() @IsString() customModelName?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsBoolean() customAmazon?: boolean;
+  @IsOptional() @IsBoolean() customFlipkart?: boolean;
+  @IsOptional() @IsNumber() customAmazonPrice?: number;
+  @IsOptional() @IsNumber() customFlipkartPrice?: number;
+  @IsOptional() @IsObject() erpnextFields?: Record<string, any>;
 }
 
 export class UpdateProductStatusDto {

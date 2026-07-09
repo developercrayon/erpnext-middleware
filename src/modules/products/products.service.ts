@@ -61,6 +61,83 @@ export class ProductsService {
   async findById(id: string): Promise<Product | null> {
     return this.productRepo.findOne({ where: { id } });
   }
+  // ─── Direct ERPNext API Methods ──────────────────────────────────────────
+
+  async getReferenceData(): Promise<any> {
+    const res = await this.erpnextService['connector'].getReferenceData();
+    if (!res.success) throw new Error(res.error || 'Failed to fetch');
+    return res.data;
+  }
+
+  async getItemSchema(): Promise<any> {
+    const res = await this.erpnextService['connector'].getItemSchema();
+    if (!res.success) throw new Error(res.error || 'Failed to fetch schema');
+    return res.data;
+  }
+
+  async getFullItem(id: string): Promise<any> {
+    const product = await this.findById(id);
+    if (!product || !product.erpnextItemCode) throw new Error('Product not found or has no ERPNext item code');
+    const res = await this.erpnextService['connector'].getFullItem(product.erpnextItemCode);
+    if (!res.success) throw new Error(res.error || 'Failed to fetch full item');
+    return res.data;
+  }
+
+  async getLinkOptions(doctype: string, query?: string): Promise<any> {
+    const res = await this.erpnextService['connector'].getLinkOptions(doctype, query);
+    if (!res.success) throw new Error(res.error || 'Failed to fetch options');
+    return res.data;
+  }
+
+  async updateProduct(id: string, dto: any): Promise<Product> {
+    const product = await this.findById(id);
+    if (!product) throw new Error('Product not found');
+
+    // Update local DB fields
+    Object.assign(product, dto);
+    await this.productRepo.save(product);
+
+    // Map back to ERPNext schema and push
+    if (product.erpnextItemCode) {
+      const erpPayload: Record<string, any> = {};
+      
+      if (dto.name !== undefined) erpPayload.item_name = dto.name;
+      if (dto.status !== undefined) erpPayload.disabled = dto.status === ProductStatus.INACTIVE ? 1 : 0;
+      if (dto.brand !== undefined) erpPayload.brand = dto.brand;
+      if (dto.category !== undefined) erpPayload.item_group = dto.category;
+      if (dto.hsnCode !== undefined) erpPayload.gst_hsn_code = dto.hsnCode;
+      if (dto.weight !== undefined) erpPayload.weight_per_unit = dto.weight;
+      if (dto.weightUom !== undefined) erpPayload.weight_uom = dto.weightUom;
+      if (dto.costPrice !== undefined) erpPayload.standard_rate = dto.costPrice;
+      if (dto.sellingPrice !== undefined) erpPayload.custom_amazon_price = dto.sellingPrice; // Note: ERPNext price sync is complex, updating custom fields
+      if (dto.mrp !== undefined) erpPayload.custom_mrp = dto.mrp;
+      if (dto.upc !== undefined) erpPayload.custom_upc = dto.upc;
+      if (dto.customModelName !== undefined) erpPayload.custom_model_name = dto.customModelName;
+      if (dto.description !== undefined) erpPayload.description = dto.description;
+      if (dto.customAmazon !== undefined) erpPayload.custom_amazon = dto.customAmazon ? 1 : 0;
+      if (dto.customFlipkart !== undefined) erpPayload.custom_flipkart = dto.customFlipkart ? 1 : 0;
+      if (dto.customAmazonPrice !== undefined) erpPayload.custom_amazon_price = dto.customAmazonPrice;
+      if (dto.customFlipkartPrice !== undefined) erpPayload.custom_flipkart_price = dto.customFlipkartPrice;
+
+      // Merge dynamic erpnextFields
+      if (dto.erpnextFields && typeof dto.erpnextFields === 'object') {
+        Object.assign(erpPayload, dto.erpnextFields);
+        
+        // Also update local attributes jsonb so it reflects immediately
+        product.attributes = {
+          ...product.attributes,
+          ...dto.erpnextFields,
+        };
+        await this.productRepo.save(product);
+      }
+
+      if (Object.keys(erpPayload).length > 0) {
+        await this.erpnextService.updateItem(product.erpnextItemCode, erpPayload);
+      }
+    }
+
+    return product;
+  }
 
   // ─── Sync Triggers ────────────────────────────────────────────────────────
 
