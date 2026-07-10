@@ -96,3 +96,40 @@ export class SyncHistoryQueryDto {
   @Min(1)
   pageSize?: number = 20;
 }
+
+export class ItemSyncLogQueryDto {
+  @ApiPropertyOptional({ description: 'Filter by resource type (e.g., PRODUCT)' })
+  @IsOptional()
+  @IsString()
+  resourceType?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by source marketplace' })
+  @IsOptional()
+  @IsString()
+  source?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by sync status' })
+  @IsOptional()
+  @IsString()
+  syncStatus?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by reference id' })
+  @IsOptional()
+  @IsString()
+  referenceId?: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  pageSize?: number = 20;
+}
+

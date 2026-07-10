@@ -7,8 +7,8 @@ import {
   ApiLog,
   ErrorLog,
 } from '../../database/entities/logs.entity';
-import { SyncHistory } from '../../database/entities/operational.entity';
-import { LogQueryDto, ErrorLogQueryDto, SyncHistoryQueryDto } from './dto/log.dto';
+import { SyncHistory, ItemSyncLog } from '../../database/entities/operational.entity';
+import { LogQueryDto, ErrorLogQueryDto, SyncHistoryQueryDto, ItemSyncLogQueryDto } from './dto/log.dto';
 
 @Injectable()
 export class LogsService {
@@ -25,6 +25,8 @@ export class LogsService {
     private readonly errorLogRepo: Repository<ErrorLog>,
     @InjectRepository(SyncHistory)
     private readonly syncHistoryRepo: Repository<SyncHistory>,
+    @InjectRepository(ItemSyncLog)
+    private readonly itemSyncLogRepo: Repository<ItemSyncLog>,
   ) {}
 
   // ─── Connector Logs ───────────────────────────────────────────────────────
@@ -158,6 +160,34 @@ export class LogsService {
 
     const [data, total] = await this.syncHistoryRepo.findAndCount(options);
     return { data, total };
+  }
+
+  async deleteSyncHistory(ids: string[]): Promise<void> {
+    await this.syncHistoryRepo.delete(ids);
+  }
+
+  async getItemSyncLogs(query: ItemSyncLogQueryDto): Promise<{ data: ItemSyncLog[]; total: number }> {
+    const { resourceType, source, syncStatus, referenceId, page = 1, pageSize = 20 } = query;
+
+    const where: any = {};
+    if (resourceType) where.resourceType = resourceType;
+    if (source) where.source = source;
+    if (syncStatus) where.syncStatus = syncStatus;
+    if (referenceId) where.referenceId = referenceId;
+
+    const options: FindManyOptions<ItemSyncLog> = {
+      where,
+      order: { createdAt: 'DESC' },
+      take: pageSize,
+      skip: (page - 1) * pageSize,
+    };
+
+    const [data, total] = await this.itemSyncLogRepo.findAndCount(options);
+    return { data, total };
+  }
+
+  async deleteItemSyncLogs(ids: string[]): Promise<void> {
+    await this.itemSyncLogRepo.delete(ids);
   }
 
   // ─── Stats ────────────────────────────────────────────────────────────────

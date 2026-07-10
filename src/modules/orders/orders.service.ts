@@ -144,19 +144,20 @@ export class OrdersService {
       await this.orderItemRepo.save(items);
     }
 
-    if (isNewOrder && normalized.source === MarketplaceSource.AMAZON) {
-      const webhookUrl = process.env.WEBHOOK;
+    if (isNewOrder) {
+      const webhookUrl = process.env.DISCORD_WEBHOOK;
       if (webhookUrl) {
         try {
+          const sourceName = normalized.source === MarketplaceSource.AMAZON ? 'Amazon' : (normalized.source === MarketplaceSource.FLIPKART ? 'Flipkart' : normalized.source);
           await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              content: `🛍️ **New Amazon Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}\n**Customer:** ${savedOrder.customerName}\n**Total:** ${savedOrder.currency} ${savedOrder.total}`
+              content: `🛍️ **New ${sourceName} Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}\n**Customer:** ${savedOrder.customerName || 'N/A'}\n**Total:** ${savedOrder.currency} ${savedOrder.total}`
             })
           });
-          this.logger.log(`Successfully sent Discord webhook for new Amazon order ${savedOrder.marketplaceOrderId}`);
-        } catch (e) {
+          this.logger.log(`Successfully sent Discord webhook for new ${sourceName} order ${savedOrder.marketplaceOrderId}`);
+        } catch (e: any) {
           this.logger.error(`Failed to trigger Discord webhook: ${e.message}`);
         }
       }

@@ -12,7 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { LogsService } from './logs.service';
-import { LogQueryDto, ErrorLogQueryDto, SyncHistoryQueryDto } from './dto/log.dto';
+import { LogQueryDto, ErrorLogQueryDto, SyncHistoryQueryDto, ItemSyncLogQueryDto } from './dto/log.dto';
 
 @ApiTags('Logs')
 @Controller('logs')
@@ -71,6 +71,32 @@ export class LogsController {
   @ApiOperation({ summary: 'Query overall sync operation history' })
   async getSyncHistory(@Query() query: SyncHistoryQueryDto) {
     return this.logsService.getSyncHistory(query);
+  }
+
+  @Delete('history')
+  @ApiOperation({ summary: 'Delete multiple sync history logs' })
+  async deleteSyncHistory(@Body() body: { ids: string[] }) {
+    if (!body.ids || !Array.isArray(body.ids)) {
+      return { success: false, message: 'Invalid ids array' };
+    }
+    await this.logsService.deleteSyncHistory(body.ids);
+    return { success: true, message: `Deleted ${body.ids.length} sync history logs` };
+  }
+
+  @Get('item-syncs')
+  @ApiOperation({ summary: 'Query item sync logs' })
+  async getItemSyncLogs(@Query() query: ItemSyncLogQueryDto) {
+    return this.logsService.getItemSyncLogs(query);
+  }
+
+  @Delete('item-syncs')
+  @ApiOperation({ summary: 'Delete multiple item sync logs' })
+  async deleteItemSyncLogs(@Body() body: { ids: string[] }) {
+    if (!body.ids || !Array.isArray(body.ids)) {
+      return { success: false, message: 'Invalid ids array' };
+    }
+    await this.logsService.deleteItemSyncLogs(body.ids);
+    return { success: true, message: `Deleted ${body.ids.length} item sync logs` };
   }
 
   @Post('errors/:id/resolve')
