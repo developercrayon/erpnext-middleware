@@ -150,6 +150,28 @@ export class ProductsService {
     return product;
   }
 
+  async delete(id: string): Promise<void> {
+    const product = await this.findById(id);
+    if (!product) throw new Error('Product not found');
+    await this.productRepo.remove(product);
+  }
+
+  async updateStatus(id: string, status: ProductStatus): Promise<Product> {
+    const product = await this.findById(id);
+    if (!product) throw new Error('Product not found');
+    
+    product.status = status;
+    await this.productRepo.save(product);
+
+    if (product.erpnextItemCode) {
+      await this.erpnextService.updateItem(product.erpnextItemCode, {
+        disabled: status === ProductStatus.INACTIVE ? 1 : 0
+      });
+    }
+
+    return product;
+  }
+
   // ─── Sync Triggers ────────────────────────────────────────────────────────
 
   /**
