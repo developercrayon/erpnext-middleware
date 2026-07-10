@@ -76,6 +76,10 @@ export class LogsService {
     return { data, total };
   }
 
+  async deleteWebhookLogs(ids: string[]): Promise<void> {
+    await this.webhookLogRepo.delete(ids);
+  }
+
   // ─── API Logs ─────────────────────────────────────────────────────────────
 
   async getApiLogs(query: LogQueryDto): Promise<{ data: ApiLog[]; total: number }> {

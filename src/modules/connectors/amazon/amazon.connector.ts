@@ -109,7 +109,7 @@ export class AmazonConnector extends BaseConnector {
       };
 
       if (params?.fromDate) {
-        queryParams.CreatedAfter = params.fromDate.toISOString();
+        queryParams.LastUpdatedAfter = params.fromDate.toISOString();
       }
       if (params?.nextToken) {
         queryParams.NextToken = params.nextToken;

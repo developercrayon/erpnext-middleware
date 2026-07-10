@@ -39,6 +39,16 @@ export class LogsController {
     return this.logsService.getWebhookLogs(query);
   }
 
+  @Delete('webhooks')
+  @ApiOperation({ summary: 'Delete multiple webhook logs' })
+  async deleteWebhookLogs(@Body() body: { ids: string[] }) {
+    if (!body.ids || !Array.isArray(body.ids)) {
+      return { success: false, message: 'Invalid ids array' };
+    }
+    await this.logsService.deleteWebhookLogs(body.ids);
+    return { success: true, message: `Deleted ${body.ids.length} webhook logs` };
+  }
+
   @Get('api')
   @ApiOperation({ summary: 'Query internal API access logs' })
   async getApiLogs(@Query() query: LogQueryDto) {

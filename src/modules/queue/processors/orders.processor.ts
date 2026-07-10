@@ -56,7 +56,18 @@ export class OrdersProcessor {
     const connector =
       source === MarketplaceSource.AMAZON ? this.amazonConnector : this.flipkartConnector;
 
-    await this.syncOrdersFromMarketplace(source, connector, fromDate);
+    let effectiveFromDate = fromDate;
+    const stats = await this.ordersService.getStats();
+    
+    if (source === MarketplaceSource.AMAZON && stats.amazon === 0) {
+      effectiveFromDate = new Date('2020-01-01T00:00:00Z'); // Fetch all if empty
+      this.logger.log(`No existing Amazon orders found. Fetching all orders.`);
+    } else if (source === MarketplaceSource.FLIPKART && stats.flipkart === 0) {
+      effectiveFromDate = new Date('2020-01-01T00:00:00Z'); // Fetch all if empty
+      this.logger.log(`No existing Flipkart orders found. Fetching all orders.`);
+    }
+
+    await this.syncOrdersFromMarketplace(source, connector, effectiveFromDate);
   }
 
   private async syncOrdersFromMarketplace(
