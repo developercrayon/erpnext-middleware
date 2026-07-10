@@ -101,18 +101,21 @@ export class AmazonConnector extends BaseConnector {
     try {
       await this.ensureAuthenticated();
 
-      const queryParams: Record<string, any> = {
-        MarketplaceIds: this.marketplaceId,
-        OrderStatuses: params?.status || 'Unshipped,PartiallyShipped',
-        MaxResultsPerPage: params?.pageSize || 100,
-        dataElements: 'buyerInfo,shippingAddress',
-      };
+      let queryParams: Record<string, any> = {};
 
-      if (params?.fromDate) {
-        queryParams.LastUpdatedAfter = params.fromDate.toISOString();
-      }
       if (params?.nextToken) {
         queryParams.NextToken = params.nextToken;
+      } else {
+        queryParams.MarketplaceIds = this.marketplaceId;
+        queryParams.MaxResultsPerPage = params?.pageSize || 100;
+        queryParams.dataElements = 'buyerInfo,shippingAddress';
+        
+        if (params?.fromDate) {
+          queryParams.LastUpdatedAfter = params.fromDate.toISOString();
+        } else {
+          // If no fromDate, default to last 24 hours just in case to avoid 400
+          queryParams.LastUpdatedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        }
       }
 
       const response = await this.withRetry(() =>
