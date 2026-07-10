@@ -121,12 +121,23 @@ export class ProductsService {
 
       // Merge dynamic erpnextFields
       if (dto.erpnextFields && typeof dto.erpnextFields === 'object') {
-        Object.assign(erpPayload, dto.erpnextFields);
+        const cleanFields = { ...dto.erpnextFields };
+        
+        // Remove system/internal fields that shouldn't be sent back
+        const systemFields = ['name', 'creation', 'modified', 'modified_by', 'owner', 'docstatus', 'idx', 'doctype', 'has_variants', 'variant_of', '_user_tags', '_comments', '_assign', '_liked_by'];
+        systemFields.forEach(f => delete cleanFields[f]);
+        
+        // Remove fields that we already explicitly map above to avoid overwriting our changes
+        // This also prevents crashing ERPNext when trying to update inherited fields on variants
+        const explicitFields = ['item_name', 'item_code', 'disabled', 'brand', 'item_group', 'gst_hsn_code', 'weight_per_unit', 'weight_uom', 'standard_rate', 'custom_amazon_price', 'custom_mrp', 'custom_upc', 'custom_model_name', 'description', 'custom_amazon', 'custom_flipkart', 'custom_flipkart_price'];
+        explicitFields.forEach(f => delete cleanFields[f]);
+
+        Object.assign(erpPayload, cleanFields);
         
         // Also update local attributes jsonb so it reflects immediately
         product.attributes = {
           ...product.attributes,
-          ...dto.erpnextFields,
+          ...cleanFields,
         };
         await this.productRepo.save(product);
       }
