@@ -60,11 +60,11 @@ export class OrdersProcessor {
     const stats = await this.ordersService.getStats();
     
     if (source === MarketplaceSource.AMAZON && stats.amazon === 0) {
-      effectiveFromDate = new Date('2020-01-01T00:00:00Z'); // Fetch all if empty
-      this.logger.log(`No existing Amazon orders found. Fetching all orders.`);
+      effectiveFromDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); // Fetch all if empty (1 year limit)
+      this.logger.log(`No existing Amazon orders found. Fetching orders from the last year.`);
     } else if (source === MarketplaceSource.FLIPKART && stats.flipkart === 0) {
-      effectiveFromDate = new Date('2020-01-01T00:00:00Z'); // Fetch all if empty
-      this.logger.log(`No existing Flipkart orders found. Fetching all orders.`);
+      effectiveFromDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); // Fetch all if empty (1 year limit)
+      this.logger.log(`No existing Flipkart orders found. Fetching orders from the last year.`);
     }
 
     await this.syncOrdersFromMarketplace(source, connector, effectiveFromDate);
@@ -96,7 +96,7 @@ export class OrdersProcessor {
       for (const normalizedOrder of orders) {
         const order = await this.ordersService.upsertOrder(normalizedOrder);
         // Queue individual sync to ERPNext
-        await this.syncSingleOrderToERPNext(order.id, source);
+        await this.ordersService.requeueOrder(order.id);
       }
 
       nextToken = result.data?.nextToken;
@@ -115,8 +115,12 @@ export class OrdersProcessor {
     orderId: string,
     source: MarketplaceSource,
   ): Promise<void> {
-    await this.ordersService.markInProgress(orderId);
     const order = await this.ordersService.findById(orderId);
+    if (order.syncStatus === 'SYNCED') {
+      this.logger.log(`Order ${orderId} is already synced. Skipping.`);
+      return;
+    }
+    await this.ordersService.markInProgress(orderId);
 
     try {
       // Build normalized order from saved entity for ERPNext sync

@@ -107,14 +107,15 @@ export class AmazonConnector extends BaseConnector {
         queryParams.NextToken = params.nextToken;
       } else {
         queryParams.MarketplaceIds = this.marketplaceId;
+        if (params?.status) {
+          queryParams.OrderStatuses = params.status;
+        }
         queryParams.MaxResultsPerPage = params?.pageSize || 100;
-        queryParams.dataElements = 'buyerInfo,shippingAddress';
         
         if (params?.fromDate) {
-          queryParams.LastUpdatedAfter = params.fromDate.toISOString();
+          queryParams.CreatedAfter = params.fromDate.toISOString().split('.')[0] + 'Z';
         } else {
-          // If no fromDate, default to last 24 hours just in case to avoid 400
-          queryParams.LastUpdatedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+          queryParams.CreatedAfter = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('.')[0] + 'Z';
         }
       }
 

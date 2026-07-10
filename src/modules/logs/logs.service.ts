@@ -103,6 +103,10 @@ export class LogsService {
     return { data, total };
   }
 
+  async deleteApiLogs(ids: string[]): Promise<void> {
+    await this.apiLogRepo.delete(ids);
+  }
+
   // ─── Error Logs ───────────────────────────────────────────────────────────
 
   async getErrorLogs(query: ErrorLogQueryDto): Promise<{ data: ErrorLog[]; total: number }> {

@@ -151,13 +151,14 @@ export class OrdersService {
       if (webhookUrl) {
         try {
           const sourceName = normalized.source === MarketplaceSource.AMAZON ? 'Amazon' : (normalized.source === MarketplaceSource.FLIPKART ? 'Flipkart' : normalized.source);
+          const payload = {
+            content: `🛍️ **New ${sourceName} Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}\n**Customer:** ${savedOrder.customerName || 'N/A'}\n**Total:** ${savedOrder.currency} ${savedOrder.total}`
+          };
           const start = Date.now();
           const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: `🛍️ **New ${sourceName} Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}\n**Customer:** ${savedOrder.customerName || 'N/A'}\n**Total:** ${savedOrder.currency} ${savedOrder.total}`
-            })
+            body: JSON.stringify(payload)
           });
           const durationMs = Date.now() - start;
           await this.apiLogRepo.save({
@@ -167,13 +168,32 @@ export class OrdersService {
             responseStatus: response.status,
             durationMs,
           });
+          await this.webhookLogRepo.save({
+            source: 'DISCORD_OUTGOING',
+            eventType: 'ORDER_NOTIFICATION',
+            rawPayload: payload,
+            processed: response.ok,
+            processingError: response.ok ? null : `Failed with status ${response.status}`,
+            signatureValid: true
+          });
           this.logger.log(`Successfully sent Discord webhook for new ${sourceName} order ${savedOrder.marketplaceOrderId}`);
         } catch (e: any) {
+          const payload = {
+            content: `🛍️ **New ${normalized.source} Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}`
+          };
           await this.apiLogRepo.save({
             service: 'DiscordWebhook',
             method: 'POST',
             url: webhookUrl,
             error: e.message,
+          });
+          await this.webhookLogRepo.save({
+            source: 'DISCORD_OUTGOING',
+            eventType: 'ORDER_NOTIFICATION',
+            rawPayload: payload,
+            processed: false,
+            processingError: e.message,
+            signatureValid: true
           });
           this.logger.error(`Failed to trigger Discord webhook: ${e.message}`);
         }

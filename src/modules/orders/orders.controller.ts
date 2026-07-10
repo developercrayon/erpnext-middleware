@@ -121,6 +121,16 @@ export class OrdersController {
     return { message: 'Order queued for sync', jobId };
   }
 
+  @Post('fetch')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Manually trigger fetching orders from marketplace' })
+  async triggerFetch(@Body('source') source: MarketplaceSource) {
+    const jobId = await this.ordersService.triggerFetchOrders(source);
+    return { message: 'Order fetch queued', jobId };
+  }
+
   @Get('failed/list')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()

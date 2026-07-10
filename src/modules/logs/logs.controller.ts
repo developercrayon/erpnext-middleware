@@ -55,6 +55,16 @@ export class LogsController {
     return this.logsService.getApiLogs(query);
   }
 
+  @Delete('api')
+  @ApiOperation({ summary: 'Delete multiple API logs' })
+  async deleteApiLogs(@Body() body: { ids: string[] }) {
+    if (!body.ids || !Array.isArray(body.ids)) {
+      return { success: false, message: 'Invalid ids array' };
+    }
+    await this.logsService.deleteApiLogs(body.ids);
+    return { success: true, message: `Deleted ${body.ids.length} API logs` };
+  }
+
   @Get('errors')
   @ApiOperation({ summary: 'Query application and integration error logs' })
   async getErrorLogs(@Query() query: ErrorLogQueryDto) {
