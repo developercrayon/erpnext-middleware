@@ -5,7 +5,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { Order, MarketplaceSource, OrderStatus, SyncStatus } from '../../database/entities/order.entity';
 import { OrderItem } from '../../database/entities/order-item.entity';
-import { WebhookLog } from '../../database/entities/logs.entity';
+import { WebhookLog, ApiLog } from '../../database/entities/logs.entity';
 import { QueueJob, QueueJobStatus } from '../../database/entities/operational.entity';
 import { NormalizedOrder } from '../connectors/base/connector.types';
 import { OrderQueryDto } from './dto/order.dto';
@@ -27,6 +27,8 @@ export class OrdersService {
     private readonly ordersQueue: Queue,
     @InjectRepository(QueueJob)
     private readonly queueJobRepo: Repository<QueueJob>,
+    @InjectRepository(ApiLog)
+    private readonly apiLogRepo: Repository<ApiLog>,
   ) {}
 
   // ─── Webhook Ingestion ────────────────────────────────────────────────────
@@ -149,15 +151,30 @@ export class OrdersService {
       if (webhookUrl) {
         try {
           const sourceName = normalized.source === MarketplaceSource.AMAZON ? 'Amazon' : (normalized.source === MarketplaceSource.FLIPKART ? 'Flipkart' : normalized.source);
-          await fetch(webhookUrl, {
+          const start = Date.now();
+          const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               content: `🛍️ **New ${sourceName} Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}\n**Customer:** ${savedOrder.customerName || 'N/A'}\n**Total:** ${savedOrder.currency} ${savedOrder.total}`
             })
           });
+          const durationMs = Date.now() - start;
+          await this.apiLogRepo.save({
+            service: 'DiscordWebhook',
+            method: 'POST',
+            url: webhookUrl,
+            responseStatus: response.status,
+            durationMs,
+          });
           this.logger.log(`Successfully sent Discord webhook for new ${sourceName} order ${savedOrder.marketplaceOrderId}`);
         } catch (e: any) {
+          await this.apiLogRepo.save({
+            service: 'DiscordWebhook',
+            method: 'POST',
+            url: webhookUrl,
+            error: e.message,
+          });
           this.logger.error(`Failed to trigger Discord webhook: ${e.message}`);
         }
       }
