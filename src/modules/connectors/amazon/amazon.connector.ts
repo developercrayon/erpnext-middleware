@@ -129,9 +129,10 @@ export class AmazonConnector extends BaseConnector {
       const ordersData = response.data?.payload?.Orders || [];
       const nextToken = response.data?.payload?.NextToken;
 
-      const normalizedOrders: NormalizedOrder[] = await Promise.all(
-        ordersData.map((order: any) => this.normalizeOrder(order)),
-      );
+      const normalizedOrders: NormalizedOrder[] = [];
+      for (const order of ordersData) {
+        normalizedOrders.push(await this.normalizeOrder(order));
+      }
 
       return this.success({
         items: normalizedOrders,
@@ -734,9 +735,10 @@ export class AmazonConnector extends BaseConnector {
 
   private async fetchOrderItems(orderId: string): Promise<NormalizedOrderItem[]> {
     try {
-      const response = await this.http.get(
-        `${this.endpoint}/orders/v0/orders/${orderId}/orderItems`,
-        { headers: this.spApiHeaders },
+      const response = await this.withRetry(() =>
+        this.http.get(`${this.endpoint}/orders/v0/orders/${orderId}/orderItems`, {
+          headers: this.spApiHeaders,
+        })
       );
 
       return (response.data?.payload?.OrderItems || []).map((item: any) => ({

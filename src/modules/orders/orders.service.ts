@@ -11,6 +11,7 @@ import { NormalizedOrder } from '../connectors/base/connector.types';
 import { OrderQueryDto } from './dto/order.dto';
 import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
 import { generateCorrelationId } from '../../utils/crypto.util';
+import { Product } from '../../database/entities/product.entity';
 
 @Injectable()
 export class OrdersService {
@@ -23,13 +24,15 @@ export class OrdersService {
     private readonly orderItemRepo: Repository<OrderItem>,
     @InjectRepository(WebhookLog)
     private readonly webhookLogRepo: Repository<WebhookLog>,
-    @InjectQueue(QUEUE_NAMES.ORDERS)
-    private readonly ordersQueue: Queue,
-    @InjectRepository(QueueJob)
-    private readonly queueJobRepo: Repository<QueueJob>,
     @InjectRepository(ApiLog)
     private readonly apiLogRepo: Repository<ApiLog>,
-  ) {}
+    @InjectRepository(QueueJob)
+    private readonly queueJobRepo: Repository<QueueJob>,
+    @InjectRepository(Product)
+    private readonly productRepo: Repository<Product>,
+    @InjectQueue(QUEUE_NAMES.ORDERS)
+    private readonly ordersQueue: Queue,
+  ) { }
 
   // ─── Webhook Ingestion ────────────────────────────────────────────────────
 
@@ -151,10 +154,73 @@ export class OrdersService {
       if (webhookUrl) {
         try {
           const sourceName = normalized.source === MarketplaceSource.AMAZON ? 'Amazon' : (normalized.source === MarketplaceSource.FLIPKART ? 'Flipkart' : normalized.source);
+          const raw = normalized.rawPayload || {};
+          let deliveryDate = 'N/A';
+          let shipDate = 'N/A';
+
+          if (normalized.source === 'AMAZON') {
+            deliveryDate = raw.LatestDeliveryDate ? new Date(raw.LatestDeliveryDate).toLocaleDateString() : (normalized.promisedDeliveryDate ? new Date(normalized.promisedDeliveryDate).toLocaleDateString() : 'N/A');
+            shipDate = raw.LatestShipDate ? new Date(raw.LatestShipDate).toLocaleDateString() : 'N/A';
+          } else {
+            deliveryDate = normalized.promisedDeliveryDate ? new Date(normalized.promisedDeliveryDate).toLocaleDateString() : 'N/A';
+            shipDate = 'N/A';
+          }
+
+          const rawAddr = raw.ShippingAddress || {};
+          const addr: any = normalized.shippingAddress || {};
+          const custAddressParts = [
+            rawAddr.AddressLine1 || addr?.line1,
+            rawAddr.City || addr?.city,
+            rawAddr.StateOrRegion || addr?.state,
+            rawAddr.PostalCode || addr?.pincode
+          ].filter(Boolean);
+          const custAddress = custAddressParts.length > 0 ? custAddressParts.join(', ') : 'N/A';
+
+          const customerName = rawAddr.Name || normalized.customerName || raw.BuyerInfo?.BuyerName || 'Amazon Buyer';
+
+          let orderTotalAmount = raw.OrderTotal?.Amount;
+          if (orderTotalAmount === undefined || orderTotalAmount === null) {
+            orderTotalAmount = normalized.total || 0;
+          }
+          const orderTotalCurrency = raw.OrderTotal?.CurrencyCode || normalized.currency || 'INR';
+          const orderTotal = `${orderTotalAmount} ${orderTotalCurrency}`;
+
+          const purchaseDate = raw.PurchaseDate ? new Date(raw.PurchaseDate).toLocaleString() : (normalized.orderDate ? new Date(normalized.orderDate).toLocaleString() : 'N/A');
+
+          let productsString = '';
+          const embeds = [];
+          for (const item of (normalized.items || [])) {
+            const rawItem = item.rawPayload || {};
+            let itemPriceAmount = rawItem.ItemPrice?.Amount;
+            if (itemPriceAmount === undefined || itemPriceAmount === null) {
+              itemPriceAmount = (!isNaN(item.unitPrice) && isFinite(item.unitPrice)) ? item.unitPrice : 0;
+            }
+            const itemPriceCurrency = rawItem.ItemPrice?.CurrencyCode || orderTotalCurrency;
+
+            productsString += `> **Product Name :** ${item.productName}\n> **Product SKU :** ${item.sku}\n> **Quantity :** ${item.quantity}\n> **Item Price :** ${itemPriceAmount} ${itemPriceCurrency}\n\n`;
+
+            try {
+              const product = await this.productRepo.findOne({ where: { sku: item.sku } });
+              if (product && product.thumbnailUrl) {
+                embeds.push({
+                  title: item.productName.substring(0, 256),
+                  description: `SKU: ${item.sku} | Qty: ${item.quantity}\nPrice: ${itemPriceAmount} ${itemPriceCurrency}`,
+                  thumbnail: { url: product.thumbnailUrl },
+                  color: 0x3498db
+                });
+              }
+            } catch (err) {
+              // Ignore db error for thumbnail lookup
+            }
+          }
+          if (!productsString) productsString = '> No items found';
+
           const payload = {
-            content: `🛍️ **New ${sourceName} Order Created!**\n**Order ID:** ${savedOrder.marketplaceOrderId}\n**Customer:** ${savedOrder.customerName || 'N/A'}\n**Total:** ${savedOrder.currency} ${savedOrder.total}`
+            content: `🛍️ **New ${sourceName} Order Created!**\n\n**Order Details**\n> **Order ID :** ${normalized.marketplaceOrderId}\n> **Purchase Date :** ${purchaseDate}\n> **Delivery Date :** ${deliveryDate}\n> **Ship Date :** ${shipDate}\n> **Order Total :** ${orderTotal}\n\n**Customer Shipping Details** \n> **Customer Name :** ${customerName}\n> **Customer Address :** ${custAddress}\n\n**Product Details**\n${productsString}`,
+            embeds: embeds.length > 0 ? embeds.slice(0, 10) : undefined
           };
           const start = Date.now();
+
           const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -278,7 +344,7 @@ export class OrdersService {
       { orderId: order.id, source: order.source },
       { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
     );
-    
+
     try {
       await this.queueJobRepo.insert({
         bullJobId: String(job.id),
@@ -291,7 +357,7 @@ export class OrdersService {
     } catch (e) {
       // Ignore
     }
-    
+
     await this.markInProgress(order.id);
     return String(job.id);
   }
@@ -302,7 +368,7 @@ export class OrdersService {
       { source, fromDate: fromDate || new Date(Date.now() - 24 * 60 * 60 * 1000) },
       { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
     );
-    
+
     try {
       await this.queueJobRepo.insert({
         bullJobId: String(job.id),
@@ -315,7 +381,7 @@ export class OrdersService {
     } catch (e) {
       // Ignore
     }
-    
+
     this.logger.log(`Manual order fetch queued for ${source}: jobId=${job.id}`);
     return String(job.id);
   }
