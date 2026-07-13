@@ -95,6 +95,9 @@ export class ProductsService {
 
     // Update local DB fields
     Object.assign(product, dto);
+    if (dto.erpnextFields?.custom_amazon_product_type !== undefined) {
+      product.amazonProductType = dto.erpnextFields.custom_amazon_product_type;
+    }
     await this.productRepo.save(product);
 
     // Map back to ERPNext schema and push
@@ -119,6 +122,7 @@ export class ProductsService {
       if (dto.customAmazonPrice !== undefined) erpPayload.custom_amazon_price = dto.customAmazonPrice;
       if (dto.customFlipkartPrice !== undefined) erpPayload.custom_flipkart_price = dto.customFlipkartPrice;
       if (dto.amazonProductType !== undefined) erpPayload.custom_amazon_product_type = dto.amazonProductType;
+      if (dto.erpnextFields?.custom_amazon_product_type !== undefined) erpPayload.custom_amazon_product_type = dto.erpnextFields.custom_amazon_product_type;
 
       // Merge dynamic erpnextFields
       if (dto.erpnextFields && typeof dto.erpnextFields === 'object') {
