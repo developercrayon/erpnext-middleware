@@ -89,6 +89,7 @@ export class UpdateProductDto {
   @IsOptional() @IsBoolean() customFlipkart?: boolean;
   @IsOptional() @IsNumber() customAmazonPrice?: number;
   @IsOptional() @IsNumber() customFlipkartPrice?: number;
+  @IsOptional() @IsString() amazonProductType?: string;
   @IsOptional() @IsObject() erpnextFields?: Record<string, any>;
 }
 

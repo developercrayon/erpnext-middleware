@@ -118,6 +118,7 @@ export class ProductsService {
       if (dto.customFlipkart !== undefined) erpPayload.custom_flipkart = dto.customFlipkart ? 1 : 0;
       if (dto.customAmazonPrice !== undefined) erpPayload.custom_amazon_price = dto.customAmazonPrice;
       if (dto.customFlipkartPrice !== undefined) erpPayload.custom_flipkart_price = dto.customFlipkartPrice;
+      if (dto.amazonProductType !== undefined) erpPayload.custom_amazon_product_type = dto.amazonProductType;
 
       // Merge dynamic erpnextFields
       if (dto.erpnextFields && typeof dto.erpnextFields === 'object') {
@@ -129,7 +130,7 @@ export class ProductsService {
         
         // Remove fields that we already explicitly map above to avoid overwriting our changes
         // This also prevents crashing ERPNext when trying to update inherited fields on variants
-        const explicitFields = ['item_name', 'item_code', 'disabled', 'brand', 'item_group', 'gst_hsn_code', 'weight_per_unit', 'weight_uom', 'standard_rate', 'custom_amazon_price', 'custom_mrp', 'custom_upc', 'custom_model_name', 'description', 'custom_amazon', 'custom_flipkart', 'custom_flipkart_price'];
+        const explicitFields = ['item_name', 'item_code', 'disabled', 'brand', 'item_group', 'gst_hsn_code', 'weight_per_unit', 'weight_uom', 'standard_rate', 'custom_amazon_price', 'custom_mrp', 'custom_upc', 'custom_model_name', 'description', 'custom_amazon', 'custom_flipkart', 'custom_flipkart_price', 'custom_amazon_product_type'];
         explicitFields.forEach(f => delete cleanFields[f]);
 
         Object.assign(erpPayload, cleanFields);
