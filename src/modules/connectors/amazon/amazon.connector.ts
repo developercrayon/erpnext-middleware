@@ -246,16 +246,33 @@ export class AmazonConnector extends BaseConnector {
     try {
       await this.ensureAuthenticated();
 
+      // Check if product already exists on Amazon
+      let existingAsin = null;
+      try {
+        existingAsin = await this.getListingAsin(product.sku);
+      } catch (e) {
+        this.logger.debug(`Could not check existing ASIN for ${product.sku}`);
+      }
+      
+      const isUpdate = !!existingAsin;
+
       // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
-      let productType = product.amazonProductType || product.attributes?.amazonProductType || 'PRODUCT';
+      let productType = product.amazonProductType || product.attributes?.amazonProductType;
 
       // Map invalid ERPNext product types to valid Amazon SP-API product types
       const productTypeMap: Record<string, string> = {
         'HOME_FURNITURE_AND_DECOR': 'SHELF',
       };
 
-      if (productTypeMap[productType]) {
+      if (productType && productTypeMap[productType]) {
         productType = productTypeMap[productType];
+      }
+
+      if (!productType) {
+        if (!isUpdate) {
+          return this.failure("Amazon Product Type is required to create new products on Amazon. The generic 'PRODUCT' type is not allowed for new listings.");
+        }
+        productType = 'PRODUCT'; // Only fallback to generic PRODUCT for updating existing offers
       }
 
       const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
@@ -346,11 +363,30 @@ export class AmazonConnector extends BaseConnector {
         }
       }
 
-      // To create a "Draft/Inactive" listing on Amazon, we set purchasable to false
-      // or omit inventory details entirely. We do not send purchasable_offer
-      // via putListingsItem. Price and Inventory are updated via their respective feeds.
+      // Only set to draft if it's a new listing
+      if (!isUpdate) {
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 1);
 
+        payload.attributes.merchant_suggested_asin = [{ value: 'DRAFT' }];
+        payload.attributes.purchasable_at = [{ value: futureDate.toISOString() }];
+      }
 
+      if (!product.isParent) {
+        const availableQty = product.rawPayload?.availableQty || 0;
+        payload.attributes.purchasable_offer = [{
+          currency: 'INR',
+          our_price: [{
+            schedule: [{
+              value_with_tax: product.sellingPrice
+            }]
+          }]
+        }];
+        payload.attributes.fulfillment_availability = [{
+          fulfillment_channel_code: 'DEFAULT',
+          quantity: availableQty
+        }];
+      }
 
       // Dimensions and Weight
       const erp = product.attributes || {};
