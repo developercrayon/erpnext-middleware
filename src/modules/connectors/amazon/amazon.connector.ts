@@ -514,7 +514,18 @@ export class AmazonConnector extends BaseConnector {
                } else if (field === 'shelf_thickness') {
                  payload.attributes[field] = [{ value: parseFloat(val.toString()) || 0, unit: 'centimeters', language_tag: 'en_IN' }];
                } else if (field === 'external_product_information') {
-                 payload.attributes[field] = [{ value: val.toString(), entity: val.toString(), language_tag: 'en_IN' }];
+                 const strVal = val.toString().trim();
+                 if (strVal.toLowerCase() === 'shelf' || !/^\d+$/.test(strVal)) {
+                   // If it's not a valid numeric identifier like UPC/EAN, skip it
+                   // Amazon will reject arbitrary strings like "Shelf" as the entity/value.
+                   continue;
+                 }
+                 let entity = 'GTIN';
+                 if (strVal.length === 12) entity = 'UPC';
+                 else if (strVal.length === 13) entity = 'EAN';
+                 else if (strVal.length === 10 || strVal.length === 13) entity = 'ISBN'; // 10 is ISBN too but 13 overlaps
+                 
+                 payload.attributes[field] = [{ value: strVal, entity: entity, language_tag: 'en_IN' }];
                } else if (field === 'supplier_declared_dg_hz_regulation') {
                  let dgVal = val.toString();
                  if (dgVal.toLowerCase() === 'false' || dgVal.toLowerCase() === 'no') {
