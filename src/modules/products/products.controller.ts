@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -72,8 +73,14 @@ export class ProductsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateProductDto
   ) {
-    const product = await this.productsService.updateProduct(id, dto);
-    return { success: true, message: 'Product updated successfully', data: product };
+    try {
+      const product = await this.productsService.updateProduct(id, dto);
+      return { success: true, message: 'Product updated successfully', data: product };
+    } catch (error: any) {
+      throw new BadRequestException(
+        error.message || 'Failed to update product'
+      );
+    }
   }
 
   @Delete(':id')

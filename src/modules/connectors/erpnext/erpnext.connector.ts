@@ -60,8 +60,20 @@ export class ERPNextConnector extends BaseConnector {
       this.logger.log(`Successfully updated item ${itemCode} in ERPNext`);
       return this.success(response.data?.data);
     } catch (error: any) {
-      this.logger.error(`Failed to update item ${itemCode} in ERPNext: ${error.message}`);
-      return this.failure(error);
+      let errMsg = error.message;
+      if (error.response?.data) {
+         try {
+           if (error.response.data._server_messages) {
+              errMsg = JSON.parse(JSON.parse(error.response.data._server_messages)[0]).message;
+           } else {
+              errMsg = JSON.stringify(error.response.data);
+           }
+         } catch(e) {
+           errMsg = JSON.stringify(error.response.data);
+         }
+      }
+      this.logger.error(`Failed to update item ${itemCode} in ERPNext: ${errMsg}`);
+      return this.failure(errMsg);
     }
   }
 
