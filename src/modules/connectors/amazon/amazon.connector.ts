@@ -514,7 +514,16 @@ export class AmazonConnector extends BaseConnector {
                } else if (field === 'shelf_thickness') {
                  payload.attributes[field] = [{ value: parseFloat(val.toString()) || 0, unit: 'centimeters', language_tag: 'en_IN' }];
                } else if (field === 'external_product_information') {
-                 payload.attributes[field] = [{ entity: val.toString(), language_tag: 'en_IN' }];
+                 payload.attributes[field] = [{ value: val.toString(), entity: val.toString(), language_tag: 'en_IN' }];
+               } else if (field === 'supplier_declared_dg_hz_regulation') {
+                 let dgVal = val.toString();
+                 if (dgVal.toLowerCase() === 'false' || dgVal.toLowerCase() === 'no') {
+                   dgVal = 'not_applicable';
+                 }
+                 payload.attributes[field] = [{ value: dgVal, language_tag: 'en_IN' }];
+               } else if (field === 'purchasable_at') {
+                 // Ignore purchasable_at as Amazon warns it's not applicable for this product type
+                 continue;
                } else {
                  // Standard string/number/boolean mapping
                  payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
