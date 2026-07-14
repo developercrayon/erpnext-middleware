@@ -256,6 +256,8 @@ export class AmazonConnector extends BaseConnector {
       
       const isUpdate = !!existingAsin;
 
+      console.log(`[DEBUG] amazonConnector.createListing called for SKU: ${product.sku}. amazonProductType:`, product.amazonProductType, 'attributes:', product.attributes?.amazonProductType);
+
       // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
       let productType = product.amazonProductType || product.attributes?.amazonProductType;
 
