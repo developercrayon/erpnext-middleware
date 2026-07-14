@@ -1,6 +1,11 @@
-const { Client } = require('pg'); 
-const c = new Client('postgres://postgres:postgres@194.163.134.149:3455/inkreatix'); 
-c.connect().then(() => c.query(`SELECT * FROM erpnext_amazon_mappings`).then(res => { 
-  console.log(res.rows); 
-  c.end(); 
-}))
+const { Client } = require('pg');
+const c = new Client('postgresql://inkreatix:inkreatix@194.163.134.149:3455/inkreatix');
+c.connect().then(() => {
+  return c.query("SELECT * FROM field_mappings");
+}).then(res => {
+  console.log(JSON.stringify(res.rows, null, 2));
+  c.end();
+}).catch(err => {
+  console.error(err);
+  c.end();
+});

@@ -557,6 +557,45 @@ export class AmazonConnector extends BaseConnector {
         payload.attributes.batteries_required = [{ value: false }];
       }
 
+      // Robust fallbacks for SHELF and similar strict categories that require many specific fields
+      const attrs = payload.attributes;
+      if (!attrs.unit_count) attrs.unit_count = [{ value: 1, unit: "count" }];
+      if (!attrs.number_of_packs) attrs.number_of_packs = [{ value: 1 }];
+      if (!attrs.number_of_boxes) attrs.number_of_boxes = [{ value: 1 }];
+      if (!attrs.is_assembly_required) attrs.is_assembly_required = [{ value: false }];
+      if (!attrs.size) attrs.size = [{ value: "Standard", language_tag: "en_IN" }];
+      if (!attrs.manufacturer) attrs.manufacturer = [{ value: product.brand || "Woodwolf", language_tag: "en_IN" }];
+      if (!attrs.item_type_name) attrs.item_type_name = [{ value: product.category || "Shelf", language_tag: "en_IN" }];
+      if (!attrs.packer_contact_information) attrs.packer_contact_information = [{ value: "Woodwolf Studio", language_tag: "en_IN" }];
+      if (!attrs.external_product_information) attrs.external_product_information = [{ value: "Not Applicable", language_tag: "en_IN" }];
+      
+      if (!attrs.item_package_weight) {
+        let wUnit = 'kilograms';
+        const weightUom = product.rawPayload?.weightUom || product.rawPayload?.weight_uom;
+        if (weightUom && (weightUom.toLowerCase() === 'gram' || weightUom.toLowerCase() === 'g')) {
+          wUnit = 'grams';
+        }
+        const weightVal = product.weight ? parseFloat(product.weight.toString()) : 1.5;
+        attrs.item_package_weight = [{ value: weightVal, unit: wUnit }];
+      }
+      
+      // Amazon SP-API requires these dimension objects for certain categories
+      if (!attrs.item_package_dimensions) {
+        attrs.item_package_dimensions = [{
+          height: { value: 10, unit: "centimeters" },
+          length: { value: 10, unit: "centimeters" },
+          width: { value: 10, unit: "centimeters" }
+        }];
+      }
+      
+      if (!attrs.item_depth_width_height) {
+        attrs.item_depth_width_height = [{
+          height: { value: 10, unit: "centimeters" },
+          depth: { value: 10, unit: "centimeters" },
+          width: { value: 10, unit: "centimeters" }
+        }];
+      }
+
       // If the product has an ASIN, provide it. Otherwise, Amazon might reject it for LISTING_OFFER_ONLY.
       if (product.amazonAsin) {
         payload.attributes.merchant_suggested_asin = [{ value: product.amazonAsin }];
