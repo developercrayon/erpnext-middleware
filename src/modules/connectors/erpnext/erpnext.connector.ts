@@ -217,6 +217,27 @@ export class ERPNextConnector extends BaseConnector {
           );
           full = fullRes.data?.data;
 
+          // If this is a variant, inherit any missing custom fields from the parent template
+          if (full && listItem.variant_of) {
+            try {
+              const parentRes = await this.http.get(
+                `${baseUrl}/api/resource/Item/${encodeURIComponent(listItem.variant_of)}`,
+                { headers: this.authHeaders },
+              );
+              const parentFull = parentRes.data?.data;
+              if (parentFull) {
+                for (const key of Object.keys(parentFull)) {
+                  // Fall back to parent if variant field is missing or completely empty
+                  if (full[key] === undefined || full[key] === null || full[key] === '') {
+                    full[key] = parentFull[key];
+                  }
+                }
+              }
+            } catch (e) {
+              this.logger.warn(`Could not fetch parent template ${listItem.variant_of} for variant ${listItem.item_code}`);
+            }
+          }
+
           if (full) {
             // Amazon ASIN (custom_amazon_asin not valid in list query but exists in full doc)
             amazonAsin = full.custom_amazon_asin || '';

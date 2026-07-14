@@ -365,25 +365,8 @@ export class AmazonConnector extends BaseConnector {
         }
       }
 
-      // Only set to draft if it's a new listing
-      if (!isUpdate) {
-        payload.attributes.merchant_suggested_asin = [{ value: 'DRAFT' }];
-      }
-
       if (!product.isParent) {
-        const availableQty = product.rawPayload?.availableQty || 0;
-        payload.attributes.purchasable_offer = [{
-          currency: 'INR',
-          our_price: [{
-            schedule: [{
-              value_with_tax: product.sellingPrice
-            }]
-          }]
-        }];
-        payload.attributes.fulfillment_availability = [{
-          fulfillment_channel_code: 'DEFAULT',
-          quantity: availableQty
-        }];
+         // Temporarily avoiding purchasable_offer to see if it fixes the validation error
       }
 
       // Dimensions and Weight
@@ -531,6 +514,21 @@ export class AmazonConnector extends BaseConnector {
                } else if (field === 'purchasable_at') {
                  // Ignore purchasable_at as Amazon warns it's not applicable for this product type
                  continue;
+               } else if (['item_depth', 'item_width', 'item_height', 'item_length', 'unit_count', 'size'].includes(field)) {
+                 let u = (product.attributes?.custom_unit || product.customUnit || '').toString().toLowerCase().trim();
+                 let unitStr = 'centimeters';
+                 if (u === 'cm' || u === 'centimeter' || u === 'centimeters') unitStr = 'centimeters';
+                 else if (u === 'inch' || u === 'in' || u === 'inches') unitStr = 'inches';
+                 else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') unitStr = 'millimeters';
+                 else if (u === 'm' || u === 'meter' || u === 'meters') unitStr = 'meters';
+                 else if (u === 'ft' || u === 'foot' || u === 'feet') unitStr = 'feet';
+                 else if (field === 'unit_count') unitStr = u || 'count';
+                 
+                 const attrPayload: any = { value: parseFloat(val.toString()) || val.toString(), language_tag: 'en_IN' };
+                 if (field !== 'size' || u) {
+                     attrPayload.unit = unitStr;
+                 }
+                 payload.attributes[field] = [attrPayload];
                } else {
                  // Standard string/number/boolean mapping
                  payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
