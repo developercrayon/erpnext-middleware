@@ -490,7 +490,21 @@ export class AmazonConnector extends BaseConnector {
                     payload.attributes[field] = mappedArray;
                  }
                } else if (field === 'main_product_image_locator' || field.includes('other_product_image_locator')) {
-                 payload.attributes[field] = [{ marketplace_id: this.marketplaceId, media_location: val.toString() }];
+                 let mediaUrl = val.toString();
+                 if (mediaUrl.startsWith('/')) {
+                   const defaultBaseUrl = process.env.ERPNEXT_BASE_URL || 'https://woodwolf.t3elements.com';
+                   if (product.thumbnailUrl && product.thumbnailUrl.startsWith('http')) {
+                     try {
+                       const url = new URL(product.thumbnailUrl);
+                       mediaUrl = url.origin + mediaUrl;
+                     } catch(e) {
+                       mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
+                     }
+                   } else {
+                     mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
+                   }
+                 }
+                 payload.attributes[field] = [{ marketplace_id: this.marketplaceId, media_location: mediaUrl }];
                } else if (field === 'country_of_origin') {
                  let code = val.toString();
                  if (code.toLowerCase() === 'india') code = 'IN';
