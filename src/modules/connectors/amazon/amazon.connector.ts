@@ -367,11 +367,7 @@ export class AmazonConnector extends BaseConnector {
 
       // Only set to draft if it's a new listing
       if (!isUpdate) {
-        const futureDate = new Date();
-        futureDate.setFullYear(futureDate.getFullYear() + 1);
-
         payload.attributes.merchant_suggested_asin = [{ value: 'DRAFT' }];
-        payload.attributes.purchasable_at = [{ value: futureDate.toISOString() }];
       }
 
       if (!product.isParent) {
