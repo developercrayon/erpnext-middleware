@@ -652,6 +652,20 @@ export class ERPNextConnector extends BaseConnector {
       return this.failure(error);
     }
   }
+
+  async deleteItem(itemCode: string): Promise<ConnectorResult<boolean>> {
+    try {
+      const response = await this.http.delete(`${this.baseUrl}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
+        headers: this.authHeaders,
+      });
+      return this.success(true);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return this.success(true); // Ignore if already deleted/not found
+      }
+      return this.failure(error);
+    }
+  }
 }
 
 // ─── Internal DTOs ────────────────────────────────────────────────────────────

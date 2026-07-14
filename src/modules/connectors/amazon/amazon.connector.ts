@@ -514,15 +514,24 @@ export class AmazonConnector extends BaseConnector {
                } else if (field === 'purchasable_at') {
                  // Ignore purchasable_at as Amazon warns it's not applicable for this product type
                  continue;
-               } else if (['item_depth', 'item_width', 'item_height', 'item_length', 'unit_count', 'size'].includes(field)) {
+               } else if (['item_depth', 'item_width', 'item_height', 'item_length', 'unit_count', 'size', 'package_weight', 'package_height', 'package_width', 'package_length', 'item_package_weight'].includes(field)) {
                  let u = (product.attributes?.custom_unit || product.customUnit || '').toString().toLowerCase().trim();
                  let unitStr = 'centimeters';
-                 if (u === 'cm' || u === 'centimeter' || u === 'centimeters') unitStr = 'centimeters';
-                 else if (u === 'inch' || u === 'in' || u === 'inches') unitStr = 'inches';
-                 else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') unitStr = 'millimeters';
-                 else if (u === 'm' || u === 'meter' || u === 'meters') unitStr = 'meters';
-                 else if (u === 'ft' || u === 'foot' || u === 'feet') unitStr = 'feet';
-                 else if (field === 'unit_count') unitStr = u || 'count';
+                 
+                 // If it's a weight field, default to kilograms, unless specified
+                 if (field.includes('weight')) {
+                   unitStr = 'kilograms';
+                   if (u === 'g' || u === 'gram' || u === 'grams') unitStr = 'grams';
+                   else if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') unitStr = 'pounds';
+                   else if (u === 'oz' || u === 'ounce' || u === 'ounces') unitStr = 'ounces';
+                 } else {
+                   if (u === 'cm' || u === 'centimeter' || u === 'centimeters') unitStr = 'centimeters';
+                   else if (u === 'inch' || u === 'in' || u === 'inches') unitStr = 'inches';
+                   else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') unitStr = 'millimeters';
+                   else if (u === 'm' || u === 'meter' || u === 'meters') unitStr = 'meters';
+                   else if (u === 'ft' || u === 'foot' || u === 'feet') unitStr = 'feet';
+                   else if (field === 'unit_count') unitStr = u || 'count';
+                 }
                  
                  const attrPayload: any = { value: parseFloat(val.toString()) || val.toString(), language_tag: 'en_IN' };
                  if (field !== 'size' || u) {
@@ -632,6 +641,38 @@ export class AmazonConnector extends BaseConnector {
         return null;
       }
       throw error;
+    }
+  }
+
+  // ─── Delete Listing ───────────────────────────────────────────────────────
+  
+  async deleteItem(sku: string): Promise<ConnectorResult<boolean>> {
+    try {
+      await this.ensureAuthenticated();
+      
+      const response = await this.http.delete(
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
+        {
+          headers: this.spApiHeaders,
+          params: { marketplaceIds: this.marketplaceId },
+        },
+      );
+      
+      const data = response.data || {};
+      const issues = data.issues || [];
+      const errors = issues.filter((i: any) => i.severity === 'ERROR');
+
+      if (errors.length > 0) {
+        const errorMsg = errors.map((e: any) => `[${e.code}] ${e.message}`).join(' | ');
+        return this.failure(`Failed to delete Amazon listing: ${errorMsg}`, 400);
+      }
+      
+      return this.success(true);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return this.success(true); // Ignore if already deleted/not found
+      }
+      return this.failure(error);
     }
   }
 

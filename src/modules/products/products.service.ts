@@ -164,6 +164,29 @@ export class ProductsService {
   async delete(id: string): Promise<void> {
     const product = await this.findById(id);
     if (!product) throw new Error('Product not found');
+    
+    // Attempt to delete from ERPNext
+    const erpnextItemCode = product.erpnextItemCode || product.sku;
+    if (erpnextItemCode) {
+      try {
+        await this.erpnextService.deleteItem(erpnextItemCode);
+        this.logger.log(`Deleted item ${erpnextItemCode} from ERPNext`);
+      } catch (err: any) {
+        this.logger.warn(`Failed to delete item ${erpnextItemCode} from ERPNext (it may not exist or has linked documents): ${err.message}`);
+      }
+    }
+
+    // Attempt to delete from Amazon
+    if (product.sku) {
+      try {
+        await this.amazonConnector.deleteItem(product.sku);
+        this.logger.log(`Deleted item ${product.sku} from Amazon`);
+      } catch (err: any) {
+        this.logger.warn(`Failed to delete item ${product.sku} from Amazon: ${err.message}`);
+      }
+    }
+
+    // Finally, remove from local DB
     await this.productRepo.remove(product);
   }
 

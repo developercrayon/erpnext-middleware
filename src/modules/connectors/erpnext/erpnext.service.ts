@@ -182,4 +182,12 @@ export class ERPNextService {
     }
     return result.data;
   }
+
+  async deleteItem(itemCode: string): Promise<any> {
+    const result = await this.connector.deleteItem(itemCode);
+    if (!result.success) {
+      throw new Error(`Failed to delete ERPNext item: ${result.error}`);
+    }
+    return result.data;
+  }
 }
