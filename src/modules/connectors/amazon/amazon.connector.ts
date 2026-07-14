@@ -476,8 +476,35 @@ export class AmazonConnector extends BaseConnector {
                    payload.attributes[mapping.marketplaceField] = [{ value: val.toString(), language_tag: 'en_IN' }];
                 }
              } else {
-               // Standard string/number/boolean mapping
-               payload.attributes[mapping.marketplaceField] = [{ value: val.toString(), language_tag: 'en_IN' }];
+               // Special handling for Amazon's strict schemas
+               const field = mapping.marketplaceField;
+
+               if (Array.isArray(val) && val.length > 0) {
+                 const mappedArray = val.map(v => {
+                   if (typeof v === 'object') {
+                     return { value: (v.title || v.title_key || v.bullet_point || v.special_feature || Object.values(v)[0] || '').toString(), language_tag: 'en_IN' };
+                   }
+                   return { value: v.toString(), language_tag: 'en_IN' };
+                 });
+                 if (mappedArray.length > 0) {
+                    payload.attributes[field] = mappedArray;
+                 }
+               } else if (field === 'main_product_image_locator' || field.includes('other_product_image_locator')) {
+                 payload.attributes[field] = [{ marketplace_id: this.marketplaceId, media_location: val.toString() }];
+               } else if (field === 'country_of_origin') {
+                 let code = val.toString();
+                 if (code.toLowerCase() === 'india') code = 'IN';
+                 else if (code.toLowerCase() === 'united states' || code.toLowerCase() === 'usa') code = 'US';
+                 else if (code.toLowerCase() === 'china') code = 'CN';
+                 payload.attributes[field] = [{ value: code, language_tag: 'en_IN' }];
+               } else if (field === 'shelf_thickness') {
+                 payload.attributes[field] = [{ value: parseFloat(val.toString()) || 0, unit: 'centimeters', language_tag: 'en_IN' }];
+               } else if (field === 'external_product_information') {
+                 payload.attributes[field] = [{ entity: val.toString(), language_tag: 'en_IN' }];
+               } else {
+                 // Standard string/number/boolean mapping
+                 payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
+               }
              }
           }
         }
@@ -485,6 +512,13 @@ export class AmazonConnector extends BaseConnector {
         this.logger.error(`Failed to apply dynamic mappings: ${err.message}`);
       }
       // --- END DYNAMIC FIELD MAPPING ---
+
+      if (!payload.attributes.supplier_declared_dg_hz_regulation) {
+        payload.attributes.supplier_declared_dg_hz_regulation = [{ value: "not_applicable", language_tag: "en_IN" }];
+      }
+      if (!payload.attributes.batteries_required) {
+        payload.attributes.batteries_required = [{ value: false }];
+      }
 
       // If the product has an ASIN, provide it. Otherwise, Amazon might reject it for LISTING_OFFER_ONLY.
       if (product.amazonAsin) {
