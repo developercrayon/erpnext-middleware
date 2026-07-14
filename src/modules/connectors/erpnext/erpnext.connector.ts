@@ -180,12 +180,13 @@ export class ERPNextConnector extends BaseConnector {
           images.push(clean.startsWith('http') ? clean : `${baseUrl}/${clean}`);
         }
 
+        console.log("listItem >>>>>>>>>>>>>>", listItem);
         // Custom fields are now in the list response directly ✅
-        const customAmazon   = listItem.custom_amazon   === 1 || listItem.custom_amazon   === true;
+        const customAmazon = listItem.custom_amazon === 1 || listItem.custom_amazon === true;
         const customFlipkart = listItem.custom_flipkart === 1 || listItem.custom_flipkart === true;
-        const customMrp      = listItem.custom_mrp || 0;
-        const customAmazonPrice      = listItem.custom_amazon_price   || undefined;
-        const customFlipkartPrice    = listItem.custom_flipkart_price || undefined;
+        const customMrp = listItem.custom_mrp || 0;
+        const customAmazonPrice = listItem.custom_amazon_price || undefined;
+        const customFlipkartPrice = listItem.custom_flipkart_price || undefined;
         const customAmazonProductType = listItem.custom_amazon_product_type || undefined;
 
         // These require the full item doc (not available as list fields)
@@ -278,7 +279,7 @@ export class ERPNextConnector extends BaseConnector {
           customFlipkart,
           customAmazonPrice,
           customFlipkartPrice,
-          amazonProductType: customAmazonProductType,
+          amazonProductType: full?.custom_amazon_product_type || customAmazonProductType,
           upc,
           amazonAsin,
           valuationRate: listItem.valuation_rate || 0,
@@ -339,7 +340,7 @@ export class ERPNextConnector extends BaseConnector {
 
 
   // ─── Schema / Meta ────────────────────────────────────────────────────────
-  
+
   async getItemFields(): Promise<ConnectorResult<{ fieldname: string; label: string; fieldtype: string }[]>> {
     try {
       const baseUrl = this.baseUrl.replace(/\/$/, '');
