@@ -14,6 +14,15 @@ export class ErpnextProductField {
   @Column({ type: 'varchar', nullable: true })
   fieldtype: string;
 
+  @Column({ type: 'text', nullable: true })
+  options: string;
+
+  @Column({ name: 'fetch_from', type: 'text', nullable: true })
+  fetchFrom: string;
+
+  @Column({ name: 'default_value', type: 'text', nullable: true })
+  defaultValue: string;
+
   @Column({ name: 'is_custom', type: 'boolean', default: false })
   isCustom: boolean;
 

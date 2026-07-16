@@ -111,7 +111,7 @@ export class AmazonConnector extends BaseConnector {
           queryParams.OrderStatuses = params.status;
         }
         queryParams.MaxResultsPerPage = params?.pageSize || 100;
-        
+
         if (params?.fromDate) {
           queryParams.CreatedAfter = params.fromDate.toISOString().split('.')[0] + 'Z';
         } else {
@@ -148,7 +148,7 @@ export class AmazonConnector extends BaseConnector {
   }
 
   // ─── Fetch Product Types ───────────────────────────────────────────────────────
-  
+
   async fetchProductTypes(): Promise<ConnectorResult<string[]>> {
     try {
       await this.ensureAuthenticated();
@@ -160,7 +160,7 @@ export class AmazonConnector extends BaseConnector {
           params: { marketplaceIds: this.marketplaceId },
         },
       );
-      
+
       const productTypes = response.data?.productTypes?.map((pt: any) => pt.name) || [];
       return this.success(productTypes);
     } catch (error) {
@@ -185,13 +185,13 @@ export class AmazonConnector extends BaseConnector {
         },
       );
       const definition = response.data;
-      
+
       // Amazon SP-API returns a link to download the actual JSON Schema
       if (definition?.schema?.link?.resource) {
         const schemaResponse = await require('axios').default.get(definition.schema.link.resource);
         definition.schema = schemaResponse.data;
       }
-      
+
       return this.success(definition);
     } catch (error) {
       return this.failure(error);
@@ -213,6 +213,11 @@ export class AmazonConnector extends BaseConnector {
             marketplaceIds: this.marketplaceId,
             pageSize: params?.pageSize || 20,
             pageToken: params?.nextToken,
+            sellerId: this.sellerId,
+            ...(params?.sku 
+              ? { identifiers: params.sku, identifiersType: params.sku.startsWith('B0') ? 'ASIN' : 'SKU' }
+              : { keywords: 'woodwolf' }),
+            includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
           },
         },
       );
@@ -232,15 +237,146 @@ export class AmazonConnector extends BaseConnector {
         total: items.length,
         page: 1,
         pageSize: params?.pageSize || 20,
-        hasMore: !!response.data?.nextPageToken,
-        nextToken: response.data?.nextPageToken,
+        hasMore: !!response.data?.pagination?.nextToken,
+        nextToken: response.data?.pagination?.nextToken,
       });
     } catch (error) {
       return this.failure(error);
     }
   }
 
-  // ─── Create Listing ───────────────────────────────────────────────────────
+  async fetchProductsByAsins(
+    asins: string[],
+  ): Promise<ConnectorResult<NormalizedProduct[]>> {
+    try {
+      await this.ensureAuthenticated();
+      const response = await this.http.get(
+        `${this.endpoint}/catalog/2022-04-01/items`,
+        {
+          headers: this.spApiHeaders,
+          params: {
+            marketplaceIds: this.marketplaceId,
+            identifiers: asins.join(','),
+            identifiersType: 'ASIN',
+            includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
+          },
+        },
+      );
+
+      const items = (response.data?.items || []).map((item: any) => ({
+        sku: item.asin,
+        name: item.summaries?.[0]?.itemName || item.asin,
+        description: item.summaries?.[0]?.itemDescription,
+        category: item.summaries?.[0]?.itemClassification,
+        mrp: 0,
+        sellingPrice: 0,
+        rawPayload: item,
+      }));
+
+      return this.success(items);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  // ─── Fetch ALL Seller Listings (no keyword needed) ────────────────────────
+  // Uses Listings Items API to get every SKU a seller has, then enriches
+  // each with full Catalog data (attributes, relationships, summaries, etc.)
+  async fetchAllSellerListings(): Promise<ConnectorResult<NormalizedProduct[]>> {
+    try {
+      await this.ensureAuthenticated();
+      
+      // Step 1: Get ALL seller SKUs via Listings Items API (paginated)
+      const allSkus: string[] = [];
+      let nextToken: string | undefined = undefined;
+      let page = 1;
+      
+      do {
+        this.logger.log(`Fetching seller listings page ${page}...`);
+        const listParams: any = {
+          marketplaceIds: this.marketplaceId,
+          // Listings Items API max pageSize is 10
+          pageSize: 10,
+          includedData: 'identifiers,summaries',
+        };
+        if (nextToken) listParams.pageToken = nextToken;
+
+        const listingsResponse = await this.http.get(
+          `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}`,
+          {
+            headers: this.spApiHeaders,
+            params: listParams,
+          },
+        );
+        
+        const listings = listingsResponse.data?.items || [];
+        this.logger.log(`  Page ${page}: got ${listings.length} listings`);
+        for (const listing of listings) {
+          // The Listings Items API returns the seller SKU in listing.sku
+          const sku = listing.sku;
+          if (sku) allSkus.push(sku);
+        }
+        
+        nextToken = listingsResponse.data?.pagination?.nextToken;
+        page++;
+      } while (nextToken);
+      
+      this.logger.log(`Found ${allSkus.length} total seller SKUs. Fetching full catalog data...`);
+      
+      if (allSkus.length === 0) {
+        return this.success([]);
+      }
+      
+      // Step 2: For each SKU, fetch full Catalog Item data (attributes, relationships, etc.)
+      // Catalog API accepts up to 20 identifiers per request
+      const allItems: NormalizedProduct[] = [];
+      const chunkSize = 20;
+      
+      for (let i = 0; i < allSkus.length; i += chunkSize) {
+        const chunk = allSkus.slice(i, i + chunkSize);
+        this.logger.log(`Fetching catalog data for seller SKUs ${i + 1}-${Math.min(i + chunkSize, allSkus.length)}: [${chunk.join(', ')}]`);
+        
+        try {
+          const catalogResponse = await this.http.get(
+            `${this.endpoint}/catalog/2022-04-01/items`,
+            {
+              headers: this.spApiHeaders,
+              params: {
+                marketplaceIds: this.marketplaceId,
+                identifiers: chunk.join(','),
+                identifiersType: 'SKU',
+                sellerId: this.sellerId,
+                includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
+              },
+            },
+          );
+          
+          const returnedItems = catalogResponse.data?.items || [];
+          this.logger.log(`  Catalog returned ${returnedItems.length} items for ${chunk.length} SKUs`);
+          
+          const items = returnedItems.map((item: any) => ({
+            sku: item.asin, // ASIN is the canonical identifier in our system
+            name: item.summaries?.[0]?.itemName || item.asin,
+            description: item.summaries?.[0]?.itemDescription,
+            category: item.summaries?.[0]?.itemClassification,
+            mrp: 0,
+            sellingPrice: 0,
+            rawPayload: item,
+          }));
+          
+          allItems.push(...items);
+        } catch (err: any) {
+          this.logger.error(`Failed to fetch catalog for chunk at index ${i}: ${err.message}`);
+        }
+      }
+      
+      return this.success(allItems);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+
 
   async createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>> {
     try {
@@ -253,7 +389,7 @@ export class AmazonConnector extends BaseConnector {
       } catch (e) {
         this.logger.debug(`Could not check existing ASIN for ${product.sku}`);
       }
-      
+
       const isUpdate = !!existingAsin;
 
       console.log(`[DEBUG] amazonConnector.createListing called for SKU: ${product.sku}. amazonProductType:`, product.amazonProductType, 'attributes:', product.attributes?.amazonProductType);
@@ -366,13 +502,13 @@ export class AmazonConnector extends BaseConnector {
       }
 
       if (!product.isParent) {
-         // Temporarily avoiding purchasable_offer to see if it fixes the validation error
+        // Temporarily avoiding purchasable_offer to see if it fixes the validation error
       }
 
       // Dimensions and Weight
       const erp = product.attributes || {};
       const raw = product.attributes || {};
-      
+
       const dVal = raw.customDepth || product.customDepth;
       const wVal = raw.customWidth || product.customWidth;
       const hVal = raw.customHeight || product.customHeight;
@@ -413,15 +549,15 @@ export class AmazonConnector extends BaseConnector {
 
       // --- DYNAMIC FIELD MAPPING ---
       try {
-        const mappings = await this.mappingRepo.find({ 
-          where: { 
+        const mappings = await this.mappingRepo.find({
+          where: {
             marketplace: MarketplaceSource.AMAZON,
             productType: productType
-          } 
+          }
         });
         const erp = product.attributes || {};
         const raw = product.attributes || {};
-        
+
         for (const mapping of mappings) {
           // Attempt to get value from ERPNext payload
           let val = erp[mapping.erpnextField];
@@ -438,117 +574,125 @@ export class AmazonConnector extends BaseConnector {
           }
 
           if (val !== undefined && val !== null && val !== '') {
-             if (mapping.dataType === 'CHILD_TABLE' || mapping.dataType === 'CHILD_TABLE_ARRAY') {
-                if (Array.isArray(val) && val.length > 0) {
-                  // For child tables, try to extract 'title' or 'bullet_point' or 'title_key' if it's an object array
-                  const mappedArray = val.map(v => {
-                    if (typeof v === 'object') {
-                      return { value: (v.title || v.title_key || v.bullet_point || v.special_feature || Object.values(v)[0] || '').toString(), language_tag: 'en_IN' };
-                    }
-                    return { value: v.toString(), language_tag: 'en_IN' };
-                  });
-                  if (mappedArray.length > 0) {
-                     payload.attributes[mapping.marketplaceField] = mappedArray;
-                  }
-                } else if (typeof val === 'string') {
-                  // Comma separated? Or just single value
-                   payload.attributes[mapping.marketplaceField] = [{ value: val.toString(), language_tag: 'en_IN' }];
-                }
-             } else {
-               // Special handling for Amazon's strict schemas
-               const field = mapping.marketplaceField;
+            if (mapping.dataType === 'CHILD_TABLE' || mapping.dataType === 'CHILD_TABLE_ARRAY') {
+              if (Array.isArray(val) && val.length > 0) {
+                // For child tables, try to extract a descriptive string instead of an internal ID
+                const mappedArray = val.map(v => {
+                  if (typeof v === 'object') {
+                    const descVal = v.title || v.title_key || v.bullet_point || v.special_feature || v.material || v.room_type || v.care_instruction || v.component || v.description;
+                    if (descVal) return { value: descVal.toString(), language_tag: 'en_IN' };
 
-               if (Array.isArray(val) && val.length > 0) {
-                 const mappedArray = val.map(v => {
-                   if (typeof v === 'object') {
-                     return { value: (v.title || v.title_key || v.bullet_point || v.special_feature || Object.values(v)[0] || '').toString(), language_tag: 'en_IN' };
-                   }
-                   return { value: v.toString(), language_tag: 'en_IN' };
-                 });
-                 if (mappedArray.length > 0) {
-                    payload.attributes[field] = mappedArray;
-                 }
-               } else if (field === 'main_product_image_locator' || field.includes('other_product_image_locator')) {
-                 let mediaUrl = val.toString();
-                 if (mediaUrl.startsWith('/')) {
-                   const defaultBaseUrl = process.env.ERPNEXT_BASE_URL || 'https://woodwolf.t3elements.com';
-                   if (product.thumbnailUrl && product.thumbnailUrl.startsWith('http')) {
-                     try {
-                       const url = new URL(product.thumbnailUrl);
-                       mediaUrl = url.origin + mediaUrl;
-                     } catch(e) {
-                       mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
-                     }
-                   } else {
-                     mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
-                   }
-                 }
-                 payload.attributes[field] = [{ marketplace_id: this.marketplaceId, media_location: mediaUrl }];
-               } else if (field === 'country_of_origin') {
-                 let code = val.toString();
-                 if (code.toLowerCase() === 'india') code = 'IN';
-                 else if (code.toLowerCase() === 'united states' || code.toLowerCase() === 'usa') code = 'US';
-                 else if (code.toLowerCase() === 'china') code = 'CN';
-                 payload.attributes[field] = [{ value: code, language_tag: 'en_IN' }];
-               } else if (field === 'shelf_thickness') {
-                 payload.attributes[field] = [{ value: parseFloat(val.toString()) || 0, unit: 'centimeters', language_tag: 'en_IN' }];
-               } else if (field === 'external_product_information') {
-                 const strVal = val.toString().trim();
-                 if (strVal.toLowerCase() === 'shelf' || !/^\d+$/.test(strVal)) {
-                   // If it's not a valid numeric identifier like UPC/EAN, skip it
-                   // Amazon will reject arbitrary strings like "Shelf" as the entity/value.
-                   continue;
-                 }
-                 let entity = 'GTIN';
-                 if (strVal.length === 12) entity = 'UPC';
-                 else if (strVal.length === 13) entity = 'EAN';
-                 else if (strVal.length === 10 || strVal.length === 13) entity = 'ISBN'; // 10 is ISBN too but 13 overlaps
-                 
-                 payload.attributes[field] = [{ value: strVal, entity: entity, language_tag: 'en_IN' }];
-               } else if (field === 'supplier_declared_dg_hz_regulation') {
-                 let dgVal = val.toString();
-                 if (dgVal.toLowerCase() === 'false' || dgVal.toLowerCase() === 'no') {
-                   dgVal = 'not_applicable';
-                 }
-                 payload.attributes[field] = [{ value: dgVal, language_tag: 'en_IN' }];
-               } else if (field === 'purchasable_at') {
-                 // Ignore purchasable_at as Amazon warns it's not applicable for this product type
-                 continue;
-               } else if (['item_depth', 'item_width', 'item_height', 'item_length', 'unit_count', 'size', 'package_weight', 'package_height', 'package_width', 'package_length', 'item_package_weight'].includes(field)) {
-                 let u = (product.attributes?.custom_unit || product.customUnit || '').toString().toLowerCase().trim();
-                 let unitStr = 'centimeters';
-                 
-                 // If it's a weight field, default to kilograms, unless specified
-                 if (field.includes('weight')) {
-                   unitStr = 'kilograms';
-                   if (u === 'g' || u === 'gram' || u === 'grams') unitStr = 'grams';
-                   else if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') unitStr = 'pounds';
-                   else if (u === 'oz' || u === 'ounce' || u === 'ounces') unitStr = 'ounces';
-                 } else {
-                   if (u === 'cm' || u === 'centimeter' || u === 'centimeters') unitStr = 'centimeters';
-                   else if (u === 'inch' || u === 'in' || u === 'inches') unitStr = 'inches';
-                   else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') unitStr = 'millimeters';
-                   else if (u === 'm' || u === 'meter' || u === 'meters') unitStr = 'meters';
-                   else if (u === 'ft' || u === 'foot' || u === 'feet') unitStr = 'feet';
-                   else if (field === 'unit_count') unitStr = u || 'count';
-                 }
-                 
-                 const attrPayload: any = { value: parseFloat(val.toString()) || val.toString(), language_tag: 'en_IN' };
-                 if (field !== 'size' || u) {
-                     attrPayload.unit = unitStr;
-                 }
-                 payload.attributes[field] = [attrPayload];
-               } else {
-                 // Standard string/number/boolean mapping
-                 payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
-               }
-             }
+                    const validKeys = Object.keys(v).filter(k => !['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'parent', 'parentfield', 'parenttype'].includes(k));
+                    if (validKeys.length > 0) {
+                      return { value: v[validKeys[0]].toString(), language_tag: 'en_IN' };
+                    }
+                    return { value: Object.values(v)[0].toString(), language_tag: 'en_IN' };
+                  }
+                  return { value: v.toString(), language_tag: 'en_IN' };
+                });
+                if (mappedArray.length > 0) {
+                  payload.attributes[mapping.marketplaceField] = mappedArray;
+                }
+              } else if (typeof val === 'string') {
+                // Comma separated? Or just single value
+                payload.attributes[mapping.marketplaceField] = [{ value: val.toString(), language_tag: 'en_IN' }];
+              }
+            } else {
+              // Special handling for Amazon's strict schemas
+              const field = mapping.marketplaceField;
+
+              if (Array.isArray(val) && val.length > 0) {
+                const mappedArray = val.map(v => {
+                  if (typeof v === 'object') {
+                    const descVal = v.title || v.title_key || v.bullet_point || v.special_feature || v.material || v.room_type || v.care_instruction || v.component || v.description;
+                    if (descVal) return { value: descVal.toString(), language_tag: 'en_IN' };
+
+                    const validKeys = Object.keys(v).filter(k => !['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'parent', 'parentfield', 'parenttype'].includes(k));
+                    if (validKeys.length > 0) {
+                      return { value: v[validKeys[0]].toString(), language_tag: 'en_IN' };
+                    }
+                    return { value: Object.values(v)[0].toString(), language_tag: 'en_IN' };
+                  }
+                  return { value: v.toString(), language_tag: 'en_IN' };
+                });
+                if (mappedArray.length > 0) {
+                  payload.attributes[field] = mappedArray;
+                }
+              } else if (field === 'main_product_image_locator' || field.includes('other_product_image_locator')) {
+                let mediaUrl = val.toString();
+                if (mediaUrl.startsWith('/')) {
+                  const defaultBaseUrl = process.env.ERPNEXT_BASE_URL || 'https://woodwolf.t3elements.com';
+                  if (product.thumbnailUrl && product.thumbnailUrl.startsWith('http')) {
+                    try {
+                      const url = new URL(product.thumbnailUrl);
+                      mediaUrl = url.origin + mediaUrl;
+                    } catch (e) {
+                      mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
+                    }
+                  } else {
+                    mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
+                  }
+                }
+                payload.attributes[field] = [{ marketplace_id: this.marketplaceId, media_location: mediaUrl }];
+              } else if (field === 'country_of_origin') {
+                let code = val.toString();
+                if (code.toLowerCase() === 'india') code = 'IN';
+                else if (code.toLowerCase() === 'united states' || code.toLowerCase() === 'usa') code = 'US';
+                else if (code.toLowerCase() === 'china') code = 'CN';
+                payload.attributes[field] = [{ value: code, language_tag: 'en_IN' }];
+              } else if (field === 'shelf_thickness') {
+                payload.attributes[field] = [{ value: parseFloat(val.toString()) || 0, unit: 'centimeters', language_tag: 'en_IN' }];
+              } else if (field === 'external_product_information') {
+                const strVal = val.toString().trim();
+
+
+                payload.attributes[field] = [{ value: strVal, language_tag: 'en_IN' }];
+              } else if (field === 'supplier_declared_dg_hz_regulation') {
+                let dgVal = val.toString();
+                if (dgVal.toLowerCase() === 'false' || dgVal.toLowerCase() === 'no') {
+                  dgVal = 'not_applicable';
+                }
+                payload.attributes[field] = [{ value: dgVal, language_tag: 'en_IN' }];
+              } else if (field === 'purchasable_at') {
+                // Ignore purchasable_at as Amazon warns it's not applicable for this product type
+                continue;
+              } else if (['item_depth', 'item_width', 'item_height', 'item_length', 'unit_count', 'size', 'package_weight', 'package_height', 'package_width', 'package_length', 'item_package_weight'].includes(field)) {
+                let u = (product.attributes?.custom_unit || product.customUnit || '').toString().toLowerCase().trim();
+                let unitStr = 'centimeters';
+
+                // If it's a weight field, default to kilograms, unless specified
+                if (field.includes('weight')) {
+                  unitStr = 'kilograms';
+                  if (u === 'g' || u === 'gram' || u === 'grams') unitStr = 'grams';
+                  else if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') unitStr = 'pounds';
+                  else if (u === 'oz' || u === 'ounce' || u === 'ounces') unitStr = 'ounces';
+                } else {
+                  if (u === 'cm' || u === 'centimeter' || u === 'centimeters') unitStr = 'centimeters';
+                  else if (u === 'inch' || u === 'in' || u === 'inches') unitStr = 'inches';
+                  else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') unitStr = 'millimeters';
+                  else if (u === 'm' || u === 'meter' || u === 'meters') unitStr = 'meters';
+                  else if (u === 'ft' || u === 'foot' || u === 'feet') unitStr = 'feet';
+                  else if (field === 'unit_count') unitStr = u || 'count';
+                }
+
+                const attrPayload: any = { value: parseFloat(val.toString()) || val.toString(), language_tag: 'en_IN' };
+                if (field !== 'size' || u) {
+                  attrPayload.unit = unitStr;
+                }
+                payload.attributes[field] = [attrPayload];
+              } else {
+                // Standard string/number/boolean mapping
+                payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
+              }
+            }
           }
         }
       } catch (err) {
         this.logger.error(`Failed to apply dynamic mappings: ${err.message}`);
       }
       // --- END DYNAMIC FIELD MAPPING ---
+
+      console.log("Dynamic mapping of fields", payload);
 
       if (!payload.attributes.supplier_declared_dg_hz_regulation) {
         payload.attributes.supplier_declared_dg_hz_regulation = [{ value: "not_applicable", language_tag: "en_IN" }];
@@ -567,8 +711,8 @@ export class AmazonConnector extends BaseConnector {
       if (!attrs.manufacturer) attrs.manufacturer = [{ value: product.brand || "Woodwolf", language_tag: "en_IN" }];
       if (!attrs.item_type_name) attrs.item_type_name = [{ value: product.category || "Shelf", language_tag: "en_IN" }];
       if (!attrs.packer_contact_information) attrs.packer_contact_information = [{ value: "Woodwolf Studio", language_tag: "en_IN" }];
-      if (!attrs.external_product_information) attrs.external_product_information = [{ value: "Not Applicable", language_tag: "en_IN" }];
-      
+      // Removed external_product_information fallback
+
       if (!attrs.item_package_weight) {
         let wUnit = 'kilograms';
         const weightUom = product.rawPayload?.weightUom || product.rawPayload?.weight_uom;
@@ -578,23 +722,8 @@ export class AmazonConnector extends BaseConnector {
         const weightVal = product.weight ? parseFloat(product.weight.toString()) : 1.5;
         attrs.item_package_weight = [{ value: weightVal, unit: wUnit }];
       }
-      
-      // Amazon SP-API requires these dimension objects for certain categories
-      if (!attrs.item_package_dimensions) {
-        attrs.item_package_dimensions = [{
-          height: { value: 10, unit: "centimeters" },
-          length: { value: 10, unit: "centimeters" },
-          width: { value: 10, unit: "centimeters" }
-        }];
-      }
-      
-      if (!attrs.item_depth_width_height) {
-        attrs.item_depth_width_height = [{
-          height: { value: 10, unit: "centimeters" },
-          depth: { value: 10, unit: "centimeters" },
-          width: { value: 10, unit: "centimeters" }
-        }];
-      }
+
+      // Removed 10x10x10 fallbacks for item_package_dimensions and item_depth_width_height
 
       // If the product has an ASIN, provide it. Otherwise, Amazon might reject it for LISTING_OFFER_ONLY.
       if (product.amazonAsin) {
@@ -684,11 +813,11 @@ export class AmazonConnector extends BaseConnector {
   }
 
   // ─── Delete Listing ───────────────────────────────────────────────────────
-  
+
   async deleteItem(sku: string): Promise<ConnectorResult<boolean>> {
     try {
       await this.ensureAuthenticated();
-      
+
       const response = await this.http.delete(
         `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
         {
@@ -696,7 +825,7 @@ export class AmazonConnector extends BaseConnector {
           params: { marketplaceIds: this.marketplaceId },
         },
       );
-      
+
       const data = response.data || {};
       const issues = data.issues || [];
       const errors = issues.filter((i: any) => i.severity === 'ERROR');
@@ -705,7 +834,7 @@ export class AmazonConnector extends BaseConnector {
         const errorMsg = errors.map((e: any) => `[${e.code}] ${e.message}`).join(' | ');
         return this.failure(`Failed to delete Amazon listing: ${errorMsg}`, 400);
       }
-      
+
       return this.success(true);
     } catch (error: any) {
       if (error.response?.status === 404) {

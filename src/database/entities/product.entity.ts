@@ -98,6 +98,9 @@ export class Product {
   @Column({ name: 'custom_flipkart', type: 'boolean', default: false })
   customFlipkart: boolean;
 
+  @Column({ name: 'is_from_amazon', type: 'boolean', default: false })
+  isFromAmazon: boolean;
+
   @Column({ name: 'custom_item_type_name', type: 'varchar', nullable: true })
   customItemTypeName: string;
 

@@ -83,6 +83,28 @@ export class ProductsController {
     }
   }
 
+  @Post('sync-amazon-to-erpnext')
+  @ApiOperation({ summary: 'Bulk push all unsynced Amazon products to ERPNext' })
+  async bulkSyncAmazonToERPNext() {
+    try {
+      const result = await this.productsService.bulkSyncAmazonToERPNext();
+      return { success: true, message: 'Bulk sync completed', data: result };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to bulk sync Amazon products to ERPNext');
+    }
+  }
+
+  @Post(':id/sync-erpnext')
+  @ApiOperation({ summary: 'Push a middleware product to ERPNext to create a new Item' })
+  async pushToERPNext(@Param('id', ParseUUIDPipe) id: string) {
+    try {
+      const product = await this.productsService.pushToERPNext(id);
+      return { success: true, message: 'Product created in ERPNext', data: product };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to push product to ERPNext');
+    }
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete product by ID' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
@@ -114,5 +136,12 @@ export class ProductsController {
   async syncToMarketplaces(@Body() dto: SyncProductsDto) {
     const jobId = await this.productsService.triggerSync(dto.source, dto.skus);
     return { message: 'Marketplace sync job queued', jobId };
+  }
+
+  @Post('sync/amazon-fetch')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Fetch products from Amazon, save to JSON, and store in DB' })
+  async fetchFromAmazon() {
+    return this.productsService.fetchFromAmazonAndStore();
   }
 }

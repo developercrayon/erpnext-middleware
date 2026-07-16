@@ -4,6 +4,8 @@ import { BullModule } from '@nestjs/bull';
 import { ProductsController } from './products.controller';
 import { ProductsWebhookController } from './webhooks.controller';
 import { ProductsService } from './products.service';
+import { FieldMapping } from '../../database/entities/mapping.entity';
+import { ErpnextProductField } from '../../database/entities/erpnext-product-field.entity';
 import { Product } from '../../database/entities/product.entity';
 import { QueueJob } from '../../database/entities/operational.entity';
 import { WebhookLog } from '../../database/entities/logs.entity';
@@ -15,7 +17,7 @@ import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, QueueJob, WebhookLog]),
+    TypeOrmModule.forFeature([Product, QueueJob, WebhookLog, FieldMapping, ErpnextProductField]),
     BullModule.registerQueue({ name: QUEUE_NAMES.PRODUCTS }),
     AuthModule,
     ERPNextModule,

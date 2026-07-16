@@ -23,7 +23,7 @@ export class HttpClientService {
     private readonly apiLogRepo: Repository<ApiLog>,
   ) {
     this.client = axios.create({
-      timeout: 100000,
+      timeout: 300000,
       headers: { 'Content-Type': 'application/json' },
     });
 
@@ -42,7 +42,10 @@ export class HttpClientService {
         return config;
       },
       (error) => {
-        this.logger.error('Request setup error', error.message);
+        if (error.response) {
+          this.logger.error(`← ${error.response.status} ${error.config?.url} — ${error.message}`);
+          this.logger.error(`Error details: ${JSON.stringify(error.response.data)}`);
+        }
         return Promise.reject(error);
       },
     );

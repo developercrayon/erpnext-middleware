@@ -133,6 +133,9 @@ export class MappingService {
         name: f.fieldname,
         label: f.label || this.formatLabel(f.fieldname),
         fieldtype: f.fieldtype,
+        options: f.options ? String(f.options) : null,
+        fetchFrom: f.fetch_from || null,
+        defaultValue: f.default_value ? String(f.default_value) : null,
         isCustom: f.fieldname.startsWith('custom_'),
       });
     }

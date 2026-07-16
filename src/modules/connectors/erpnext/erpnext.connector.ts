@@ -62,15 +62,15 @@ export class ERPNextConnector extends BaseConnector {
     } catch (error: any) {
       let errMsg = error.message;
       if (error.response?.data) {
-         try {
-           if (error.response.data._server_messages) {
-              errMsg = JSON.parse(JSON.parse(error.response.data._server_messages)[0]).message;
-           } else {
-              errMsg = JSON.stringify(error.response.data);
-           }
-         } catch(e) {
-           errMsg = JSON.stringify(error.response.data);
-         }
+        try {
+          if (error.response.data._server_messages) {
+            errMsg = JSON.parse(JSON.parse(error.response.data._server_messages)[0]).message;
+          } else {
+            errMsg = JSON.stringify(error.response.data);
+          }
+        } catch (e) {
+          errMsg = JSON.stringify(error.response.data);
+        }
       }
       this.logger.error(`Failed to update item ${itemCode} in ERPNext: ${errMsg}`);
       return this.failure(errMsg);
@@ -158,7 +158,6 @@ export class ERPNextConnector extends BaseConnector {
               // ❌ custom_amazon_asin  — NOT valid in list query (read from full item fetch)
               // ❌ custom_material     — does not exist in this ERPNext
               'custom_sync_marketplace',
-              'custom_thumbnail_image',
               'custom_amazon',
               'custom_flipkart',
               'custom_mrp',
@@ -185,14 +184,13 @@ export class ERPNextConnector extends BaseConnector {
       const items: NormalizedProduct[] = await Promise.all(itemsData.map(async (listItem: any) => {
         let images: string[] = [];
 
-        // Build image list — prefer custom_thumbnail_image, fall back to image
-        const thumbSrc = listItem.custom_thumbnail_image || listItem.image;
+        // Build image list — prefer image
+        const thumbSrc = listItem.image;
         if (thumbSrc) {
           const clean = thumbSrc.startsWith('/') ? thumbSrc.substring(1) : thumbSrc;
           images.push(clean.startsWith('http') ? clean : `${baseUrl}/${clean}`);
         }
 
-        console.log("listItem >>>>>>>>>>>>>>", listItem);
         // Custom fields are now in the list response directly ✅
         const customAmazon = listItem.custom_amazon === 1 || listItem.custom_amazon === true;
         const customFlipkart = listItem.custom_flipkart === 1 || listItem.custom_flipkart === true;
@@ -374,14 +372,14 @@ export class ERPNextConnector extends BaseConnector {
 
   // ─── Schema / Meta ────────────────────────────────────────────────────────
 
-  async getItemFields(): Promise<ConnectorResult<{ fieldname: string; label: string; fieldtype: string }[]>> {
+  async getItemFields(): Promise<ConnectorResult<any[]>> {
     try {
       const baseUrl = this.baseUrl.replace(/\/$/, '');
       const customFieldsRes = await this.http.get(`${baseUrl}/api/resource/Custom Field`, {
         headers: this.authHeaders,
         params: {
           filters: JSON.stringify([['dt', '=', 'Item']]),
-          fields: JSON.stringify(['fieldname', 'label', 'fieldtype']),
+          fields: JSON.stringify(['fieldname', 'label', 'fieldtype', 'options', 'fetch_from', 'default']),
           limit_page_length: 500,
         },
       });
@@ -390,8 +388,28 @@ export class ERPNextConnector extends BaseConnector {
         headers: this.authHeaders,
       });
 
-      const stdFields = docTypeRes.data?.data?.fields || [];
-      const customFields = customFieldsRes.data?.data || [];
+      const stdFieldsRaw = docTypeRes.data?.data?.fields || [];
+      const customFieldsRaw = customFieldsRes.data?.data || [];
+
+      // Normalize standard fields (rename 'default' to 'default_value')
+      const stdFields = stdFieldsRaw.map((f: any) => ({
+        fieldname: f.fieldname,
+        label: f.label,
+        fieldtype: f.fieldtype,
+        options: f.options,
+        fetch_from: f.fetch_from,
+        default_value: f.default,
+      }));
+
+      // Normalize custom fields (make sure they match)
+      const customFields = customFieldsRaw.map((f: any) => ({
+        fieldname: f.fieldname,
+        label: f.label,
+        fieldtype: f.fieldtype,
+        options: f.options,
+        fetch_from: f.fetch_from,
+        default_value: f.default,
+      }));
 
       return this.success([...stdFields, ...customFields]);
     } catch (error) {
@@ -581,6 +599,42 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async createItem(fields: Record<string, any>): Promise<ConnectorResult<any>> {
+    try {
+      await this.authenticate();
+
+      const payload = {
+        item_group: 'Products', // Default fallback
+        stock_uom: 'Nos',
+        is_stock_item: 1,
+        ...fields
+      };
+
+      const response = await this.http.post(
+        `${this.baseUrl}/api/resource/Item`,
+        payload,
+        { headers: this.authHeaders },
+      );
+
+      return this.success(response.data?.data);
+    } catch (error: any) {
+      let errMsg = error.message;
+      if (error.response?.data) {
+        try {
+          if (error.response.data._server_messages) {
+            errMsg = JSON.parse(JSON.parse(error.response.data._server_messages)[0]).message;
+          } else {
+            errMsg = JSON.stringify(error.response.data);
+          }
+        } catch (e) {
+          errMsg = JSON.stringify(error.response.data);
+        }
+      }
+      this.logger.error(`Failed to create ERPNext item: ${errMsg}`);
+      return this.failure(errMsg);
+    }
+  }
+
   async getReferenceData(): Promise<ConnectorResult<any>> {
     try {
       const fetchList = async (doctype: string) => {
@@ -629,7 +683,10 @@ export class ERPNextConnector extends BaseConnector {
         headers: this.authHeaders,
       });
       return this.success(response.data?.data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.status === 404 || error?.response?.status === 404 || error?.message?.includes('404')) {
+        return { success: false, error: 'Not found' };
+      }
       return this.failure(error);
     }
   }
@@ -663,6 +720,90 @@ export class ERPNextConnector extends BaseConnector {
       if (error.response?.status === 404) {
         return this.success(true); // Ignore if already deleted/not found
       }
+      return this.failure(error);
+    }
+  }
+
+  async attachFile(doctype: string, docname: string, fileUrl: string): Promise<ConnectorResult<any>> {
+    try {
+      const fileName = fileUrl.split('/').pop()?.split('?')[0] || `image_${Date.now()}.jpg`;
+      const payload = {
+        file_url: fileUrl,
+        file_name: fileName,
+        attached_to_doctype: doctype,
+        attached_to_name: docname,
+        is_private: 0
+      };
+      const response = await this.http.post(`${this.baseUrl}/api/resource/File`, payload, {
+        headers: this.authHeaders,
+      });
+      return this.success(response.data?.data);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  /**
+   * Fetch the fields schema for any ERPNext Doctype.
+   * Used to discover the "value field" in Child Doctypes for Table mappings.
+   */
+  async getDocTypeFields(doctype: string): Promise<ConnectorResult<any[]>> {
+    try {
+      const response = await this.http.get(
+        `${this.baseUrl}/api/resource/DocType/${encodeURIComponent(doctype)}`,
+        { headers: this.authHeaders },
+      );
+      const fields = response.data?.data?.fields || [];
+      // Filter out layout-only fields
+      const dataFields = fields.filter((f: any) =>
+        !['Column Break', 'Section Break', 'Tab Break', 'HTML'].includes(f.fieldtype),
+      );
+      return this.success(dataFields);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  /**
+   * Fetch all existing entries of a given Doctype (used for Child Table value resolution).
+   * Optional nameFilter allows checking for a specific entry bypassing the 500 limit.
+   */
+  async getDocTypeEntries(doctype: string, nameFilter?: string): Promise<ConnectorResult<any[]>> {
+    try {
+      const params: any = {
+        fields: JSON.stringify(['name']),
+        limit_page_length: nameFilter ? 1 : 500,
+      };
+      if (nameFilter) {
+        params.filters = JSON.stringify([['name', '=', nameFilter]]);
+      }
+
+      const response = await this.http.get(
+        `${this.baseUrl}/api/resource/${encodeURIComponent(doctype)}`,
+        {
+          headers: this.authHeaders,
+          params,
+        },
+      );
+      return this.success(response.data?.data || []);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  /**
+   * Create a new document in the given ERPNext Doctype.
+   * Used when an Amazon attribute value doesn't exist yet in a Child Doctype.
+   */
+  async createDocTypeEntry(doctype: string, data: Record<string, any>): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.post(
+        `${this.baseUrl}/api/resource/${encodeURIComponent(doctype)}`,
+        data,
+        { headers: this.authHeaders },
+      );
+      return this.success(response.data?.data);
+    } catch (error) {
       return this.failure(error);
     }
   }

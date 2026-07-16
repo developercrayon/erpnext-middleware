@@ -175,6 +175,14 @@ export class ERPNextService {
     return result.data;
   }
 
+  async createItem(fields: Record<string, any>): Promise<any> {
+    const result = await this.connector.createItem(fields);
+    if (!result.success) {
+      throw new Error(`Failed to create ERPNext item: ${result.error}`);
+    }
+    return result.data;
+  }
+
   async getReferenceData(): Promise<any> {
     const result = await this.connector.getReferenceData();
     if (!result.success) {
@@ -187,6 +195,14 @@ export class ERPNextService {
     const result = await this.connector.deleteItem(itemCode);
     if (!result.success) {
       throw new Error(`Failed to delete ERPNext item: ${result.error}`);
+    }
+    return result.data;
+  }
+
+  async attachFile(doctype: string, docname: string, fileUrl: string): Promise<any> {
+    const result = await this.connector.attachFile(doctype, docname, fileUrl);
+    if (!result.success) {
+      throw new Error(`Failed to attach file to ${doctype} ${docname}: ${result.error}`);
     }
     return result.data;
   }

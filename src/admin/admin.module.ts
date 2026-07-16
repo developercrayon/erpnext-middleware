@@ -342,6 +342,62 @@ export class AdminModule {
                     customCareInstructions: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Care Instructions', components: { show: Components.JsonArrayList } }
                   },
                   actions: { new: { isAccessible: false },
+                    fetchFromAmazon: {
+                      actionType: 'resource',
+                      component: false,
+                      icon: 'Download',
+                      label: 'Fetch from Amazon',
+                      handler: async (request, response, context) => {
+                        try {
+                          const result = await productsService.fetchFromAmazonAndStore();
+                          return {
+                            notice: {
+                              message: `Successfully fetched and stored ${result.count} products from Amazon.`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            notice: {
+                              message: `Failed to fetch products from Amazon: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
+                    pushToERPNext: {
+                      actionType: 'record',
+                      component: false,
+                      icon: 'Upload',
+                      label: 'Push to ERPNext',
+                      isVisible: (context) => {
+                        const { record } = context;
+                        return record && !record.params.erpnextItemCode;
+                      },
+                      handler: async (request, response, context) => {
+                        const { record } = context;
+                        const id = record.param('id');
+                        try {
+                          await productsService.pushToERPNext(id);
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Product successfully created in ERPNext!`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Failed to push product to ERPNext: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
                     syncToAmazon: {
                       actionType: 'record',
                       component: false,
