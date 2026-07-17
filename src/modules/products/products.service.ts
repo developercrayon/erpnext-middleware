@@ -216,6 +216,7 @@ export class ProductsService {
       let isParent = false;
       let variantOf = null;
       let variationTheme = null;
+      let variantAttributes = null;
 
       const relationshipsData = item.rawPayload?.relationships;
       if (relationshipsData && Array.isArray(relationshipsData)) {
@@ -226,15 +227,23 @@ export class ProductsService {
             if (variationRel) {
               if (variationRel.parentAsins && variationRel.parentAsins.length > 0) {
                 variantOf = variationRel.parentAsins[0];
-              }
-              if (variationRel.children && variationRel.children.length > 0) {
-                isParent = true;
-              }
-              if (variationRel.childAsins && variationRel.childAsins.length > 0) {
-                isParent = true;
+                isParent = false; // explicitly a child
+              } else {
+                if (variationRel.children && variationRel.children.length > 0) {
+                  isParent = true;
+                }
+                if (variationRel.childAsins && variationRel.childAsins.length > 0) {
+                  isParent = true;
+                }
               }
               if (variationRel.variationTheme?.attributes) {
-                variationTheme = variationRel.variationTheme.attributes.join('-');
+                const themeAttrs = variationRel.variationTheme.attributes;
+                variationTheme = themeAttrs.join('-');
+
+                variantAttributes = themeAttrs.map((attr: string) => ({
+                  name: attr.charAt(0).toUpperCase() + attr.slice(1), // e.g. "size" -> "Size"
+                  value: getAmzStr(attrs, attr) || ''
+                }));
               }
               break;
             }
@@ -262,6 +271,7 @@ export class ProductsService {
           isParent,
           variantOf,
           variationTheme,
+          variantAttributes,
           mrp: 0,
           sellingPrice: 0,
           ...mappedData
@@ -271,6 +281,7 @@ export class ProductsService {
         product.isParent = isParent;
         product.variantOf = variantOf;
         product.variationTheme = variationTheme;
+        if (variantAttributes) product.variantAttributes = variantAttributes;
         if (mappedStatus === ProductStatus.DRAFT) product.status = mappedStatus;
         Object.assign(product, mappedData);
       }
@@ -351,16 +362,86 @@ export class ProductsService {
     this.logger.debug(`[DEBUG] Product: ${JSON.stringify(product)}`);
 
     // ── Base payload (always present regardless of field mapping) ─────────────
+    let sellerSku = product.sku;
+    if (product.attributes && Array.isArray(product.attributes.identifiers)) {
+      for (const idGroup of product.attributes.identifiers) {
+        if (Array.isArray(idGroup.identifiers)) {
+          const skuObj = idGroup.identifiers.find((i: any) => i.identifierType === 'SKU');
+          if (skuObj && skuObj.identifier) {
+            sellerSku = skuObj.identifier;
+            break;
+          }
+        }
+      }
+    }
+
     const erpPayload: Record<string, any> = {
-      item_code: product.sku,
-      sku: product.sku,
-      item_name: (product.name || product.sku).substring(0, 140),
+      item_code: sellerSku,
+      sku: sellerSku,
+      item_name: (product.name || sellerSku).substring(0, 140),
       description: product.description || '',
       item_group: 'Products',
       custom_amazon: 1,
-      disabled: 1,
+      disabled: 0,
       is_sales_item: 0,
     };
+
+    // ── Variant handling ───────────────────────────────────────────────────────
+    if (product.isParent) {
+      erpPayload.has_variants = 1;
+      let parentAttrs = product.variantAttributes || [];
+      
+      // If parent has no attributes (e.g. auto-generated stub), infer from children
+      if (parentAttrs.length === 0) {
+        const children = await this.productRepo.find({ where: { variantOf: product.sku } });
+        const uniqueAttrNames = new Set<string>();
+        for (const child of children) {
+          if (child.variantAttributes) {
+            for (const attr of child.variantAttributes) {
+              if (attr.name) uniqueAttrNames.add(attr.name);
+            }
+          }
+        }
+        parentAttrs = Array.from(uniqueAttrNames).map(name => ({ name, value: '' }));
+      }
+
+      // 🔴 FIX: Frappe STRICTLY requires at least one attribute for a Template item
+      if (parentAttrs.length === 0) {
+        const connector = this.erpnextService['connector'];
+        const fallbackAttr = 'Variant Attribute';
+        await connector.ensureItemAttributeExists(fallbackAttr, 'Stub');
+        parentAttrs = [{ name: fallbackAttr, value: '' }];
+      }
+
+      if (parentAttrs.length > 0) {
+        erpPayload.attributes = parentAttrs.map(attr => ({
+          attribute: attr.name
+        }));
+      }
+    } else if (product.variantOf) {
+      const parentProduct = await this.productRepo.findOne({ where: { sku: product.variantOf } });
+      erpPayload.variant_of = parentProduct?.erpnextItemCode || product.variantOf;
+      if (product.variantAttributes && product.variantAttributes.length > 0) {
+        const variantAttributes = [];
+        for (const attr of product.variantAttributes) {
+          if (attr.name && attr.value) {
+            // Ensure the attribute and its value exist in ERPNext
+            try {
+              await this.erpnextService['connector'].ensureItemAttributeExists(attr.name, String(attr.value));
+            } catch (err: any) {
+              this.logger.warn(`Failed to ensure Item Attribute ${attr.name}=${attr.value}: ${err.message}`);
+            }
+            variantAttributes.push({
+              attribute: attr.name,
+              attribute_value: String(attr.value)
+            });
+          }
+        }
+        if (variantAttributes.length > 0) {
+          erpPayload.attributes = variantAttributes;
+        }
+      }
+    }
 
     // ── Image handling ─────────────────────────────────────────────────────────
     let productImages = product.images;
@@ -389,6 +470,10 @@ export class ProductsService {
     const attrs = rawPayload.attributes || rawPayload;
     const productTypesArr: any[] = rawPayload.productTypes || attrs.productTypes || [];
     const productType: string = (productTypesArr[0]?.productType || product.amazonProductType || '').toUpperCase();
+
+    if (productType) {
+      erpPayload.custom_amazon_product_type = productType;
+    }
 
     this.logger.log(`[DYNAMIC-MAP] Product ${product.sku} | productType: "${productType}"`);
 
@@ -437,7 +522,7 @@ export class ProductsService {
         this.logger.debug(`[DYNAMIC-MAP] No Amazon value for marketplace_field "${mapping.marketplaceField}" → skip`);
         continue;
       }
-      
+
       // For scalar fields, just take the first value
       const amazonValue = amazonValues[0];
 
@@ -538,17 +623,23 @@ export class ProductsService {
                 this.logger.log(`[DYNAMIC-MAP] "${amzVal}" not in "${resolutionDoctype}" — creating...`);
                 try {
                   // Some standalone doctypes require 'title', others use 'name' or autonaming
-                  await connector.createDocTypeEntry(resolutionDoctype, { 
+                  // For those with field-based autoname, we must also pass the actual valueField.
+                  const createRes = await connector.createDocTypeEntry(resolutionDoctype, {
                     name: amzVal,
-                    title: amzVal
+                    title: amzVal,
+                    [valueField]: amzVal
                   });
+                  if (!createRes.success) {
+                    this.logger.warn(`[DYNAMIC-MAP] Could not create "${amzVal}" in "${resolutionDoctype}": ${JSON.stringify(createRes.error)}. Skipping field.`);
+                    continue;
+                  }
                 } catch (createErr: any) {
-                  this.logger.warn(`[DYNAMIC-MAP] Could not create "${amzVal}" in "${resolutionDoctype}": ${createErr.message}. Skipping field.`);
+                  this.logger.warn(`[DYNAMIC-MAP] Exception creating "${amzVal}" in "${resolutionDoctype}": ${createErr.message}. Skipping field.`);
                   continue; // Skip this particular value, but try other values
                 }
               }
             }
-            
+
             // We provide a unique 'name' so Frappe doesn't use field-based autoname which causes
             // PRIMARY key collisions across different parent items if values are identical.
             // __islocal: 1 forces Frappe to treat it as a new document in memory during updates.
@@ -574,21 +665,67 @@ export class ProductsService {
       }
     }
 
-    this.logger.log(`[DYNAMIC-MAP] Final ERPNext payload for ${product.sku}: ${JSON.stringify(erpPayload)}`);
+    // ── Explicit Dimension & Weight Mapping ─────────────────────────────────────
+    if (rawPayload && rawPayload.attributes) {
+      const a = rawPayload.attributes;
+      const mapUnit = (u?: string) => {
+        if (!u) return u;
+        const l = u.toLowerCase();
+        if (l === 'centimeters' || l === 'centimeter' || l === 'cm') return 'Centimeter';
+        if (l === 'inches' || l === 'inch' || l === 'in') return 'Inch';
+        if (l === 'millimeters' || l === 'millimeter' || l === 'mm') return 'Millimeter';
+        if (l === 'kilograms' || l === 'kilogram' || l === 'kg') return 'Kg';
+        if (l === 'grams' || l === 'gram' || l === 'g') return 'Gram';
+        if (l === 'pounds' || l === 'pound' || l === 'lb' || l === 'lbs') return 'Pound';
+        return u;
+      };
+
+      if (a.item_dimensions && a.item_dimensions.length > 0) {
+        const idims = a.item_dimensions[0];
+        if (idims.length) erpPayload.custom_item_depth = idims.length.value;
+        if (idims.width) erpPayload.custom_item_width = idims.width.value;
+        if (idims.height) erpPayload.custom_item_height = idims.height.value;
+        const unit = mapUnit(idims.length?.unit || idims.width?.unit || idims.height?.unit);
+        if (unit) erpPayload.custom_item_lwh_unit = unit;
+      }
+
+      if (a.item_weight && a.item_weight.length > 0) {
+        const iw = a.item_weight[0];
+        erpPayload.custom_item_weight = iw.value;
+        erpPayload.custom_item_weight_unit = mapUnit(iw.unit);
+      }
+
+      if (a.item_package_dimensions && a.item_package_dimensions.length > 0) {
+        const pdims = a.item_package_dimensions[0];
+        if (pdims.length) erpPayload.custom_package_length = pdims.length.value;
+        if (pdims.width) erpPayload.custom_package_width = pdims.width.value;
+        if (pdims.height) erpPayload.custom_package_height = pdims.height.value;
+        const unit = mapUnit(pdims.length?.unit || pdims.width?.unit || pdims.height?.unit);
+        if (unit) erpPayload.custom_lwh_unit = unit;
+      }
+
+      if (a.item_package_weight && a.item_package_weight.length > 0) {
+        const pw = a.item_package_weight[0];
+        erpPayload.custom_package_weight = pw.value;
+        erpPayload.custom_weight_unit = mapUnit(pw.unit);
+      }
+    }
+
+    this.logger.log(`[DYNAMIC-MAP] Final ERPNext payload for ${sellerSku}: ${JSON.stringify(erpPayload)}`);
 
     try {
       // First check if the item already exists in ERPNext
-      const checkResult = await connector.getFullItem(product.sku);
+      const checkResult = await connector.getFullItem(sellerSku);
 
-      let itemCode = product.sku;
+      let itemCode = sellerSku;
       if (checkResult.success) {
-        this.logger.log(`Item ${product.sku} exists in ERPNext. Updating...`);
-        const updatedItem = await this.erpnextService.updateItem(product.sku, erpPayload);
-        itemCode = updatedItem.name || updatedItem.item_code || product.sku;
+        this.logger.log(`Item ${sellerSku} exists in ERPNext. Updating...`);
+        const updatedItem = await this.erpnextService.updateItem(sellerSku, erpPayload);
+        itemCode = updatedItem.name || updatedItem.item_code || sellerSku;
       } else {
-        this.logger.log(`Item ${product.sku} does not exist in ERPNext. Creating...`);
+        this.logger.log(`Item ${sellerSku} does not exist in ERPNext. Creating...`);
         const createdItem = await this.erpnextService.createItem(erpPayload);
-        itemCode = createdItem.name || createdItem.item_code || product.sku;
+        itemCode = createdItem.name || createdItem.item_code || sellerSku;
       }
 
       // Save ERPNext ID back to middleware
@@ -613,7 +750,7 @@ export class ProductsService {
 
       return product;
     } catch (err: any) {
-      this.logger.error(`Failed to push ${product.sku} to ERPNext. Payload: ${JSON.stringify(erpPayload)}`);
+      this.logger.error(`Failed to push ${sellerSku} to ERPNext. Payload: ${JSON.stringify(erpPayload)}`);
       throw err;
     }
   }

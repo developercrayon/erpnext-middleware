@@ -807,6 +807,70 @@ export class ERPNextConnector extends BaseConnector {
       return this.failure(error);
     }
   }
+  /**
+   * Ensure that an Item Attribute and its specific value exist in ERPNext.
+   */
+  async ensureItemAttributeExists(attributeName: string, attributeValue: string): Promise<ConnectorResult<boolean>> {
+    try {
+      // 1. Check if Item Attribute exists
+      let attributeExists = true;
+      let attrDoc: any = null;
+      try {
+        const getRes = await this.http.get(
+          `${this.baseUrl}/api/resource/Item Attribute/${encodeURIComponent(attributeName)}`,
+          { headers: this.authHeaders },
+        );
+        attrDoc = getRes.data?.data;
+      } catch (error: any) {
+        if (error?.status === 404 || error?.response?.status === 404) {
+          attributeExists = false;
+        } else {
+          throw error;
+        }
+      }
+
+      // 2. If not exists, create Item Attribute with the value
+      if (!attributeExists) {
+        await this.http.post(
+          `${this.baseUrl}/api/resource/Item Attribute`,
+          {
+            attribute_name: attributeName,
+            custom_company: process.env.ERPNEXT_COMPANY || 'Woodwolf Studio (O) Pvt. Ltd',
+            item_attribute_values: [
+              { 
+                attribute_value: String(attributeValue),
+                abbr: String(attributeValue || 'VAL').substring(0, 10)
+              }
+            ]
+          },
+          { headers: this.authHeaders },
+        );
+        return this.success(true);
+      }
+
+      // 3. If exists, check if value exists, if not, append value
+      const values = attrDoc.item_attribute_values || [];
+      const valueExists = values.some((v: any) => v.attribute_value === attributeValue);
+
+      if (!valueExists) {
+        values.push({ 
+          attribute_value: String(attributeValue),
+          abbr: String(attributeValue || 'VAL').substring(0, 10)
+        });
+        await this.http.put(
+          `${this.baseUrl}/api/resource/Item Attribute/${encodeURIComponent(attributeName)}`,
+          {
+            item_attribute_values: values
+          },
+          { headers: this.authHeaders },
+        );
+      }
+
+      return this.success(true);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
 }
 
 // ─── Internal DTOs ────────────────────────────────────────────────────────────

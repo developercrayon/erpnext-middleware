@@ -23,7 +23,7 @@ export class HttpClientService {
     private readonly apiLogRepo: Repository<ApiLog>,
   ) {
     this.client = axios.create({
-      timeout: 300000,
+      timeout: 600000,
       headers: { 'Content-Type': 'application/json' },
     });
 
