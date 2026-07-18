@@ -272,15 +272,29 @@ export class AmazonConnector extends BaseConnector {
             },
           );
 
-          items = (response.data?.items || []).map((item: any) => ({
-            sku: item.asin,
-            name: item.summaries?.[0]?.itemName || item.asin,
-            description: item.summaries?.[0]?.itemDescription,
-            category: item.summaries?.[0]?.itemClassification,
-            mrp: 0,
-            sellingPrice: 0,
-            rawPayload: item,
-          }));
+          items = (response.data?.items || []).map((item: any) => {
+            let sku = item.asin;
+            if (item.identifiers) {
+              for (const mkt of item.identifiers) {
+                if (mkt.identifiers) {
+                  const skuObj = mkt.identifiers.find((i: any) => i.identifierType === 'SKU');
+                  if (skuObj && skuObj.identifier) {
+                    sku = skuObj.identifier;
+                    break;
+                  }
+                }
+              }
+            }
+            return {
+              sku,
+              name: item.summaries?.[0]?.itemName || item.asin,
+              description: item.summaries?.[0]?.itemDescription,
+              category: item.summaries?.[0]?.itemClassification,
+              mrp: 0,
+              sellingPrice: 0,
+              rawPayload: item,
+            };
+          });
           success = true;
         } catch (err: any) {
           if (err.status === 429 || (err.response && err.response.status === 429)) {
@@ -438,15 +452,29 @@ export class AmazonConnector extends BaseConnector {
             const returnedItems = catalogResponse.data?.items || [];
             this.logger.log(`  Catalog returned ${returnedItems.length} items for ${chunk.length} SKUs`);
             
-            const items = returnedItems.map((item: any) => ({
-              sku: item.asin, // ASIN is the canonical identifier in our system
-              name: item.summaries?.[0]?.itemName || item.asin,
-              description: item.summaries?.[0]?.itemDescription,
-              category: item.summaries?.[0]?.itemClassification,
-              mrp: 0,
-              sellingPrice: 0,
-              rawPayload: item,
-            }));
+            const items = returnedItems.map((item: any) => {
+              let sku = item.asin;
+              if (item.identifiers) {
+                for (const mkt of item.identifiers) {
+                  if (mkt.identifiers) {
+                    const skuObj = mkt.identifiers.find((i: any) => i.identifierType === 'SKU');
+                    if (skuObj && skuObj.identifier) {
+                      sku = skuObj.identifier;
+                      break;
+                    }
+                  }
+                }
+              }
+              return {
+                sku,
+                name: item.summaries?.[0]?.itemName || item.asin,
+                description: item.summaries?.[0]?.itemDescription,
+                category: item.summaries?.[0]?.itemClassification,
+                mrp: 0,
+                sellingPrice: 0,
+                rawPayload: item,
+              };
+            });
             
             allItems.push(...items);
             success = true;
