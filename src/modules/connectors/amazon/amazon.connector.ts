@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as zlib from 'zlib';
 import { ConfigService } from '@nestjs/config';
 import { HttpClientService } from '../../../shared/http-client.service';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -329,13 +330,18 @@ export class AmazonConnector extends BaseConnector {
     );
     
     const docUrl = docResponse.data.url;
+    const compression = docResponse.data.compressionAlgorithm;
     
-    this.logger.log(`Downloading report from URL...`);
-    const downloadResponse = await this.http.get(docUrl, {
-      responseType: 'text',
-    });
+    this.logger.log(`Downloading report from URL (compression: ${compression || 'NONE'})...`);
     
-    const tsvData = typeof downloadResponse.data === 'string' ? downloadResponse.data : String(downloadResponse.data || '');
+    let tsvData = '';
+    if (compression === 'GZIP') {
+      const downloadResponse = await this.http.get(docUrl, { responseType: 'arraybuffer' });
+      tsvData = zlib.gunzipSync(downloadResponse.data).toString('utf-8');
+    } else {
+      const downloadResponse = await this.http.get(docUrl, { responseType: 'text' });
+      tsvData = typeof downloadResponse.data === 'string' ? downloadResponse.data : String(downloadResponse.data || '');
+    }
     
     const lines = tsvData.split('\n');
     if (lines.length < 2) {
