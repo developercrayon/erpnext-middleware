@@ -233,6 +233,12 @@ export class ProductsService {
         }
       }
 
+      // Skip parent containers / templates as they are not physical fulfillable products
+      if (isParent || mappedData.name?.toLowerCase().startsWith('template ')) {
+        this.logger.log(`Skipping template/parent product: ${item.sku} (${mappedData.name})`);
+        continue;
+      }
+
       // Also set the item status based on Amazon data (if we can infer it)
       // Usually, if it's fetched, it's active unless we know otherwise.
       // But user requested to disable ERPNext items if Amazon is draft.
