@@ -395,38 +395,54 @@ export class AmazonConnector extends BaseConnector {
         const chunk = allSkus.slice(i, i + chunkSize);
         this.logger.log(`Fetching catalog data for seller SKUs ${i + 1}-${Math.min(i + chunkSize, allSkus.length)}: [${chunk.join(', ')}]`);
         
-        try {
-          const catalogResponse = await this.http.get(
-            `${this.endpoint}/catalog/2022-04-01/items`,
-            {
-              headers: this.spApiHeaders,
-              params: {
-                marketplaceIds: this.marketplaceId,
-                identifiers: chunk.join(','),
-                identifiersType: 'SKU',
-                sellerId: this.sellerId,
-                includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
+        let attempts = 0;
+        let success = false;
+
+        while (attempts < 3 && !success) {
+          try {
+            attempts++;
+            const catalogResponse = await this.http.get(
+              `${this.endpoint}/catalog/2022-04-01/items`,
+              {
+                headers: this.spApiHeaders,
+                params: {
+                  marketplaceIds: this.marketplaceId,
+                  identifiers: chunk.join(','),
+                  identifiersType: 'SKU',
+                  sellerId: this.sellerId,
+                  includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
+                },
               },
-            },
-          );
-          
-          const returnedItems = catalogResponse.data?.items || [];
-          this.logger.log(`  Catalog returned ${returnedItems.length} items for ${chunk.length} SKUs`);
-          
-          const items = returnedItems.map((item: any) => ({
-            sku: item.asin, // ASIN is the canonical identifier in our system
-            name: item.summaries?.[0]?.itemName || item.asin,
-            description: item.summaries?.[0]?.itemDescription,
-            category: item.summaries?.[0]?.itemClassification,
-            mrp: 0,
-            sellingPrice: 0,
-            rawPayload: item,
-          }));
-          
-          allItems.push(...items);
-        } catch (err: any) {
-          this.logger.error(`Failed to fetch catalog for chunk at index ${i}: ${err.message}`);
+            );
+            
+            const returnedItems = catalogResponse.data?.items || [];
+            this.logger.log(`  Catalog returned ${returnedItems.length} items for ${chunk.length} SKUs`);
+            
+            const items = returnedItems.map((item: any) => ({
+              sku: item.asin, // ASIN is the canonical identifier in our system
+              name: item.summaries?.[0]?.itemName || item.asin,
+              description: item.summaries?.[0]?.itemDescription,
+              category: item.summaries?.[0]?.itemClassification,
+              mrp: 0,
+              sellingPrice: 0,
+              rawPayload: item,
+            }));
+            
+            allItems.push(...items);
+            success = true;
+          } catch (err: any) {
+            if (err.status === 429 || (err.response && err.response.status === 429)) {
+              this.logger.warn(`Rate limited by Amazon (429). Retrying in 2 seconds... (Attempt ${attempts}/3)`);
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            } else {
+              this.logger.error(`Failed to fetch catalog for chunk at index ${i}: ${err.message}`);
+              break; // break the retry loop on non-429 errors
+            }
+          }
         }
+        
+        // Amazon Catalog API allows 2 requests per second. Wait 600ms between chunks to be safe.
+        await new Promise(resolve => setTimeout(resolve, 600));
       }
       
       return this.success(allItems);
