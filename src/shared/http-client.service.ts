@@ -73,6 +73,19 @@ export class HttpClientService {
     );
   }
 
+  private sanitizeForJsonB(data: any): any {
+    if (data === null || data === undefined) return data;
+    try {
+      const str = typeof data === 'string' ? data : JSON.stringify(data);
+      if (!str) return data;
+      // Remove null characters \u0000 which cause PostgreSQL QueryFailedError
+      const sanitized = str.replace(/\u0000/g, '');
+      return typeof data === 'string' ? sanitized : JSON.parse(sanitized);
+    } catch {
+      return data;
+    }
+  }
+
   private async saveLog(config: any, response: any, duration: number, error: any) {
     if (!config) return;
     
@@ -94,9 +107,9 @@ export class HttpClientService {
       method: (config.method || 'GET').toUpperCase(),
       url: urlStr,
       requestHeaders: config.headers,
-      requestBody,
+      requestBody: this.sanitizeForJsonB(requestBody),
       responseStatus: response?.status || null,
-      responseBody: response?.data || null,
+      responseBody: this.sanitizeForJsonB(response?.data || null),
       durationMs: duration,
       error: error ? (error.message || String(error)) : null,
     });
