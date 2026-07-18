@@ -97,8 +97,8 @@ export class ProductsService {
     const missingAsinsArray = Array.from(missingAsins);
     if (missingAsinsArray.length > 0) {
       this.logger.log(`Found ${missingAsinsArray.length} missing related ASINs (parents/variants). Fetching them now...`);
-      for (let i = 0; i < missingAsinsArray.length; i += 20) {
-        const chunk = missingAsinsArray.slice(i, i + 20);
+      for (let i = 0; i < missingAsinsArray.length; i += 10) {
+        const chunk = missingAsinsArray.slice(i, i + 10);
         this.logger.log(`Fetching chunk of ${chunk.length} missing ASINs...`);
         try {
           const chunkResponse = await this.amazonConnector.fetchProductsByAsins(chunk);

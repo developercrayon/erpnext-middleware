@@ -421,9 +421,9 @@ export class AmazonConnector extends BaseConnector {
       }
       
       // Step 2: For each SKU, fetch full Catalog Item data (attributes, relationships, etc.)
-      // Catalog API accepts up to 20 identifiers per request
+      // Catalog API technically accepts up to 20 identifiers per request, but SILENTLY truncates the response to 10 items maximum.
       const allItems: NormalizedProduct[] = [];
-      const chunkSize = 20;
+      const chunkSize = 10;
       
       for (let i = 0; i < allSkus.length; i += chunkSize) {
         const chunk = allSkus.slice(i, i + chunkSize);
