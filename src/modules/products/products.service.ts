@@ -233,10 +233,11 @@ export class ProductsService {
         }
       }
 
-      // Skip parent containers / templates as they are not physical fulfillable products
+      // We must NOT skip parent containers / templates. They are required to be synced to ERPNext 
+      // as Template items before their child variants can be synced.
       if (isParent || mappedData.name?.toLowerCase().startsWith('template ')) {
-        this.logger.log(`Skipping template/parent product: ${item.sku} (${mappedData.name})`);
-        continue;
+        this.logger.log(`Found template/parent product: ${item.sku} (${mappedData.name}) - saving as Template`);
+        // We do not 'continue' here so that it gets saved to productRepo
       }
 
       // Also set the item status based on Amazon data (if we can infer it)
