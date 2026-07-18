@@ -713,8 +713,20 @@ export class ProductsService {
         itemCode = updatedItem.name || updatedItem.item_code || sellerSku;
       } else {
         this.logger.log(`Item ${sellerSku} does not exist in ERPNext. Creating...`);
-        const createdItem = await this.erpnextService.createItem(erpPayload);
-        itemCode = createdItem.name || createdItem.item_code || sellerSku;
+        try {
+          const createdItem = await this.erpnextService.createItem(erpPayload);
+          itemCode = createdItem.name || createdItem.item_code || sellerSku;
+        } catch (createErr: any) {
+          // Check if this is a Frappe ItemVariantExistsError
+          const match = createErr.message.match(/Item variant ([\w-]+) exists with same attributes/);
+          if (match) {
+            const existingItemCode = match[1];
+            this.logger.warn(`Item variant exists with same attributes. Mapping ${sellerSku} to duplicate existing item: ${existingItemCode}`);
+            itemCode = existingItemCode;
+          } else {
+            throw createErr;
+          }
+        }
       }
 
       // Save ERPNext ID back to middleware
