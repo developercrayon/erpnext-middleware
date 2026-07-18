@@ -251,28 +251,48 @@ export class AmazonConnector extends BaseConnector {
   ): Promise<ConnectorResult<NormalizedProduct[]>> {
     try {
       await this.ensureAuthenticated();
-      const response = await this.http.get(
-        `${this.endpoint}/catalog/2022-04-01/items`,
-        {
-          headers: this.spApiHeaders,
-          params: {
-            marketplaceIds: this.marketplaceId,
-            identifiers: asins.join(','),
-            identifiersType: 'ASIN',
-            includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
-          },
-        },
-      );
+      
+      let attempts = 0;
+      let success = false;
+      let items: any[] = [];
+      
+      while (attempts < 3 && !success) {
+        try {
+          attempts++;
+          const response = await this.http.get(
+            `${this.endpoint}/catalog/2022-04-01/items`,
+            {
+              headers: this.spApiHeaders,
+              params: {
+                marketplaceIds: this.marketplaceId,
+                identifiers: asins.join(','),
+                identifiersType: 'ASIN',
+                includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
+              },
+            },
+          );
 
-      const items = (response.data?.items || []).map((item: any) => ({
-        sku: item.asin,
-        name: item.summaries?.[0]?.itemName || item.asin,
-        description: item.summaries?.[0]?.itemDescription,
-        category: item.summaries?.[0]?.itemClassification,
-        mrp: 0,
-        sellingPrice: 0,
-        rawPayload: item,
-      }));
+          items = (response.data?.items || []).map((item: any) => ({
+            sku: item.asin,
+            name: item.summaries?.[0]?.itemName || item.asin,
+            description: item.summaries?.[0]?.itemDescription,
+            category: item.summaries?.[0]?.itemClassification,
+            mrp: 0,
+            sellingPrice: 0,
+            rawPayload: item,
+          }));
+          success = true;
+        } catch (err: any) {
+          if (err.status === 429 || (err.response && err.response.status === 429)) {
+            this.logger.warn(`Rate limited on fetchProductsByAsins (429). Retrying... (Attempt ${attempts}/3)`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            throw err;
+          }
+        }
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       return this.success(items);
     } catch (error) {
@@ -363,7 +383,7 @@ export class AmazonConnector extends BaseConnector {
       
       const columns = line.split('\t');
       const sku = columns[skuIndex];
-      if (sku) skus.add(sku);
+      if (sku) skus.add(sku.trim());
     }
     
     this.logger.log(`Extracted ${skus.size} unique SKUs from report.`);
