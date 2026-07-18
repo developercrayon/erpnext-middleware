@@ -338,12 +338,15 @@ export class AmazonConnector extends BaseConnector {
     const tsvData = typeof downloadResponse.data === 'string' ? downloadResponse.data : String(downloadResponse.data || '');
     
     const lines = tsvData.split('\n');
-    if (lines.length < 2) return [];
+    if (lines.length < 2) {
+      this.logger.warn(`Report contains insufficient lines: ${lines.length}. First 100 chars: ${tsvData.substring(0, 100)}`);
+      return [];
+    }
     
-    const headers = lines[0].split('\t');
+    const headers = lines[0].split('\t').map(h => h.trim().toLowerCase());
     const skuIndex = headers.indexOf('seller-sku');
     if (skuIndex === -1) {
-      this.logger.warn('Could not find seller-sku column in report!');
+      this.logger.warn(`Could not find 'seller-sku' column in report! Available columns: ${headers.join(', ')}`);
       return [];
     }
     
