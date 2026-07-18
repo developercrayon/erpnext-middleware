@@ -139,9 +139,10 @@ export class ProductsController {
   }
 
   @Post('sync/amazon-fetch')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Fetch products from Amazon, save to JSON, and store in DB' })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Queue job to fetch products from Amazon, save to JSON, and store in DB' })
   async fetchFromAmazon() {
-    return this.productsService.fetchFromAmazonAndStore();
+    const jobId = await this.productsService.triggerAmazonFetch();
+    return { message: 'Amazon fetch job queued', jobId };
   }
 }

@@ -22,6 +22,7 @@ export const JOB_NAMES = {
   // Products
   SYNC_PRODUCTS: 'sync-products',
   FETCH_PRODUCTS: 'fetch-products',
+  FETCH_AMAZON_PRODUCTS: 'fetch-amazon-products',
   FETCH_AMAZON_PRODUCT_TYPES: 'fetch-amazon-product-types',
   FETCH_AMAZON_PRODUCT_FIELDS: 'fetch-amazon-product-fields',
 

@@ -15,11 +15,14 @@ import { SyncHistory, SyncResourceType } from '../../../database/entities/operat
 import { MarketplaceSource } from '../../../database/entities/order.entity';
 import { NormalizedProduct } from '../../connectors/base/connector.types';
 
+import { ProductsService } from '../../products/products.service';
+
 @Processor(QUEUE_NAMES.PRODUCTS)
 export class ProductsProcessor {
   private readonly logger = new Logger(ProductsProcessor.name);
 
   constructor(
+    private readonly productsService: ProductsService,
     private readonly erpnextService: ERPNextService,
     private readonly amazonConnector: AmazonConnector,
     private readonly flipkartConnector: FlipkartConnector,
@@ -153,6 +156,17 @@ export class ProductsProcessor {
       }
 
     } catch (error) {
+      throw error;
+    }
+  }
+
+  @Process(JOB_NAMES.FETCH_AMAZON_PRODUCTS)
+  async fetchAmazonProducts(job: Job): Promise<void> {
+    this.logger.log(`Executing background job: Fetch Products from Amazon`);
+    try {
+      await this.productsService.fetchFromAmazonAndStore();
+    } catch (error) {
+      this.logger.error(`Error in fetchAmazonProducts: ${error.message}`, error.stack);
       throw error;
     }
   }

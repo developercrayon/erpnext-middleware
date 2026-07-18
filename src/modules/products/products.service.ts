@@ -41,36 +41,18 @@ export class ProductsService {
   // ─── Query Methods ────────────────────────────────────────────────────────
 
   async fetchFromAmazonAndStore(): Promise<any> {
-    this.logger.log('Fetching ALL products from Amazon via Listings Items API...');
+    this.logger.log('Fetching ALL products from Amazon via Reports API (GET_MERCHANT_LISTINGS_ALL_DATA)...');
     let allItems: any[] = [];
 
-    // ── PRIMARY: Listings Items API → returns every SKU the seller has ──────
+    // ── PRIMARY: Reports API → returns every SKU the seller has ──────
     // This is the correct approach — no keyword needed, no missing products.
     const listingsResult = await this.amazonConnector.fetchAllSellerListings();
     if (listingsResult.success && listingsResult.data && listingsResult.data.length > 0) {
       allItems = listingsResult.data;
-      this.logger.log(`Listings API returned ${allItems.length} products.`);
-    } else {
-      // ── FALLBACK: keyword search (old behavior) ───────────────────────────
-      this.logger.warn('Listings API returned 0 results or failed. Falling back to keyword search...');
-      let hasMore = true;
-      let nextToken: string | undefined = undefined;
-
-      while (hasMore) {
-        this.logger.log(`Fetching page of Amazon products... ${nextToken ? '(with token)' : ''}`);
-        const response = await this.amazonConnector.fetchProducts({ pageSize: 20, nextToken });
-
-        if (!response.success) {
-          throw new Error(response.error || 'Failed to fetch products from Amazon');
-        }
-
-        const items = response.data.items || [];
-        allItems = allItems.concat(items);
-
-        hasMore = !!response.data.hasMore && !!response.data.nextToken;
-        nextToken = response.data.nextToken;
-      }
-      this.logger.log(`Keyword search returned ${allItems.length} products.`);
+      this.logger.log(`Reports API returned ${allItems.length} products.`);
+    } else if (!listingsResult.success) {
+      this.logger.error(`Failed to fetch from Amazon: ${listingsResult.error}`);
+      throw new Error(listingsResult.error || 'Failed to fetch from Amazon');
     }
 
 
@@ -980,6 +962,30 @@ export class ProductsService {
     }
 
     this.logger.log(`Fetch products from ERPNext job queued: ${job.id}`);
+    return String(job.id);
+  }
+
+  async triggerAmazonFetch(): Promise<string> {
+    const job = await this.productsQueue.add(
+      JOB_NAMES.FETCH_AMAZON_PRODUCTS,
+      {},
+      { ...QUEUE_DEFAULT_OPTIONS, jobId: uuidv4() },
+    );
+
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.PRODUCTS,
+        jobName: JOB_NAMES.FETCH_AMAZON_PRODUCTS,
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: job.opts?.attempts || 3,
+      });
+    } catch (e) {
+      this.logger.error(`Failed to insert QueueJob record: ${e.message}`, e.stack);
+    }
+
+    this.logger.log(`Fetch products from Amazon job queued: ${job.id}`);
     return String(job.id);
   }
 

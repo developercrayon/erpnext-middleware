@@ -11,6 +11,7 @@ import { ProductsProcessor } from './processors/products.processor';
 import { RetryProcessor } from './processors/retry.processor';
 import { QueueListenerService } from './queue.listener';
 import { OrdersModule } from '../orders/orders.module';
+import { ProductsModule } from '../products/products.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
 import { AmazonModule } from '../connectors/amazon/amazon.module';
 import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
@@ -64,6 +65,7 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
       SyncHistory,
     ]),
     OrdersModule,
+    ProductsModule,
     ERPNextModule,
     AmazonModule,
     FlipkartModule,

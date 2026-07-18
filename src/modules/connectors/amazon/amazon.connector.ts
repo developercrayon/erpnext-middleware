@@ -279,47 +279,97 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
+  private async fetchSkusFromReportsApi(): Promise<string[]> {
+    this.logger.log('Requesting GET_MERCHANT_LISTINGS_ALL_DATA report...');
+    const reportParams = {
+      reportType: 'GET_MERCHANT_LISTINGS_ALL_DATA',
+      marketplaceIds: [this.marketplaceId],
+    };
+
+    const reportResponse = await this.http.post(
+      `${this.endpoint}/reports/2021-06-30/reports`,
+      reportParams,
+      { headers: this.spApiHeaders }
+    );
+
+    const reportId = reportResponse.data.reportId;
+    this.logger.log(`Report created with ID: ${reportId}. Polling for completion...`);
+
+    let reportDocumentId = null;
+    let attempts = 0;
+    while (attempts < 60) {
+      // 60 attempts * 5s = 5 minutes timeout
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      attempts++;
+      
+      const statusResponse = await this.http.get(
+        `${this.endpoint}/reports/2021-06-30/reports/${reportId}`,
+        { headers: this.spApiHeaders }
+      );
+      
+      const status = statusResponse.data.processingStatus;
+      this.logger.log(`Report ${reportId} status: ${status}`);
+      
+      if (status === 'DONE') {
+        reportDocumentId = statusResponse.data.reportDocumentId;
+        break;
+      } else if (status === 'FATAL' || status === 'CANCELLED') {
+        throw new Error(`Report generation failed with status: ${status}`);
+      }
+    }
+
+    if (!reportDocumentId) {
+      throw new Error(`Report generation timed out after 5 minutes`);
+    }
+
+    this.logger.log(`Report document ID: ${reportDocumentId}. Fetching document URL...`);
+    const docResponse = await this.http.get(
+      `${this.endpoint}/reports/2021-06-30/documents/${reportDocumentId}`,
+      { headers: this.spApiHeaders }
+    );
+    
+    const docUrl = docResponse.data.url;
+    
+    this.logger.log(`Downloading report from URL...`);
+    const downloadResponse = await this.http.get(docUrl, {
+      responseType: 'text',
+    });
+    
+    const tsvData = typeof downloadResponse.data === 'string' ? downloadResponse.data : String(downloadResponse.data || '');
+    
+    const lines = tsvData.split('\n');
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split('\t');
+    const skuIndex = headers.indexOf('seller-sku');
+    if (skuIndex === -1) {
+      this.logger.warn('Could not find seller-sku column in report!');
+      return [];
+    }
+    
+    const skus = new Set<string>();
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const columns = line.split('\t');
+      const sku = columns[skuIndex];
+      if (sku) skus.add(sku);
+    }
+    
+    this.logger.log(`Extracted ${skus.size} unique SKUs from report.`);
+    return Array.from(skus);
+  }
+
   // ─── Fetch ALL Seller Listings (no keyword needed) ────────────────────────
-  // Uses Listings Items API to get every SKU a seller has, then enriches
+  // Uses Reports API to get every SKU a seller has, then enriches
   // each with full Catalog data (attributes, relationships, summaries, etc.)
   async fetchAllSellerListings(): Promise<ConnectorResult<NormalizedProduct[]>> {
     try {
       await this.ensureAuthenticated();
       
-      // Step 1: Get ALL seller SKUs via Listings Items API (paginated)
-      const allSkus: string[] = [];
-      let nextToken: string | undefined = undefined;
-      let page = 1;
-      
-      do {
-        this.logger.log(`Fetching seller listings page ${page}...`);
-        const listParams: any = {
-          marketplaceIds: this.marketplaceId,
-          // Listings Items API max pageSize is 10
-          pageSize: 10,
-          includedData: 'identifiers,summaries',
-        };
-        if (nextToken) listParams.pageToken = nextToken;
-
-        const listingsResponse = await this.http.get(
-          `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}`,
-          {
-            headers: this.spApiHeaders,
-            params: listParams,
-          },
-        );
-        
-        const listings = listingsResponse.data?.items || [];
-        this.logger.log(`  Page ${page}: got ${listings.length} listings`);
-        for (const listing of listings) {
-          // The Listings Items API returns the seller SKU in listing.sku
-          const sku = listing.sku;
-          if (sku) allSkus.push(sku);
-        }
-        
-        nextToken = listingsResponse.data?.pagination?.nextToken;
-        page++;
-      } while (nextToken);
+      // Step 1: Get ALL seller SKUs via Reports API
+      const allSkus = await this.fetchSkusFromReportsApi();
       
       this.logger.log(`Found ${allSkus.length} total seller SKUs. Fetching full catalog data...`);
       
