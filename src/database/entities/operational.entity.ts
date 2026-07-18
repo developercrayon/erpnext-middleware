@@ -148,39 +148,7 @@ export class QueueJob {
   updatedAt: Date;
 }
 
-@Entity('error_logs')
-@Index(['source', 'createdAt'])
-export class ErrorLog {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
 
-  @Column({ name: 'source', type: 'varchar' })
-  source: string;
-
-  @Column({ name: 'context', type: 'varchar', nullable: true })
-  context: string;
-
-  @Column({ name: 'message', type: 'text' })
-  message: string;
-
-  @Column({ name: 'stack_trace', type: 'text', nullable: true })
-  stackTrace: string;
-
-  @Column({ name: 'payload', type: 'jsonb', nullable: true })
-  payload: Record<string, any>;
-
-  @Column({ name: 'resolved', type: 'boolean', default: false })
-  resolved: boolean;
-
-  @Column({ name: 'resolved_at', type: 'timestamptz', nullable: true })
-  resolvedAt: Date;
-
-  @Column({ name: 'correlation_id', type: 'varchar', nullable: true })
-  correlationId: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-}
 
 @Entity('settings')
 @Index(['key'], { unique: true })

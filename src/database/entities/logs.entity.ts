@@ -133,7 +133,7 @@ export class ApiLog {
   createdAt: Date;
 }
 
-@Entity('error_logs')
+@Entity('error_logs_v2')
 @Index(['source', 'resolved'])
 export class ErrorLog {
   @PrimaryGeneratedColumn('uuid')
