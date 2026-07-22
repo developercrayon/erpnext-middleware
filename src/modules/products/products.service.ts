@@ -488,13 +488,20 @@ export class ProductsService {
       if (!attrsObj || !key) return [];
       const val = attrsObj[key];
       if (!val) return [];
+      
+      const extractStr = (v: any): string => {
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'object') {
+          return String(v.value ?? v.name ?? v.type ?? v.text ?? (Object.keys(v).length ? JSON.stringify(v) : ''));
+        }
+        return String(v);
+      };
+
       let result: string[] = [];
       if (Array.isArray(val)) {
-        result = val.map(v => v?.value ?? String(v)).filter(v => v);
-      } else if (typeof val === 'object' && val.value !== undefined) {
-        result = [String(val.value)];
+        result = val.map(extractStr).filter(v => v && v !== '[object Object]');
       } else {
-        result = [String(val)];
+        result = [extractStr(val)].filter(v => v && v !== '[object Object]');
       }
       return [...new Set(result)];
     };
@@ -544,8 +551,9 @@ export class ProductsService {
         case 'Select': {
           // For Select, the `options` field contains newline-separated valid values
           if (erpField.options) {
-            const validOptions = erpField.options.split('\\n').map(o => o.trim()).filter(o => o);
-            const match = validOptions.find(o => o.toLowerCase() === amazonValue.toLowerCase());
+            const validOptions = erpField.options.split(/\\n|\n|\r\n/).map(o => o.trim()).filter(o => o);
+            const normalize = (s: string) => s.toLowerCase().replace(/[-_]/g, ' ').trim();
+            const match = validOptions.find(o => normalize(o) === normalize(amazonValue));
             if (match) {
               erpPayload[mapping.erpnextField] = match;
             } else {
@@ -613,11 +621,22 @@ export class ProductsService {
                 try {
                   // Some standalone doctypes require 'title', others use 'name' or autonaming
                   // For those with field-based autoname, we must also pass the actual valueField.
-                  const createRes = await connector.createDocTypeEntry(resolutionDoctype, {
+                  const payloadWithField = {
                     name: amzVal,
                     title: amzVal,
                     [valueField]: amzVal
-                  });
+                  };
+                  let createRes = await connector.createDocTypeEntry(resolutionDoctype, payloadWithField);
+                  
+                  if (!createRes.success) {
+                    this.logger.warn(`[DYNAMIC-MAP] First attempt failed creating "${amzVal}" in "${resolutionDoctype}" with ${valueField}: ${JSON.stringify(createRes.error)}. Retrying with basic fields...`);
+                    // Retry with just name and title (often the valueField from the child table doesn't exist on the parent)
+                    createRes = await connector.createDocTypeEntry(resolutionDoctype, {
+                      name: amzVal,
+                      title: amzVal
+                    });
+                  }
+
                   if (!createRes.success) {
                     this.logger.warn(`[DYNAMIC-MAP] Could not create "${amzVal}" in "${resolutionDoctype}": ${JSON.stringify(createRes.error)}. Skipping field.`);
                     continue;
@@ -642,10 +661,34 @@ export class ProductsService {
           break;
         }
 
-        case 'Link':
-          // For Link fields, pass the value directly (it's a docname reference)
+        case 'Link': {
+          const linkedDoctype = erpField.options;
+          if (linkedDoctype) {
+            const amzVal = amazonValue;
+            const existingResult = await connector.getDocTypeEntries(linkedDoctype, amzVal);
+            const existing: any[] = existingResult.success ? (existingResult.data || []) : [];
+            const found = existing.find(e => (e.name || '').toLowerCase() === amzVal.toLowerCase());
+            
+            if (!found) {
+              this.logger.log(`[DYNAMIC-MAP] Link "${amzVal}" not in "${linkedDoctype}" — creating...`);
+              try {
+                const createRes = await connector.createDocTypeEntry(linkedDoctype, {
+                  name: amzVal,
+                  title: amzVal
+                });
+                if (createRes.success) {
+                  this.logger.log(`[DYNAMIC-MAP] Created Link target "${amzVal}" in "${linkedDoctype}"`);
+                } else {
+                  this.logger.warn(`[DYNAMIC-MAP] Failed to create Link target "${amzVal}": ${createRes.error}`);
+                }
+              } catch (err: any) {
+                this.logger.warn(`[DYNAMIC-MAP] Exception creating Link target "${amzVal}": ${err.message}`);
+              }
+            }
+          }
           erpPayload[mapping.erpnextField] = amazonValue;
           break;
+        }
 
         default:
           // Data, Small Text, Long Text, Text, Text Editor etc — direct string
@@ -722,6 +765,13 @@ export class ProductsService {
           if (match) {
             const existingItemCode = match[1];
             this.logger.warn(`Item variant exists with same attributes. Mapping ${sellerSku} to duplicate existing item: ${existingItemCode}`);
+            
+            this.logger.log(`Updating duplicate existing item ${existingItemCode} with new payload...`);
+            const payloadForUpdate = { ...erpPayload };
+            delete payloadForUpdate.item_code;
+            delete payloadForUpdate.sku;
+            await this.erpnextService.updateItem(existingItemCode, payloadForUpdate);
+            
             itemCode = existingItemCode;
           } else {
             throw createErr;

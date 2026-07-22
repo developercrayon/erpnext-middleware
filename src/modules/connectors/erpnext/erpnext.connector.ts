@@ -61,15 +61,16 @@ export class ERPNextConnector extends BaseConnector {
       return this.success(response.data?.data);
     } catch (error: any) {
       let errMsg = error.message;
-      if (error.response?.data) {
+      const responseData = error.response?.data || error.data;
+      if (responseData) {
         try {
-          if (error.response.data._server_messages) {
-            errMsg = JSON.parse(JSON.parse(error.response.data._server_messages)[0]).message;
+          if (responseData._server_messages) {
+            errMsg = JSON.parse(JSON.parse(responseData._server_messages)[0]).message;
           } else {
-            errMsg = JSON.stringify(error.response.data);
+            errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
           }
         } catch (e) {
-          errMsg = JSON.stringify(error.response.data);
+          errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
         }
       }
       this.logger.error(`Failed to update item ${itemCode} in ERPNext: ${errMsg}`);
@@ -619,15 +620,16 @@ export class ERPNextConnector extends BaseConnector {
       return this.success(response.data?.data);
     } catch (error: any) {
       let errMsg = error.message;
-      if (error.response?.data) {
+      const responseData = error.response?.data || error.data;
+      if (responseData) {
         try {
-          if (error.response.data._server_messages) {
-            errMsg = JSON.parse(JSON.parse(error.response.data._server_messages)[0]).message;
+          if (responseData._server_messages) {
+            errMsg = JSON.parse(JSON.parse(responseData._server_messages)[0]).message;
           } else {
-            errMsg = JSON.stringify(error.response.data);
+            errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
           }
         } catch (e) {
-          errMsg = JSON.stringify(error.response.data);
+          errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
         }
       }
       this.logger.error(`Failed to create ERPNext item: ${errMsg}`);
