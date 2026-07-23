@@ -938,7 +938,8 @@ export class ProductsService {
           // Automatically trigger marketplace syncs if configured
           if (product.customAmazon) {
             this.logger.log(`Field updated for ${product.sku} with customAmazon=true. Triggering Amazon patch sync.`);
-            await this.productsQueue.add(JOB_NAMES.PATCH_AMAZON_PRODUCT, { sku: product.sku, changedKeys: Object.keys(erpPayload) });
+            this.logger.log(`[PATCH] changedKeys being queued: ${JSON.stringify(Object.keys(erpPayload))}`);
+            await this.productsQueue.add(JOB_NAMES.PATCH_AMAZON_PRODUCT, { sku: product.sku, changedKeys: Object.keys(erpPayload) }, { attempts: 3, backoff: { type: 'exponential', delay: 5000 } });
           }
           if (product.customFlipkart) {
             this.logger.log(`Field updated for ${product.sku} with customFlipkart=true. Triggering Flipkart sync.`);
@@ -1026,8 +1027,10 @@ export class ProductsService {
         attempts: 0,
         maxAttempts: job.opts?.attempts || 3,
       });
-    } catch (e) {
-      this.logger.error(`Failed to insert QueueJob record: ${e.message}`, e.stack);
+    } catch (e: any) {
+      if (e.code !== '23505') { // Ignore Postgres unique violation
+        this.logger.error(`Failed to insert QueueJob record: ${e.message}`, e.stack);
+      }
     }
 
     this.logger.log(`Product sync job queued: ${job.id}`);

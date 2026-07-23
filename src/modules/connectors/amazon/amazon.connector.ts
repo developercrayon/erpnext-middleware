@@ -544,6 +544,11 @@ export class AmazonConnector extends BaseConnector {
         }
       }
 
+      const patchedPaths = new Set<string>();
+
+      this.logger.log(`[PATCH DEBUG] changedKeys received: ${JSON.stringify(changedKeys)}`);
+      this.logger.log(`[PATCH DEBUG] keyMap entries for changedKeys: ${JSON.stringify(changedKeys.map(k => ({ key: k, maps: keyMap[k] })))}`);
+
       for (const key of changedKeys) {
         // Skip price fields for patching, they should use price sync
         if (['price', 'sellingPrice', 'mrp', 'customAmazonPrice'].includes(key) || key.includes('price')) {
@@ -553,16 +558,24 @@ export class AmazonConnector extends BaseConnector {
         const amazonAttrs = keyMap[key];
         if (amazonAttrs) {
           for (const attr of amazonAttrs) {
-            if (attributes[attr] !== undefined) {
+            const path = `/attributes/${attr}`;
+            if (attributes[attr] !== undefined && !patchedPaths.has(path)) {
               patches.push({
                 op: 'replace',
-                path: `/attributes/${attr}`,
+                path: path,
                 value: attributes[attr]
               });
+              patchedPaths.add(path);
+            } else if (attributes[attr] === undefined) {
+              this.logger.warn(`[PATCH DEBUG] Attribute '${attr}' is undefined in generated payload - skipping patch for key '${key}'`);
             }
           }
+        } else {
+          this.logger.warn(`[PATCH DEBUG] No keyMap entry for changed key '${key}' - this field won't be patched`);
         }
       }
+
+      this.logger.log(`[PATCH DEBUG] Built ${patches.length} patches: ${JSON.stringify(patches.map(p => p.path))}`);
 
       if (patches.length === 0) {
          this.logger.log(`No mappable fields found for partial update of ${product.sku} (or they were price fields)`);
@@ -586,8 +599,15 @@ export class AmazonConnector extends BaseConnector {
       );
 
       // SP-API returns 200 but might contain submission issues in the body
+      this.logger.log(`[PATCH DEBUG] Amazon response status: ${response.status}, body: ${JSON.stringify(response.data)}`);
       const issues = response.data?.issues || [];
       const errors = issues.filter((i: any) => i.severity === 'ERROR');
+      const warnings = issues.filter((i: any) => i.severity === 'WARNING');
+
+      if (warnings.length > 0) {
+        const warnMsg = warnings.map((w: any) => `[${w.code}] ${w.message}`).join(' | ');
+        this.logger.warn(`[PATCH] Amazon accepted but with warnings: ${warnMsg}`);
+      }
 
       if (errors.length > 0) {
         const errorMsg = errors.map((e: any) => `[${e.code}] ${e.message}`).join(' | ');
@@ -597,8 +617,13 @@ export class AmazonConnector extends BaseConnector {
 
       return this.success(true);
     } catch (error: any) {
-      this.logger.error(`Failed to patch Amazon listing: ${error.response?.data?.errors?.[0]?.message || error.message}`);
-      return this.failure(error.message);
+      const data = error.data || error.response?.data;
+      const errMsg = data?.errors?.[0]?.message || data?.issues?.[0]?.message || error.message;
+      this.logger.error(`Failed to patch Amazon listing: ${errMsg}`);
+      if (data) {
+        this.logger.error(`Amazon full response: ${JSON.stringify(data)}`);
+      }
+      return this.failure(errMsg);
     }
   }
 
