@@ -321,37 +321,6 @@ export class ERPNextConnector extends BaseConnector {
           variantAttributes: variantAttributes.length > 0 ? variantAttributes : undefined,
           thumbnailUrl: images.length > 0 ? images[0] : undefined,
           images,
-          customItemTypeName: full?.custom_item_type_name || listItem.custom_item_type_name,
-          customModelName: full?.custom_model_name || listItem.custom_model_name,
-          customStyle: full?.custom_style || listItem.custom_style,
-          customNumberOfItems: full?.custom_number_of_items || listItem.custom_number_of_items ? parseInt(full?.custom_number_of_items || listItem.custom_number_of_items, 10) : undefined,
-          customColor: full?.custom_color || listItem.custom_color,
-          customNumberOfPieces: full?.custom_number_of_pieces || listItem.custom_number_of_pieces ? parseInt(full?.custom_number_of_pieces || listItem.custom_number_of_pieces, 10) : undefined,
-          customModelNumber: full?.custom_model_number || listItem.custom_model_number,
-          customManufacturerContactInfo: full?.custom__manufacturer_contact_information || listItem.custom__manufacturer_contact_information,
-          customRequiredAssembly: (full?.custom_required_assembly ?? listItem.custom_required_assembly) !== undefined ? Boolean(full?.custom_required_assembly ?? listItem.custom_required_assembly) : undefined,
-          customDepth: (full?.custom_depth ?? listItem.custom_depth) !== undefined ? parseFloat(full?.custom_depth ?? listItem.custom_depth) : undefined,
-          customWidth: (full?.custom_width ?? listItem.custom_width) !== undefined ? parseFloat(full?.custom_width ?? listItem.custom_width) : undefined,
-          customHeight: (full?.custom_height ?? listItem.custom_height) !== undefined ? parseFloat(full?.custom_height ?? listItem.custom_height) : undefined,
-          customNumberOfPacks: (full?.custom_number_of_packs ?? listItem.custom_number_of_packs) !== undefined ? parseFloat(full?.custom_number_of_packs ?? listItem.custom_number_of_packs) : undefined,
-          customExternalProductInformation: full?.custom__external_product_information ?? listItem.custom__external_product_information,
-          customShelfThickness: (full?.custom_shelf_thickness ?? listItem.custom_shelf_thickness) !== undefined ? parseFloat(full?.custom_shelf_thickness ?? listItem.custom_shelf_thickness) : undefined,
-          customAssemblyInstructions: full?.custom_assembly_instructions ?? listItem.custom_assembly_instructions,
-          customUnit: full?.custom_unit ?? listItem.custom_unit,
-          customItemShape: full?.custom_item_shape ?? listItem.custom_item_shape,
-          customShelfType: full?.custom__shelf_type ?? listItem.custom__shelf_type,
-          customNumberOfShelves: (full?.custom_number_of_shelves ?? listItem.custom_number_of_shelves) !== undefined ? parseInt(full?.custom_number_of_shelves ?? listItem.custom_number_of_shelves, 10) : undefined,
-          customMountingType: full?.custom_mounting_type ?? listItem.custom_mounting_type,
-          customFinishType: full?.custom_finish_type ?? listItem.custom_finish_type,
-          customSelectMaterial: full?.custom_select_material ?? listItem.custom_select_material,
-          customIncludedComponents: full?.custom_included_components ?? listItem.custom_included_components,
-          customAmazonBulletPoint: full?.custom_amazon_bullet_point ?? listItem.custom_amazon_bullet_point,
-          customPackerContactInformation: full?.custom_packer_contact_information ?? listItem.custom_packer_contact_information,
-          customSpecificUsesForProduct: full?.custom_specific_uses_for_product ?? listItem.custom_specific_uses_for_product,
-          customRecommendedUsesForProduct: full?.custom_recommended_uses_for_product ?? listItem.custom_recommended_uses_for_product,
-          customRoomType: full?.custom_room_type ?? listItem.custom_room_type,
-          customSpecialFeature: full?.custom_special_feature ?? listItem.custom_special_feature,
-          customCareInstructions: full?.custom_care_instructions ?? listItem.custom_care_instructions,
           attributes: { ...listItem, ...(full || {}) },
           rawPayload: full ? { ...listItem, ...full } : listItem,
         };
@@ -668,12 +637,23 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  private cachedItemSchema: any = null;
+  private cachedItemSchemaTimestamp: number = 0;
+  private readonly CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
   async getItemSchema(): Promise<ConnectorResult<any>> {
+    if (this.cachedItemSchema && (Date.now() - this.cachedItemSchemaTimestamp < this.CACHE_TTL_MS)) {
+      return this.success(this.cachedItemSchema);
+    }
+    
     try {
       const response = await this.http.get(`${this.baseUrl}/api/method/frappe.desk.form.load.getdoctype?doctype=Item`, {
         headers: this.authHeaders,
       });
-      return this.success(response.data?.docs?.[0]?.fields || []);
+      const schema = response.data?.docs?.[0]?.fields || [];
+      this.cachedItemSchema = schema;
+      this.cachedItemSchemaTimestamp = Date.now();
+      return this.success(schema);
     } catch (error) {
       return this.failure(error);
     }

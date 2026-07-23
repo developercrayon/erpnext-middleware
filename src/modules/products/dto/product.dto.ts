@@ -83,7 +83,6 @@ export class UpdateProductDto {
   @IsOptional() @IsNumber() sellingPrice?: number;
   @IsOptional() @IsNumber() mrp?: number;
   @IsOptional() @IsString() upc?: string;
-  @IsOptional() @IsString() customModelName?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsBoolean() customAmazon?: boolean;
   @IsOptional() @IsBoolean() customFlipkart?: boolean;

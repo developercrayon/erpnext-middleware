@@ -165,33 +165,7 @@ export class ProductsService {
         name: getAmzStr(attrs, 'item_name') || item.name,
         description: getAmzStr(attrs, 'product_description') || item.description,
         brand: getAmzStr(attrs, 'brand') || item.brand,
-        customModelName: getAmzStr(attrs, 'model_name'),
-        customStyle: getAmzStr(attrs, 'style'),
-        customNumberOfItems: getAmzNum(attrs, 'number_of_items'),
-        customColor: getAmzStr(attrs, 'color'),
-        customNumberOfPieces: getAmzNum(attrs, 'number_of_pieces'),
-        customModelNumber: getAmzStr(attrs, 'model_number'),
-        customManufacturerContactInfo: getAmzStr(attrs, 'manufacturer_contact_information') || getAmzStr(attrs, 'rtip_manufacturer_contact_information'),
-        customDepth: attrs?.item_dimensions?.[0]?.depth?.value,
-        customWidth: attrs?.item_dimensions?.[0]?.width?.value,
-        customHeight: attrs?.item_dimensions?.[0]?.height?.value,
-        customNumberOfPacks: getAmzNum(attrs, 'number_of_packs'),
-        customExternalProductInformation: getAmzStr(attrs, 'external_product_information'),
-        customShelfThickness: getAmzNum(attrs, 'shelf_thickness'),
-        customAssemblyInstructions: getAmzStr(attrs, 'assembly_instructions'),
-        customItemShape: getAmzStr(attrs, 'item_shape'),
-        customShelfType: getAmzStr(attrs, 'shelf_type'),
-        customNumberOfShelves: getAmzNum(attrs, 'number_of_shelves'),
-        customMountingType: getAmzStr(attrs, 'mounting_type'),
-        customFinishType: getAmzStr(attrs, 'finish_type'),
-        customIncludedComponents: getAmzObj(attrs, 'included_components'),
-        customAmazonBulletPoint: getAmzObj(attrs, 'bullet_point'),
-        customPackerContactInformation: getAmzObj(attrs, 'packer_contact_information'),
-        customSpecificUsesForProduct: getAmzObj(attrs, 'specific_uses_for_product'),
-        customRecommendedUsesForProduct: getAmzObj(attrs, 'recommended_uses_for_product'),
-        customRoomType: getAmzObj(attrs, 'room_type'),
-        customSpecialFeature: getAmzObj(attrs, 'special_feature'),
-        customCareInstructions: getAmzObj(attrs, 'care_instructions'),
+
         attributes: item.rawPayload,
       };
 
@@ -257,6 +231,7 @@ export class ProductsService {
           category: item.category,
           status: mappedStatus,
           isFromAmazon: true,
+          customAmazon: true,
           isParent,
           variantOf,
           variationTheme,
@@ -267,6 +242,7 @@ export class ProductsService {
         });
       } else {
         product.isFromAmazon = true;
+        product.customAmazon = true;
         product.isParent = isParent;
         product.variantOf = variantOf;
         product.variationTheme = variationTheme;
@@ -277,6 +253,13 @@ export class ProductsService {
 
       const saved = await this.productRepo.save(product);
       savedProducts.push(saved);
+    }
+
+    this.logger.log('Automatically fetching exact prices for synced products...');
+    try {
+      await this.fetchAndStoreAmazonPrices();
+    } catch (err) {
+      this.logger.error(`Error automatically fetching prices after sync: ${err.message}`);
     }
 
     return {
@@ -373,6 +356,8 @@ export class ProductsService {
       custom_amazon: 1,
       disabled: 0,
       is_sales_item: 0,
+      custom_mrp: product.mrp || 0,
+      custom_amazon_price: product.customAmazonPrice || 0,
     };
 
     // ── Variant handling ───────────────────────────────────────────────────────
@@ -883,7 +868,7 @@ export class ProductsService {
       if (dto.sellingPrice !== undefined) erpPayload.custom_amazon_price = dto.sellingPrice; // Note: ERPNext price sync is complex, updating custom fields
       if (dto.mrp !== undefined) erpPayload.custom_mrp = dto.mrp;
       if (dto.upc !== undefined) erpPayload.custom_upc = dto.upc;
-      if (dto.customModelName !== undefined) erpPayload.custom_model_name = dto.customModelName;
+
       if (dto.description !== undefined) erpPayload.description = dto.description;
       if (dto.customAmazon !== undefined) erpPayload.custom_amazon = dto.customAmazon ? 1 : 0;
       if (dto.customFlipkart !== undefined) erpPayload.custom_flipkart = dto.customFlipkart ? 1 : 0;
@@ -902,13 +887,35 @@ export class ProductsService {
 
         // For standard fields that we usually map from the root DTO, if they were sent inside erpnextFields 
         // (which the admin panel does), we should preserve them in erpPayload before deleting from cleanFields.
+        // We also want to save them back to the product's local database root fields so they stay in sync.
         const explicitFields = ['item_name', 'item_code', 'disabled', 'brand', 'item_group', 'gst_hsn_code', 'weight_per_unit', 'weight_uom', 'standard_rate', 'custom_amazon_price', 'custom_mrp', 'custom_upc', 'custom_model_name', 'description', 'custom_amazon', 'custom_flipkart', 'custom_flipkart_price', 'custom_amazon_product_type'];
 
         explicitFields.forEach(f => {
-          if (cleanFields[f] !== undefined && erpPayload[f] === undefined) {
-            erpPayload[f] = cleanFields[f];
+          if (cleanFields[f] !== undefined) {
+            if (erpPayload[f] === undefined) {
+              erpPayload[f] = cleanFields[f];
+            }
+            
+            // Map back to local DB fields for fast local loads
+            if (f === 'item_name') product.name = cleanFields[f];
+            if (f === 'description') product.description = cleanFields[f];
+            if (f === 'item_group') product.category = cleanFields[f];
+            if (f === 'brand') product.brand = cleanFields[f];
+            if (f === 'gst_hsn_code') product.hsnCode = cleanFields[f];
+            if (f === 'weight_per_unit') product.weight = cleanFields[f];
+            if (f === 'weight_uom') product.weightUom = cleanFields[f];
+            if (f === 'standard_rate') product.costPrice = cleanFields[f];
+            if (f === 'custom_amazon_price') product.customAmazonPrice = cleanFields[f];
+            if (f === 'custom_flipkart_price') product.customFlipkartPrice = cleanFields[f];
+            if (f === 'custom_mrp') product.mrp = cleanFields[f];
+            if (f === 'custom_upc') product.upc = cleanFields[f];
+
+            if (f === 'disabled') product.status = cleanFields[f] === 1 ? ProductStatus.INACTIVE : ProductStatus.ACTIVE;
+            if (f === 'custom_amazon') product.customAmazon = cleanFields[f] === 1 || cleanFields[f] === true;
+            if (f === 'custom_flipkart') product.customFlipkart = cleanFields[f] === 1 || cleanFields[f] === true;
+            
+            delete cleanFields[f];
           }
-          delete cleanFields[f];
         });
 
         Object.assign(erpPayload, cleanFields);
@@ -921,9 +928,27 @@ export class ProductsService {
         await this.productRepo.save(product);
       }
 
-      if (Object.keys(erpPayload).length > 0) {
-        await this.erpnextService.updateItem(product.erpnextItemCode, erpPayload);
-      }
+      // Push to ERPNext and queues in the background to keep frontend response fast
+      Promise.resolve().then(async () => {
+        try {
+          if (Object.keys(erpPayload).length > 0) {
+            await this.erpnextService.updateItem(product.erpnextItemCode, erpPayload);
+          }
+          
+          // Automatically trigger marketplace syncs if configured
+          if (product.customAmazon) {
+            this.logger.log(`Field updated for ${product.sku} with customAmazon=true. Triggering Amazon patch sync.`);
+            await this.productsQueue.add(JOB_NAMES.PATCH_AMAZON_PRODUCT, { sku: product.sku, changedKeys: Object.keys(erpPayload) });
+          }
+          if (product.customFlipkart) {
+            this.logger.log(`Field updated for ${product.sku} with customFlipkart=true. Triggering Flipkart sync.`);
+            await this.triggerSync(MarketplaceSource.FLIPKART, [product.sku]);
+          }
+        } catch (e) {
+          this.logger.error(`Background sync failed for ${product.sku}: ${e.message}`);
+          // TODO: Add logic to update needed error fields if required
+        }
+      });
     }
 
     return product;
@@ -1058,6 +1083,128 @@ export class ProductsService {
     return String(job.id);
   }
 
+  async triggerAmazonPricesFetch(): Promise<string> {
+    const job = await this.productsQueue.add(
+      JOB_NAMES.FETCH_AMAZON_PRICES,
+      {},
+      { ...QUEUE_DEFAULT_OPTIONS, jobId: uuidv4() },
+    );
+
+    try {
+      await this.queueJobRepo.insert({
+        bullJobId: String(job.id),
+        queueName: QUEUE_NAMES.PRODUCTS,
+        jobName: JOB_NAMES.FETCH_AMAZON_PRICES,
+        status: QueueJobStatus.WAITING,
+        attempts: 0,
+        maxAttempts: job.opts?.attempts || 3,
+      });
+    } catch (e) {
+      this.logger.error(`Failed to insert QueueJob record: ${e.message}`, e.stack);
+    }
+
+    this.logger.log(`Fetch Amazon prices job queued: ${job.id}`);
+    return String(job.id);
+  }
+
+  async fetchAndStoreAmazonPrices(skus?: string[]): Promise<void> {
+    const products = await this.productRepo.find({ where: { status: ProductStatus.ACTIVE } });
+    if (products.length === 0) {
+      this.logger.log('No active products found to update prices.');
+      return;
+    }
+    
+    // If no specific SKUs provided, update all Amazon listed products
+    if (!skus || skus.length === 0) {
+      skus = products.map(p => p.sku).filter(sku => sku);
+    }
+    
+    this.logger.log(`Fetching exact pricing (MRP & Selling Price) from Amazon Listings API for ${skus.length} SKUs...`);
+    
+    const logsDir = path.join(process.cwd(), 'logs');
+    await fs.mkdir(logsDir, { recursive: true });
+    const jsonPath = path.join(logsDir, `amazon_listing_prices_${Date.now()}.json`);
+    const allResponses = [];
+
+    // Listings Items API allows 5 requests per second. We will process 5 SKUs concurrently per batch.
+    const batchSize = 5;
+    let successCount = 0;
+    
+    for (let i = 0; i < skus.length; i += batchSize) {
+      const batchSkus = skus.slice(i, i + batchSize);
+      try {
+        const batchPromises = batchSkus.map(async (sku) => {
+          const result = await this.amazonConnector.fetchListingPricing(sku);
+          if (result.success && result.data) {
+            allResponses.push({ sku, data: result.data });
+            
+            const product = products.find(p => p.sku === sku);
+            if (product && result.data.attributes) {
+              const attrs = result.data.attributes;
+              
+              // Extract list_price (MRP)
+              let mrp = null;
+              if (attrs.list_price && attrs.list_price.length > 0) {
+                mrp = attrs.list_price[0].value_with_tax || attrs.list_price[0].value;
+              }
+              
+              // Extract purchasable_offer (Selling Price and sometimes MRP)
+              let sellingPrice = null;
+              if (attrs.purchasable_offer && attrs.purchasable_offer.length > 0) {
+                const offer = attrs.purchasable_offer[0];
+                
+                // Sometimes MRP is inside purchasable_offer as maximum_retail_price
+                if (!mrp && offer.maximum_retail_price && offer.maximum_retail_price.length > 0) {
+                  const mrpSchedule = offer.maximum_retail_price[0].schedule;
+                  if (mrpSchedule && mrpSchedule.length > 0) {
+                    mrp = mrpSchedule[0].value_with_tax;
+                  }
+                }
+                
+                if (offer.our_price && offer.our_price.length > 0) {
+                  const schedule = offer.our_price[0].schedule;
+                  if (schedule && schedule.length > 0) {
+                    sellingPrice = schedule[0].value_with_tax;
+                  }
+                }
+              }
+              
+              // Update DB
+              product.amazonPrice = result.data;
+              if (mrp) {
+                product.mrp = parseFloat(mrp);
+              }
+              if (sellingPrice) {
+                product.customAmazonPrice = parseFloat(sellingPrice);
+                if (!mrp) {
+                  product.mrp = parseFloat(sellingPrice); // Fallback if MRP is missing
+                }
+              }
+              
+              await this.productRepo.save(product);
+              successCount++;
+            }
+          } else if (result.success && result.data === null) {
+             this.logger.debug(`SKU ${sku} not found on Amazon Listings API`);
+          } else {
+            this.logger.error(`Failed to fetch listing pricing for SKU ${sku}: ${result.error}`);
+          }
+        });
+
+        await Promise.all(batchPromises);
+        
+      } catch (error) {
+        this.logger.error(`Error processing listing price batch starting at ${i}: ${error.message}`);
+      }
+      
+      // Sleep to avoid rate limits (Listings API has 5 requests per second)
+      await new Promise(resolve => setTimeout(resolve, 1200));
+    }
+    
+    await fs.writeFile(jsonPath, JSON.stringify(allResponses, null, 2), 'utf-8');
+    this.logger.log(`Successfully updated exact pricing for ${successCount} products. Response saved to ${jsonPath}`);
+  }
+
   // ─── ERPNext Sync ─────────────────────────────────────────────────────────
 
   /**
@@ -1094,37 +1241,7 @@ export class ProductsService {
             amazonAsin: p.amazonAsin || null,
             amazonProductType: p.amazonProductType || null,
             status: ProductStatus.ACTIVE,
-            customItemTypeName: p.customItemTypeName || null,
-            customModelName: p.customModelName || null,
-            customStyle: p.customStyle || null,
-            customNumberOfItems: p.customNumberOfItems || null,
-            customColor: p.customColor || null,
-            customNumberOfPieces: p.customNumberOfPieces || null,
-            customModelNumber: p.customModelNumber || null,
-            customManufacturerContactInfo: p.customManufacturerContactInfo || null,
-            customRequiredAssembly: p.customRequiredAssembly !== undefined ? p.customRequiredAssembly : null,
-            customDepth: p.customDepth !== undefined ? p.customDepth : null,
-            customWidth: p.customWidth !== undefined ? p.customWidth : null,
-            customHeight: p.customHeight !== undefined ? p.customHeight : null,
-            customNumberOfPacks: p.customNumberOfPacks !== undefined ? p.customNumberOfPacks : null,
-            customExternalProductInformation: p.customExternalProductInformation || null,
-            customShelfThickness: p.customShelfThickness !== undefined ? p.customShelfThickness : null,
-            customAssemblyInstructions: p.customAssemblyInstructions || null,
-            customUnit: p.customUnit || null,
-            customItemShape: p.customItemShape || null,
-            customShelfType: p.customShelfType || null,
-            customNumberOfShelves: p.customNumberOfShelves || null,
-            customMountingType: p.customMountingType || null,
-            customFinishType: p.customFinishType || null,
-            customSelectMaterial: p.customSelectMaterial || null,
-            customIncludedComponents: p.customIncludedComponents || null,
-            customAmazonBulletPoint: p.customAmazonBulletPoint || null,
-            customPackerContactInformation: p.customPackerContactInformation || null,
-            customSpecificUsesForProduct: p.customSpecificUsesForProduct || null,
-            customRecommendedUsesForProduct: p.customRecommendedUsesForProduct || null,
-            customRoomType: p.customRoomType || null,
-            customSpecialFeature: p.customSpecialFeature || null,
-            customCareInstructions: p.customCareInstructions || null,
+
             attributes: p.attributes || p.rawPayload || null,
             lastSyncedAt: new Date(),
           },

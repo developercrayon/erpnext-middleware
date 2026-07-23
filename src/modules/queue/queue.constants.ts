@@ -21,10 +21,12 @@ export const JOB_NAMES = {
 
   // Products
   SYNC_PRODUCTS: 'sync-products',
+  PATCH_AMAZON_PRODUCT: 'patch-amazon-product',
   FETCH_PRODUCTS: 'fetch-products',
   FETCH_AMAZON_PRODUCTS: 'fetch-amazon-products',
   FETCH_AMAZON_PRODUCT_TYPES: 'fetch-amazon-product-types',
   FETCH_AMAZON_PRODUCT_FIELDS: 'fetch-amazon-product-fields',
+  FETCH_AMAZON_PRICES: 'fetch-amazon-prices',
 
   // Pricing
   SYNC_PRICES_TO_MARKETPLACE: 'sync-prices-to-marketplace',

@@ -501,44 +501,111 @@ export class AmazonConnector extends BaseConnector {
 
 
 
-  async createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>> {
+  
+  async patchListing(product: NormalizedProduct, changedKeys: string[]): Promise<ConnectorResult<boolean>> {
     try {
       await this.ensureAuthenticated();
-
-      // Check if product already exists on Amazon
-      let existingAsin = null;
-      try {
-        existingAsin = await this.getListingAsin(product.sku);
-      } catch (e) {
-        this.logger.debug(`Could not check existing ASIN for ${product.sku}`);
-      }
-
-      const isUpdate = !!existingAsin;
-
-      console.log(`[DEBUG] amazonConnector.createListing called for SKU: ${product.sku}. amazonProductType:`, product.amazonProductType, 'attributes:', product.attributes?.amazonProductType);
-
-      // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
+      
       let productType = product.amazonProductType || product.attributes?.amazonProductType;
-
-      // Map invalid ERPNext product types to valid Amazon SP-API product types
-      const productTypeMap: Record<string, string> = {
-        'HOME_FURNITURE_AND_DECOR': 'SHELF',
-      };
-
-      if (productType && productTypeMap[productType]) {
-        productType = productTypeMap[productType];
-      }
-
-      if (!productType) {
-        if (!isUpdate) {
-          return this.failure("Amazon Product Type is required to create new products on Amazon. The generic 'PRODUCT' type is not allowed for new listings.");
-        }
-        productType = 'PRODUCT'; // Only fallback to generic PRODUCT for updating existing offers
-      }
+      const productTypeMap: Record<string, string> = { 'HOME_FURNITURE_AND_DECOR': 'SHELF' };
+      if (productType && productTypeMap[productType]) productType = productTypeMap[productType];
+      if (!productType) productType = 'PRODUCT';
 
       const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
+      const attributes = await this.generatePayloadAttributes(product, productType, true, requirements);
+      
+      // Now filter out only the patches
+      const patches: any[] = [];
+      
+      // Standard static mappings (using ERPNext keys -> Amazon keys)
+      const keyMap: Record<string, string[]> = {
+        'item_name': ['item_name'],
+        'brand': ['brand'],
+        'description': ['description'],
+        'custom_amazon_bullet_point': ['bullet_point'],
+        'custom_depth': ['item_dimensions'],
+        'custom_width': ['item_dimensions', 'item_width_height'],
+        'custom_height': ['item_dimensions', 'item_width_height'],
+        'custom_unit': ['item_dimensions', 'item_width_height'],
+        'weight_per_unit': ['item_weight'],
+      };
 
-      const payload: any = {
+      // Add dynamic mappings
+      const mappings = await this.mappingRepo.find({ where: { marketplace: MarketplaceSource.AMAZON } });
+      for (const mapping of mappings) {
+        const key = mapping.erpnextField;
+        if (!keyMap[key]) {
+          keyMap[key] = [];
+        }
+        keyMap[key].push(mapping.marketplaceField);
+        if (mapping.marketplaceField.match(/item_depth|item_width|item_height|item_length|package_weight|package_height|package_width|package_length|item_package_weight/)) {
+           // Also include the _unit field in the patch if we map a dimension
+           keyMap[key].push(`${mapping.marketplaceField}_unit`);
+        }
+      }
+
+      for (const key of changedKeys) {
+        // Skip price fields for patching, they should use price sync
+        if (['price', 'sellingPrice', 'mrp', 'customAmazonPrice'].includes(key) || key.includes('price')) {
+          continue;
+        }
+
+        const amazonAttrs = keyMap[key];
+        if (amazonAttrs) {
+          for (const attr of amazonAttrs) {
+            if (attributes[attr] !== undefined) {
+              patches.push({
+                op: 'replace',
+                path: `/attributes/${attr}`,
+                value: attributes[attr]
+              });
+            }
+          }
+        }
+      }
+
+      if (patches.length === 0) {
+         this.logger.log(`No mappable fields found for partial update of ${product.sku} (or they were price fields)`);
+         return this.success(true);
+      }
+
+      this.logger.log(`Patching listing ${product.sku} on Amazon with ${patches.length} patches`);
+      
+      const payload = {
+        productType,
+        patches
+      };
+
+      const response = await this.http.patch(
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(product.sku)}`,
+        payload,
+        {
+          headers: this.spApiHeaders,
+          params: { marketplaceIds: this.marketplaceId },
+        }
+      );
+
+      // SP-API returns 200 but might contain submission issues in the body
+      const issues = response.data?.issues || [];
+      const errors = issues.filter((i: any) => i.severity === 'ERROR');
+
+      if (errors.length > 0) {
+        const errorMsg = errors.map((e: any) => `[${e.code}] ${e.message}`).join(' | ');
+        this.logger.error(`Patch accepted but rejected with issues: ${errorMsg}`);
+        return this.failure(`Amazon accepted patch but rejected with issues: ${errorMsg}`);
+      }
+
+      return this.success(true);
+    } catch (error: any) {
+      this.logger.error(`Failed to patch Amazon listing: ${error.response?.data?.errors?.[0]?.message || error.message}`);
+      return this.failure(error.message);
+    }
+  }
+
+
+  
+  async generatePayloadAttributes(product: NormalizedProduct, productType: string, isUpdate: boolean, requirements: string): Promise<any> {
+    const payload: any = {
         productType,
         requirements,
         attributes: {
@@ -632,15 +699,15 @@ export class AmazonConnector extends BaseConnector {
       const erp = product.attributes || {};
       const raw = product.attributes || {};
 
-      const dVal = raw.customDepth || product.customDepth;
-      const wVal = raw.customWidth || product.customWidth;
-      const hVal = raw.customHeight || product.customHeight;
+      const dVal = raw.custom_depth;
+      const wVal = raw.custom_width;
+      const hVal = raw.custom_height;
       const depth = dVal ? parseFloat(dVal) : null;
       const width = wVal ? parseFloat(wVal) : null;
       const height = hVal ? parseFloat(hVal) : null;
 
       let dimUnit = 'centimeters';
-      const rawUnit = raw.customUnit || product.customUnit;
+      const rawUnit = raw.custom_unit;
       if (rawUnit) {
         const u = rawUnit.toString().toLowerCase().trim();
         if (u === 'cm' || u === 'centimeter' || u === 'centimeters') dimUnit = 'centimeters';
@@ -780,7 +847,7 @@ export class AmazonConnector extends BaseConnector {
                 // Ignore purchasable_at as Amazon warns it's not applicable for this product type
                 continue;
               } else if (['item_depth', 'item_width', 'item_height', 'item_length', 'unit_count', 'size', 'package_weight', 'package_height', 'package_width', 'package_length', 'item_package_weight'].includes(field)) {
-                let u = (product.attributes?.custom_unit || product.customUnit || '').toString().toLowerCase().trim();
+                let u = (product.attributes?.custom_unit || '').toString().toLowerCase().trim();
                 let unitStr = 'centimeters';
 
                 // If it's a weight field, default to kilograms, unless specified
@@ -865,6 +932,56 @@ export class AmazonConnector extends BaseConnector {
       } else {
         payload.attributes.supplier_declared_has_product_identifier_exemption = [{ value: true }];
       }
+
+      
+    return payload.attributes;
+  }
+
+
+  async createListing(product: NormalizedProduct, isDraft: boolean): Promise<ConnectorResult<boolean>> {
+    try {
+      await this.ensureAuthenticated();
+
+      // Check if product already exists on Amazon
+      let existingAsin = null;
+      try {
+        existingAsin = await this.getListingAsin(product.sku);
+      } catch (e) {
+        this.logger.debug(`Could not check existing ASIN for ${product.sku}`);
+      }
+
+      const isUpdate = !!existingAsin;
+
+      console.log(`[DEBUG] amazonConnector.createListing called for SKU: ${product.sku}. amazonProductType:`, product.amazonProductType, 'attributes:', product.attributes?.amazonProductType);
+
+      // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
+      let productType = product.amazonProductType || product.attributes?.amazonProductType;
+
+      // Map invalid ERPNext product types to valid Amazon SP-API product types
+      const productTypeMap: Record<string, string> = {
+        'HOME_FURNITURE_AND_DECOR': 'SHELF',
+      };
+
+      if (productType && productTypeMap[productType]) {
+        productType = productTypeMap[productType];
+      }
+
+      if (!productType) {
+        if (!isUpdate) {
+          return this.failure("Amazon Product Type is required to create new products on Amazon. The generic 'PRODUCT' type is not allowed for new listings.");
+        }
+        productType = 'PRODUCT'; // Only fallback to generic PRODUCT for updating existing offers
+      }
+
+      const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
+
+      
+      const attributes = await this.generatePayloadAttributes(product, productType, isUpdate, requirements);
+      const payload: any = {
+        productType,
+        requirements,
+        attributes,
+      };
 
       this.logger.debug(`PUT Listings attributes for ${product.sku}: ` + JSON.stringify(payload.attributes, null, 2));
 
@@ -1190,4 +1307,25 @@ export class AmazonConnector extends BaseConnector {
       return [];
     }
   }
+
+  async fetchListingPricing(sku: string): Promise<any> {
+    try {
+      await this.ensureAuthenticated();
+      const response = await this.http.get(
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
+        {
+          headers: this.spApiHeaders,
+          params: { 
+            marketplaceIds: this.marketplaceId,
+            includedData: 'attributes'
+          },
+        }
+      );
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      this.logger.error(`Failed to fetch pricing for ${sku}: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
 }

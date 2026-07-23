@@ -95,32 +95,7 @@ export class ProductsProcessor {
               variantOf: p.variantOf || null,
               variationTheme: p.variationTheme || null,
               variantAttributes: p.variantAttributes || null,
-              customItemTypeName: p.customItemTypeName || null,
-              customModelName: p.customModelName || null,
-              customStyle: p.customStyle || null,
-              customNumberOfItems: p.customNumberOfItems || null,
-              customColor: p.customColor || null,
-              customNumberOfPieces: p.customNumberOfPieces || null,
-              customModelNumber: p.customModelNumber || null,
-              customManufacturerContactInfo: p.customManufacturerContactInfo || null,
-              customRequiredAssembly: p.customRequiredAssembly !== undefined ? p.customRequiredAssembly : null,
-              customDepth: p.customDepth !== undefined ? p.customDepth : null,
-              customWidth: p.customWidth !== undefined ? p.customWidth : null,
-              customHeight: p.customHeight !== undefined ? p.customHeight : null,
-              customNumberOfPacks: p.customNumberOfPacks !== undefined ? p.customNumberOfPacks : null,
-              customExternalProductInformation: p.customExternalProductInformation || null,
-              customShelfThickness: p.customShelfThickness !== undefined ? p.customShelfThickness : null,
-              customAssemblyInstructions: p.customAssemblyInstructions || null,
-              customUnit: p.customUnit || null,
-              customItemShape: p.customItemShape || null,
-              customShelfType: p.customShelfType || null,
-              customNumberOfShelves: p.customNumberOfShelves || null,
-              customMountingType: p.customMountingType || null,
-              customFinishType: p.customFinishType || null,
-              customSelectMaterial: p.customSelectMaterial || null,
-              customIncludedComponents: p.customIncludedComponents || null,
-              customAmazonBulletPoint: p.customAmazonBulletPoint || null,
-              customPackerContactInformation: p.customPackerContactInformation || null,
+
               attributes: p.rawPayload,
               lastSyncedAt: new Date(),
             },
@@ -167,6 +142,60 @@ export class ProductsProcessor {
       await this.productsService.fetchFromAmazonAndStore();
     } catch (error) {
       this.logger.error(`Error in fetchAmazonProducts: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  @Process(JOB_NAMES.FETCH_AMAZON_PRICES)
+  async fetchAmazonPrices(job: Job): Promise<void> {
+    this.logger.log(`Executing background job: Fetch Prices from Amazon`);
+    try {
+      await this.productsService.fetchAndStoreAmazonPrices();
+    } catch (error) {
+      this.logger.error(`Error in fetchAmazonPrices: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  @Process(JOB_NAMES.PATCH_AMAZON_PRODUCT)
+  async patchAmazonProduct(job: Job): Promise<void> {
+    const { sku, changedKeys } = job.data;
+    this.logger.log(`Executing background job: Patch Amazon Product ${sku}`);
+    try {
+      const product = await this.productRepo.findOne({ where: { sku } });
+      if (!product) {
+        throw new Error(`Product ${sku} not found`);
+      }
+      
+      const normalizedProduct: NormalizedProduct = {
+        sku: product.sku,
+        amazonAsin: product.amazonAsin,
+        amazonProductType: product.amazonProductType,
+        upc: product.upc,
+        thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
+        flipkartSku: product.flipkartSku,
+        name: product.name,
+        description: product.description,
+        category: product.category,
+        brand: product.brand,
+        mrp: product.mrp,
+        sellingPrice: product.sellingPrice,
+        isParent: product.isParent,
+        variantOf: product.variantOf,
+        variationTheme: product.variationTheme,
+        variantAttributes: product.variantAttributes,
+        attributes: product.attributes,
+        images: product.images,
+        rawPayload: product,
+      };
+
+      const result = await this.amazonConnector.patchListing(normalizedProduct, changedKeys);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      this.logger.log(`Successfully patched Amazon product ${sku}`);
+    } catch (error) {
+      this.logger.error(`Error in patchAmazonProduct for ${sku}: ${error.message}`, error.stack);
       throw error;
     }
   }

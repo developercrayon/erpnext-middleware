@@ -124,9 +124,9 @@ export class ProductsController {
 
   @Post('sync/erpnext')
   @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOperation({ summary: 'Trigger a full fetch of products from ERPNext' })
-  async syncFromERPNext() {
-    const jobId = await this.productsService.triggerFetchFromERPNext();
+  @ApiOperation({ summary: 'Trigger a full or single fetch of products from ERPNext' })
+  async syncFromERPNext(@Body('sku') sku?: string) {
+    const jobId = await this.productsService.triggerFetchFromERPNext(sku);
     return { message: 'ERPNext fetch job queued', jobId };
   }
 
@@ -144,5 +144,13 @@ export class ProductsController {
   async fetchFromAmazon() {
     const jobId = await this.productsService.triggerAmazonFetch();
     return { message: 'Amazon fetch job queued', jobId };
+  }
+
+  @Post('sync/amazon-prices')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Queue job to fetch all product prices from Amazon, save to JSON, and update DB' })
+  async fetchAmazonPrices() {
+    const jobId = await this.productsService.triggerAmazonPricesFetch();
+    return { message: 'Amazon prices fetch job queued', jobId };
   }
 }
