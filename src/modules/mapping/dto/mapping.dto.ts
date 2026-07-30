@@ -23,17 +23,22 @@ export class CreateMappingDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  dataType?: string;
-
-  @ApiPropertyOptional()
-  @IsBoolean()
-  @IsOptional()
-  useDefault?: boolean;
+  defaultValue?: string;
 
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  defaultValue?: string;
+  erpnextTemplate?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  amazonTemplate?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  flipkartTemplate?: string;
 }
 
 import { ValidateNested, IsArray } from 'class-validator';
@@ -66,15 +71,20 @@ export class UpdateMappingDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  dataType?: string;
-
-  @ApiPropertyOptional()
-  @IsBoolean()
-  @IsOptional()
-  useDefault?: boolean;
+  defaultValue?: string;
 
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  defaultValue?: string;
+  erpnextTemplate?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  amazonTemplate?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  flipkartTemplate?: string;
 }

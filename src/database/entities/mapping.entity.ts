@@ -22,14 +22,17 @@ export class FieldMapping {
   @Column({ name: 'marketplace_field', type: 'varchar' })
   marketplaceField: string;
 
-  @Column({ name: 'data_type', type: 'varchar', default: 'STRING' })
-  dataType: string;
-
-  @Column({ name: 'use_default', type: 'boolean', default: false })
-  useDefault: boolean;
-
   @Column({ name: 'default_value', type: 'varchar', nullable: true })
   defaultValue: string;
+
+  @Column({ name: 'erpnext_template', type: 'text', nullable: true })
+  erpnextTemplate: string;
+
+  @Column({ name: 'amazon_template', type: 'text', nullable: true })
+  amazonTemplate: string;
+
+  @Column({ name: 'flipkart_template', type: 'text', nullable: true })
+  flipkartTemplate: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

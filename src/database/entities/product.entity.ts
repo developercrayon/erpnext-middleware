@@ -83,8 +83,14 @@ export class Product {
   @Column({ name: 'images', type: 'jsonb', nullable: true })
   images: string[];
 
-  @Column({ name: 'attributes', type: 'jsonb', nullable: true })
-  attributes: Record<string, any>;
+  @Column({ name: 'amazon_raw_payload', type: 'jsonb', nullable: true })
+  amazonRawPayload: any;
+
+  @Column({ name: 'erpnext_raw_payload', type: 'jsonb', nullable: true })
+  erpnextRawPayload: any;
+
+  @Column({ name: 'flipkart_raw_payload', type: 'jsonb', nullable: true })
+  flipkartRawPayload: any;
 
   @Column({ name: 'custom_amazon_price', type: 'decimal', precision: 12, scale: 2, nullable: true })
   customAmazonPrice: number;

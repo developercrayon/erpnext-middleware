@@ -29,8 +29,16 @@ export class MappingController {
 
   @Get('fields/erpnext')
   @ApiOperation({ summary: 'Get available ERPNext fields' })
-  async getErpnextFields() {
-    return this.mappingService.getErpnextFields();
+  async getErpnextFields(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.mappingService.getErpnextFields(
+      page ? Number(page) : undefined,
+      limit ? Number(limit) : undefined,
+      search,
+    );
   }
 
   @Post('fields/erpnext/sync')

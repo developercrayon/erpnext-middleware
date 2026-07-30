@@ -96,7 +96,7 @@ export class ProductsProcessor {
               variationTheme: p.variationTheme || null,
               variantAttributes: p.variantAttributes || null,
 
-              attributes: p.rawPayload,
+              erpnextRawPayload: p.rawPayload,
               lastSyncedAt: new Date(),
             },
             ['sku'],
@@ -184,7 +184,7 @@ export class ProductsProcessor {
         variantOf: product.variantOf,
         variationTheme: product.variationTheme,
         variantAttributes: product.variantAttributes,
-        attributes: product.attributes,
+        amazonRawPayload: product.amazonRawPayload,
         images: product.images,
         rawPayload: product,
       };
@@ -279,7 +279,7 @@ export class ProductsProcessor {
             variantOf: product.variantOf,
             variationTheme: product.variationTheme,
             variantAttributes: product.variantAttributes,
-            attributes: product.attributes,
+            amazonRawPayload: product.amazonRawPayload,
             images: product.images,
             rawPayload: product,
           };

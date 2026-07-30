@@ -17,6 +17,7 @@ import { ProductQueryDto } from './dto/product.dto';
 import { QueueJob, QueueJobStatus } from '../../database/entities/operational.entity';
 import { FieldMapping } from '../../database/entities/mapping.entity';
 import { ErpnextProductField } from '../../database/entities/erpnext-product-field.entity';
+import { ErrorLog } from '../../database/entities/logs.entity';
 
 @Injectable()
 export class ProductsService {
@@ -36,6 +37,8 @@ export class ProductsService {
     private readonly productsQueue: Queue,
     @InjectRepository(QueueJob)
     private readonly queueJobRepo: Repository<QueueJob>,
+    @InjectRepository(ErrorLog)
+    private readonly errorLogRepo: Repository<ErrorLog>,
   ) { }
 
   // ─── Query Methods ────────────────────────────────────────────────────────
@@ -166,7 +169,7 @@ export class ProductsService {
         description: getAmzStr(attrs, 'product_description') || item.description,
         brand: getAmzStr(attrs, 'brand') || item.brand,
 
-        attributes: item.rawPayload,
+        amazonRawPayload: item.rawPayload,
       };
 
       let isParent = false;
@@ -335,8 +338,8 @@ export class ProductsService {
 
     // ── Base payload (always present regardless of field mapping) ─────────────
     let sellerSku = product.sku;
-    if (product.attributes && Array.isArray(product.attributes.identifiers)) {
-      for (const idGroup of product.attributes.identifiers) {
+    if (product.amazonRawPayload && Array.isArray(product.amazonRawPayload.identifiers)) {
+      for (const idGroup of product.amazonRawPayload.identifiers) {
         if (Array.isArray(idGroup.identifiers)) {
           const skuObj = idGroup.identifiers.find((i: any) => i.identifierType === 'SKU');
           if (skuObj && skuObj.identifier) {
@@ -418,29 +421,35 @@ export class ProductsService {
     }
 
     // ── Image handling ─────────────────────────────────────────────────────────
-    let productImages = product.images;
-    if (product.attributes?.images) {
-      if (Array.isArray(product.attributes.images) && product.attributes.images.length > 0) {
-        productImages = product.attributes.images[0].images || product.attributes.images;
-      } else if (product.attributes.images?.images) {
-        productImages = product.attributes.images.images;
+    let productImages = product.images && product.images.length > 0 ? product.images : undefined;
+    
+    // Fallback to attributes only if product.images is truly empty/unset
+    if (!productImages && product.amazonRawPayload?.images) {
+      if (Array.isArray(product.amazonRawPayload.images) && product.amazonRawPayload.images.length > 0) {
+        productImages = product.amazonRawPayload.images[0].images || product.amazonRawPayload.images;
+      } else if (product.amazonRawPayload.images?.images) {
+        productImages = product.amazonRawPayload.images.images;
       } else {
-        productImages = product.attributes.images;
+        productImages = product.amazonRawPayload.images;
       }
     }
-    if (productImages && Array.isArray(productImages) && productImages.length > 0) {
+
+    // Set erpPayload.image based on thumbnailUrl or fallback to first product image
+    if (product.thumbnailUrl !== null && product.thumbnailUrl !== undefined) {
+      erpPayload.image = product.thumbnailUrl === '' ? '' : product.thumbnailUrl;
+      erpPayload.custom_thumbnail_image = product.thumbnailUrl === '' ? '' : product.thumbnailUrl;
+    } else if (productImages && Array.isArray(productImages) && productImages.length > 0) {
       const firstImage = productImages[0] as any;
-      const firstImageUrl = firstImage?.link || firstImage;
+      const firstImageUrl = typeof firstImage === 'string' ? firstImage : firstImage?.link;
       erpPayload.image = firstImageUrl;
       erpPayload.custom_thumbnail_image = firstImageUrl;
     } else {
-      const baseUrl = process.env.ERPNEXT_BASE_URL || 'https://woodwolf.t3elements.com';
-      erpPayload.image = `${baseUrl}/files/WoodwolfLogo.png`;
-      erpPayload.custom_thumbnail_image = `${baseUrl}/files/WoodwolfLogo.png`;
+      erpPayload.image = '';
+      erpPayload.custom_thumbnail_image = '';
     }
 
     // ── Resolve product type from Amazon attributes ─────────────────────────────
-    const rawPayload = product.attributes || {};
+    const rawPayload = product.amazonRawPayload || {};
     const attrs = rawPayload.attributes || rawPayload;
     const productTypesArr: any[] = rawPayload.productTypes || attrs.productTypes || [];
     const productType: string = (productTypesArr[0]?.productType || product.amazonProductType || '').toUpperCase();
@@ -466,10 +475,10 @@ export class ProductsService {
 
     // ── Cache for child doctype value-field discovery ────────────────────────────
     // Stores { fieldname, fieldtype, linkedDoctype? } per child doctype
-    const childValueFieldCache = new Map<string, { fieldname: string; fieldtype: string; linkedDoctype: string | null }>();
+    const childValueFieldCache = new Map<string, { fieldname: string; fieldtype: string; linkedDoctype: string | null; schemaFields?: string[] }>();
 
     // ── Deep value extractor for Amazon attributes ───────────────────────────────
-    const extractAmzValues = (attrsObj: any, key: string): string[] => {
+    const extractAmzValues = (attrsObj: any, key: string, preserveObject = false): string[] => {
       if (!attrsObj || !key) return [];
       const val = attrsObj[key];
       if (!val) return [];
@@ -477,6 +486,7 @@ export class ProductsService {
       const extractStr = (v: any): string => {
         if (v === null || v === undefined) return '';
         if (typeof v === 'object') {
+          if (preserveObject) return JSON.stringify(v);
           return String(v.value ?? v.name ?? v.type ?? v.text ?? (Object.keys(v).length ? JSON.stringify(v) : ''));
         }
         return String(v);
@@ -498,7 +508,10 @@ export class ProductsService {
         continue;
       }
 
-      const amazonValues = extractAmzValues(attrs, mapping.marketplaceField);
+      const erpField = erpFieldMap.get(mapping.erpnextField);
+      const isTable = erpField?.fieldtype === 'Table';
+
+      const amazonValues = extractAmzValues(attrs, mapping.marketplaceField, isTable);
       if (amazonValues.length === 0) {
         this.logger.debug(`[DYNAMIC-MAP] No Amazon value for marketplace_field "${mapping.marketplaceField}" → skip`);
         continue;
@@ -507,7 +520,6 @@ export class ProductsService {
       // For scalar fields, just take the first value
       const amazonValue = amazonValues[0];
 
-      const erpField = erpFieldMap.get(mapping.erpnextField);
       if (!erpField) {
         // If field not in cache, default to direct string assignment
         this.logger.debug(`[DYNAMIC-MAP] ERPNext field "${mapping.erpnextField}" not found in cache, assigning string directly`);
@@ -565,9 +577,12 @@ export class ProductsService {
             let fieldname = 'name';
             let fieldtype = 'Data';
             let linkedDoctype: string | null = null;
+            let schemaFields: string[] = [];
             if (schemaResult.success && schemaResult.data && schemaResult.data.length > 0) {
+              schemaFields = schemaResult.data.map((f: any) => f.fieldname);
               const SYSTEM_FIELDS = ['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'parent', 'parentfield', 'parenttype', 'doctype'];
-              const firstField = schemaResult.data.find((f: any) => !SYSTEM_FIELDS.includes(f.fieldname));
+              const FORMATTING_TYPES = ['Column Break', 'Section Break', 'Tab Break', 'HTML'];
+              const firstField = schemaResult.data.find((f: any) => !SYSTEM_FIELDS.includes(f.fieldname) && !FORMATTING_TYPES.includes(f.fieldtype));
               if (firstField) {
                 fieldname = firstField.fieldname;
                 fieldtype = firstField.fieldtype;
@@ -575,7 +590,7 @@ export class ProductsService {
                 linkedDoctype = firstField.fieldtype === 'Link' ? firstField.options : null;
               }
             }
-            vfInfo = { fieldname, fieldtype, linkedDoctype };
+            vfInfo = { fieldname, fieldtype, linkedDoctype, schemaFields };
             childValueFieldCache.set(childDoctype, vfInfo);
             this.logger.debug(
               `[DYNAMIC-MAP] Child doctype "${childDoctype}" → value field: "${fieldname}" (${fieldtype})` +
@@ -589,10 +604,73 @@ export class ProductsService {
           const resolutionDoctype = linkedDoctype || null;
           const tableRows = [];
 
-          for (let amzVal of amazonValues) {
+          const mapUnit = (u?: string) => {
+            if (!u) return u;
+            const l = u.toLowerCase();
+            if (l === 'centimeters' || l === 'centimeter' || l === 'cm') return 'Centimeter';
+            if (l === 'inches' || l === 'inch' || l === 'in') return 'Inch';
+            if (l === 'millimeters' || l === 'millimeter' || l === 'mm') return 'Millimeter';
+            if (l === 'kilograms' || l === 'kilogram' || l === 'kg') return 'Kg';
+            if (l === 'grams' || l === 'gram' || l === 'g') return 'Gram';
+            if (l === 'pounds' || l === 'pound' || l === 'lb' || l === 'lbs') return 'Pound';
+            return u;
+          };
+
+          for (let rawAmzVal of amazonValues) {
+            let amzVal = rawAmzVal;
+            if (typeof amzVal === 'string' && amzVal.startsWith('{') && amzVal.endsWith('}')) {
+              try { amzVal = JSON.parse(amzVal); } catch (e) {}
+            }
+            
+            const uniqueName = `child-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
+
+            if (typeof amzVal === 'object' && amzVal !== null && !Array.isArray(amzVal) && !resolutionDoctype) {
+              // Flatten complex Amazon objects dynamically into child table fields
+              const flattened: any = { doctype: childDoctype, name: uniqueName, __islocal: 1 };
+              for (const [key, val] of Object.entries(amzVal)) {
+                if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                  // e.g., "width": { "unit": "cm", "value": 10 } -> width: 10, width_unit: "Centimeter"
+                  const v: any = val;
+                  if (v.value !== undefined) {
+                    flattened[key] = v.value;
+                  }
+                  if (v.unit !== undefined) {
+                    flattened[`${key}_unit`] = mapUnit(v.unit);
+                  }
+                } else {
+                  if (key === 'unit' && typeof val === 'string') {
+                    flattened[key] = mapUnit(val);
+                  } else {
+                    let targetKey = key;
+                    if (['value', 'name', 'text'].includes(key) && vfInfo && vfInfo.schemaFields && !vfInfo.schemaFields.includes(key)) {
+                      targetKey = valueField;
+                    }
+                    flattened[targetKey] = val;
+                  }
+                }
+              }
+              // Verify and strip fields that do not exist in the Frappe doctype schema (to prevent Unknown Field errors)
+              if (vfInfo && vfInfo.schemaFields) {
+                for (const flatKey of Object.keys(flattened)) {
+                  if (!['doctype', 'name', '__islocal'].includes(flatKey) && !vfInfo.schemaFields.includes(flatKey)) {
+                    delete flattened[flatKey];
+                  }
+                }
+              }
+              tableRows.push(flattened);
+              continue;
+            }
+
+            // If we reach here and amzVal is still an object (e.g. because resolutionDoctype is set),
+            // we must extract the primitive value so we don't try to link a stringified JSON object!
+            if (typeof amzVal === 'object' && amzVal !== null) {
+              const obj = amzVal as any;
+              amzVal = String(obj.value ?? obj.name ?? obj.type ?? obj.text ?? (Object.keys(obj).length ? JSON.stringify(obj) : ''));
+            }
+
             if (resolutionDoctype) {
               // Truncate to 140 chars because Frappe link fields have a max length of 140
-              if (amzVal.length > 140) {
+              if (typeof amzVal === 'string' && amzVal.length > 140) {
                 amzVal = amzVal.substring(0, 140).trim();
               }
               // List existing entries in the LINKED standalone doctype by passing amzVal as a filter
@@ -636,8 +714,7 @@ export class ProductsService {
             // We provide a unique 'name' so Frappe doesn't use field-based autoname which causes
             // PRIMARY key collisions across different parent items if values are identical.
             // __islocal: 1 forces Frappe to treat it as a new document in memory during updates.
-            const uniqueName = `child-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
-            tableRows.push({ doctype: childDoctype, name: uniqueName, __islocal: 1, [valueField]: amzVal });
+            tableRows.push({ doctype: childDoctype, name: uniqueName, __islocal: 1, [valueField]: typeof amzVal === 'object' ? JSON.stringify(amzVal) : amzVal });
           }
 
           if (tableRows.length > 0) {
@@ -682,51 +759,7 @@ export class ProductsService {
       }
     }
 
-    // ── Explicit Dimension & Weight Mapping ─────────────────────────────────────
-    if (rawPayload && rawPayload.attributes) {
-      const a = rawPayload.attributes;
-      const mapUnit = (u?: string) => {
-        if (!u) return u;
-        const l = u.toLowerCase();
-        if (l === 'centimeters' || l === 'centimeter' || l === 'cm') return 'Centimeter';
-        if (l === 'inches' || l === 'inch' || l === 'in') return 'Inch';
-        if (l === 'millimeters' || l === 'millimeter' || l === 'mm') return 'Millimeter';
-        if (l === 'kilograms' || l === 'kilogram' || l === 'kg') return 'Kg';
-        if (l === 'grams' || l === 'gram' || l === 'g') return 'Gram';
-        if (l === 'pounds' || l === 'pound' || l === 'lb' || l === 'lbs') return 'Pound';
-        return u;
-      };
-
-      if (a.item_dimensions && a.item_dimensions.length > 0) {
-        const idims = a.item_dimensions[0];
-        if (idims.length) erpPayload.custom_item_depth = idims.length.value;
-        if (idims.width) erpPayload.custom_item_width = idims.width.value;
-        if (idims.height) erpPayload.custom_item_height = idims.height.value;
-        const unit = mapUnit(idims.length?.unit || idims.width?.unit || idims.height?.unit);
-        if (unit) erpPayload.custom_item_lwh_unit = unit;
-      }
-
-      if (a.item_weight && a.item_weight.length > 0) {
-        const iw = a.item_weight[0];
-        erpPayload.custom_item_weight = iw.value;
-        erpPayload.custom_item_weight_unit = mapUnit(iw.unit);
-      }
-
-      if (a.item_package_dimensions && a.item_package_dimensions.length > 0) {
-        const pdims = a.item_package_dimensions[0];
-        if (pdims.length) erpPayload.custom_package_length = pdims.length.value;
-        if (pdims.width) erpPayload.custom_package_width = pdims.width.value;
-        if (pdims.height) erpPayload.custom_package_height = pdims.height.value;
-        const unit = mapUnit(pdims.length?.unit || pdims.width?.unit || pdims.height?.unit);
-        if (unit) erpPayload.custom_lwh_unit = unit;
-      }
-
-      if (a.item_package_weight && a.item_package_weight.length > 0) {
-        const pw = a.item_package_weight[0];
-        erpPayload.custom_package_weight = pw.value;
-        erpPayload.custom_weight_unit = mapUnit(pw.unit);
-      }
-    }
+    // Dynamic mapping handles all fields now (including complex dimension/weight arrays).
 
     this.logger.log(`[DYNAMIC-MAP] Final ERPNext payload for ${sellerSku}: ${JSON.stringify(erpPayload)}`);
 
@@ -773,7 +806,7 @@ export class ProductsService {
         this.logger.log(`Attaching ${productImages.length - 1} additional images to Item ${itemCode}...`);
         for (let i = 1; i < productImages.length; i++) {
           const img = productImages[i] as any;
-          const url = img?.link || img;
+          const url = typeof img === 'string' ? img : img?.link;
           if (url) {
             try {
               await this.erpnextService.attachFile('Item', itemCode, url);
@@ -846,12 +879,39 @@ export class ProductsService {
     const product = await this.findById(id);
     if (!product) throw new Error('Product not found');
 
+    const oldThumbnailUrl = product.thumbnailUrl;
+    const oldImages = product.images ? [...product.images] : [];
+
     // Update local DB fields
     Object.assign(product, dto);
     if (dto.erpnextFields?.custom_amazon_product_type !== undefined) {
       product.amazonProductType = dto.erpnextFields.custom_amazon_product_type;
     }
     await this.productRepo.save(product);
+
+    // Remove deleted images from ERPNext File attachments
+    if (product.erpnextItemCode) {
+      if (dto.thumbnailUrl === '' && oldThumbnailUrl) {
+        try {
+          await this.erpnextService.removeAttachedFile('Item', product.erpnextItemCode, oldThumbnailUrl);
+          this.logger.log(`Removed attached thumbnail file from ERPNext: ${oldThumbnailUrl}`);
+        } catch (e: any) {
+          this.logger.warn(`Failed to remove thumbnail file attachment from ERPNext: ${e.message}`);
+        }
+      }
+
+      if (dto.images) {
+        const deletedImages = oldImages.filter((img) => !dto.images.includes(img));
+        for (const img of deletedImages) {
+          try {
+            await this.erpnextService.removeAttachedFile('Item', product.erpnextItemCode, img);
+            this.logger.log(`Removed attached gallery file from ERPNext: ${img}`);
+          } catch (e: any) {
+            this.logger.warn(`Failed to remove gallery file attachment from ERPNext: ${e.message}`);
+          }
+        }
+      }
+    }
 
     // Map back to ERPNext schema and push
     if (product.erpnextItemCode) {
@@ -875,6 +935,7 @@ export class ProductsService {
       if (dto.customAmazonPrice !== undefined) erpPayload.custom_amazon_price = dto.customAmazonPrice;
       if (dto.customFlipkartPrice !== undefined) erpPayload.custom_flipkart_price = dto.customFlipkartPrice;
       if (dto.amazonProductType !== undefined) erpPayload.custom_amazon_product_type = dto.amazonProductType;
+      if (dto.thumbnailUrl !== undefined) erpPayload.image = dto.thumbnailUrl === '' ? '' : dto.thumbnailUrl;
       if (dto.erpnextFields?.custom_amazon_product_type !== undefined) erpPayload.custom_amazon_product_type = dto.erpnextFields.custom_amazon_product_type;
 
       // Merge dynamic erpnextFields
@@ -920,9 +981,9 @@ export class ProductsService {
 
         Object.assign(erpPayload, cleanFields);
 
-        // Also update local attributes jsonb so it reflects immediately
-        product.attributes = {
-          ...product.attributes,
+        // Also update local erpnextRawPayload jsonb so it reflects immediately
+        product.erpnextRawPayload = {
+          ...(product.erpnextRawPayload || {}),
           ...cleanFields,
         };
         await this.productRepo.save(product);
@@ -935,19 +996,41 @@ export class ProductsService {
             await this.erpnextService.updateItem(product.erpnextItemCode, erpPayload);
           }
           
-          // Automatically trigger marketplace syncs if configured
-          if (product.customAmazon) {
-            this.logger.log(`Field updated for ${product.sku} with customAmazon=true. Triggering Amazon patch sync.`);
+          // Automatically trigger marketplace syncs if configured.
+          // Also trigger for products that originated from Amazon (isFromAmazon=true)
+          // even if customAmazon hasn't been explicitly set yet.
+          const shouldSyncAmazon = product.customAmazon || product.isFromAmazon;
+          if (shouldSyncAmazon) {
+            this.logger.log(
+              `Field updated for ${product.sku} (customAmazon=${product.customAmazon}, isFromAmazon=${product.isFromAmazon}). ` +
+              `Triggering Amazon patch sync.`
+            );
             this.logger.log(`[PATCH] changedKeys being queued: ${JSON.stringify(Object.keys(erpPayload))}`);
-            await this.productsQueue.add(JOB_NAMES.PATCH_AMAZON_PRODUCT, { sku: product.sku, changedKeys: Object.keys(erpPayload) }, { attempts: 3, backoff: { type: 'exponential', delay: 5000 } });
+            await this.productsQueue.add(
+              JOB_NAMES.PATCH_AMAZON_PRODUCT,
+              { sku: product.sku, changedKeys: Object.keys(erpPayload) },
+              { attempts: 3, backoff: { type: 'exponential', delay: 5000 } }
+            );
           }
           if (product.customFlipkart) {
             this.logger.log(`Field updated for ${product.sku} with customFlipkart=true. Triggering Flipkart sync.`);
             await this.triggerSync(MarketplaceSource.FLIPKART, [product.sku]);
           }
         } catch (e) {
-          this.logger.error(`Background sync failed for ${product.sku}: ${e.message}`);
-          // TODO: Add logic to update needed error fields if required
+          const errMsg = e?.message || String(e);
+          this.logger.error(`Background sync failed for ${product.sku}: ${errMsg}`, e?.stack);
+          // Persist the error to ErrorLog so it's visible in the admin panel
+          try {
+            await this.errorLogRepo.save({
+              source: 'products-service',
+              context: 'updateProduct-background-sync',
+              message: `Background sync failed for SKU "${product.sku}": ${errMsg}`,
+              stackTrace: e?.stack,
+              payload: { sku: product.sku, erpnextItemCode: product.erpnextItemCode },
+            });
+          } catch (logErr) {
+            this.logger.error(`Failed to persist error log: ${logErr?.message}`);
+          }
         }
       });
     }
@@ -966,7 +1049,8 @@ export class ProductsService {
         await this.erpnextService.deleteItem(erpnextItemCode);
         this.logger.log(`Deleted item ${erpnextItemCode} from ERPNext`);
       } catch (err: any) {
-        this.logger.warn(`Failed to delete item ${erpnextItemCode} from ERPNext (it may not exist or has linked documents): ${err.message}`);
+        this.logger.error(`Failed to delete item ${erpnextItemCode} from ERPNext (it may not exist or has linked documents): ${err.message}`);
+        throw new Error(`Cannot delete from ERPNext: ${err.message}`);
       }
     }
 
@@ -1245,7 +1329,7 @@ export class ProductsService {
             amazonProductType: p.amazonProductType || null,
             status: ProductStatus.ACTIVE,
 
-            attributes: p.attributes || p.rawPayload || null,
+            erpnextRawPayload: p.rawPayload || p.erpnextRawPayload || null,
             lastSyncedAt: new Date(),
           },
           ['sku'],

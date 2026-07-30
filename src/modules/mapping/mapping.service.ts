@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike, Not, In } from 'typeorm';
 import { FieldMapping } from '../../database/entities/mapping.entity';
 import { Product } from '../../database/entities/product.entity';
 import { MarketplaceSource } from '../../database/entities/order.entity';
@@ -127,7 +127,7 @@ export class MappingService {
 
     // Prepare ERPNext fields
     for (const f of result.data) {
-      if (['Column Break', 'Section Break', 'Tab Break'].includes(f.fieldtype)) continue;
+      if (!f.fieldname || ['Column Break', 'Section Break', 'Tab Break', 'HTML', 'Heading', 'Fold'].includes(f.fieldtype)) continue;
 
       entitiesToUpsert.push({
         name: f.fieldname,
@@ -146,12 +146,44 @@ export class MappingService {
         const chunk = entitiesToUpsert.slice(i, i + chunkSize);
         await this.erpnextProductFieldRepo.upsert(chunk, ['name']);
       }
+
+      // Cleanup: Delete any local ERPNext fields that are no longer present in ERPNext
+      const activeNames = entitiesToUpsert.map(e => e.name);
+      await this.erpnextProductFieldRepo.delete({
+        name: Not(In(activeNames))
+      });
     }
 
     return { message: 'ERPNext fields synced successfully', count: entitiesToUpsert.length };
   }
 
-  async getErpnextFields(): Promise<{ label: string; value: string }[]> {
+  async getErpnextFields(page?: number, limit?: number, search?: string) {
+    if (page !== undefined || limit !== undefined || search !== undefined) {
+      const pageNum = page || 1;
+      const limitNum = limit || 50;
+      const skip = (pageNum - 1) * limitNum;
+
+      const [data, total] = await this.erpnextProductFieldRepo.findAndCount({
+        where: search
+          ? [
+              { name: ILike(`%${search}%`) },
+              { label: ILike(`%${search}%`) },
+              { fieldtype: ILike(`%${search}%`) },
+            ]
+          : undefined,
+        order: { name: 'ASC' },
+        skip,
+        take: limitNum,
+      });
+
+      return {
+        data,
+        total,
+        page: pageNum,
+        limit: limitNum,
+      };
+    }
+
     const fields = await this.erpnextProductFieldRepo.find({
       order: { label: 'ASC' },
     });

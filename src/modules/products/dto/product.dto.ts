@@ -89,6 +89,8 @@ export class UpdateProductDto {
   @IsOptional() @IsNumber() customAmazonPrice?: number;
   @IsOptional() @IsNumber() customFlipkartPrice?: number;
   @IsOptional() @IsString() amazonProductType?: string;
+  @IsOptional() @IsString() thumbnailUrl?: string;
+  @IsOptional() @IsArray() images?: string[];
   @IsOptional() @IsObject() erpnextFields?: Record<string, any>;
 }
 

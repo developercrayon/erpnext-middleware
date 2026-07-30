@@ -108,8 +108,12 @@ export class ProductsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete product by ID' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
-    await this.productsService.delete(id);
-    return { success: true, message: 'Product deleted successfully' };
+    try {
+      await this.productsService.delete(id);
+      return { success: true, message: 'Product deleted successfully' };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to delete product');
+    }
   }
 
   @Put(':id/status')

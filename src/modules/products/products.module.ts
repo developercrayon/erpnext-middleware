@@ -8,7 +8,7 @@ import { FieldMapping } from '../../database/entities/mapping.entity';
 import { ErpnextProductField } from '../../database/entities/erpnext-product-field.entity';
 import { Product } from '../../database/entities/product.entity';
 import { QueueJob } from '../../database/entities/operational.entity';
-import { WebhookLog } from '../../database/entities/logs.entity';
+import { WebhookLog, ErrorLog } from '../../database/entities/logs.entity';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AuthModule } from '../auth/auth.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
@@ -17,7 +17,7 @@ import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, QueueJob, WebhookLog, FieldMapping, ErpnextProductField]),
+    TypeOrmModule.forFeature([Product, QueueJob, WebhookLog, ErrorLog, FieldMapping, ErpnextProductField]),
     BullModule.registerQueue({ name: QUEUE_NAMES.PRODUCTS }),
     AuthModule,
     ERPNextModule,

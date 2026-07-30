@@ -773,8 +773,6 @@ export class AdminModule {
                     productType: { isVisible: { list: true, show: true, edit: true, filter: true } },
                     erpnextField: { isVisible: { list: true, show: true, edit: true, filter: true } },
                     marketplaceField: { isVisible: { list: true, show: true, edit: true, filter: true } },
-                    dataType: { isVisible: { list: true, show: true, edit: true, filter: true } },
-                    useDefault: { isVisible: { list: true, show: true, edit: true, filter: true } },
                     defaultValue: { isVisible: { list: true, show: true, edit: true, filter: true } },
                   },
                 },

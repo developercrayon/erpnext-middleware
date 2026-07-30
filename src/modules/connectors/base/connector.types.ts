@@ -70,7 +70,9 @@ export interface NormalizedProduct {
   gstRate?: number;
   weight?: number;
   images?: string[];
-  attributes?: Record<string, any>;
+  amazonRawPayload?: any;
+  erpnextRawPayload?: any;
+  flipkartRawPayload?: any;
   customAmazonPrice?: number;
   customFlipkartPrice?: number;
   customAmazon?: boolean;

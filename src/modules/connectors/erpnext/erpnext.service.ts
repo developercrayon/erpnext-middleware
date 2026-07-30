@@ -206,4 +206,12 @@ export class ERPNextService {
     }
     return result.data;
   }
+
+  async removeAttachedFile(doctype: string, docname: string, fileUrl: string): Promise<any> {
+    const result = await this.connector.removeAttachedFile(doctype, docname, fileUrl);
+    if (!result.success) {
+      throw new Error(`Failed to remove attached file from ${doctype} ${docname}: ${result.error}`);
+    }
+    return result.data;
+  }
 }

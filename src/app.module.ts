@@ -23,6 +23,8 @@ import { ProductsModule } from './modules/products/products.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { ShipmentsModule } from './modules/shipments/shipments.module';
 import { LogsModule } from './modules/logs/logs.module';
+import { UnitModule } from './modules/unit/unit.module';
+import { CountryModule } from './modules/country/country.module';
 
 // Infrastructure
 import { QueueModule } from './modules/queue/queue.module';
@@ -101,6 +103,8 @@ import { AdminModule } from './admin/admin.module';
     PricingModule,
     ShipmentsModule,
     LogsModule,
+    UnitModule,
+    CountryModule,
 
     // ─── Infrastructure ───────────────────────────────────────────────────────
     QueueModule,

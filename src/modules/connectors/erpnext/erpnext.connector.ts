@@ -708,6 +708,28 @@ export class ERPNextConnector extends BaseConnector {
 
   async attachFile(doctype: string, docname: string, fileUrl: string): Promise<ConnectorResult<any>> {
     try {
+      // 1. Check if file is already attached
+      const listResponse = await this.http.post(
+        `${this.baseUrl}/api/method/frappe.client.get_list`,
+        {
+          doctype: 'File',
+          filters: [
+            ['attached_to_doctype', '=', doctype],
+            ['attached_to_name', '=', docname]
+          ],
+          fields: ['name', 'file_url']
+        },
+        { headers: this.authHeaders }
+      );
+      
+      const existingFiles = listResponse.data?.message || [];
+      const alreadyAttached = existingFiles.some((f: any) => f.file_url === fileUrl || fileUrl.includes(f.file_url) || f.file_url.includes(fileUrl));
+
+      if (alreadyAttached) {
+        return this.success({ message: "Already attached" });
+      }
+
+      // 2. Attach the file
       const fileName = fileUrl.split('/').pop()?.split('?')[0] || `image_${Date.now()}.jpg`;
       const payload = {
         file_url: fileUrl,
@@ -721,6 +743,64 @@ export class ERPNextConnector extends BaseConnector {
       });
       return this.success(response.data?.data);
     } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async removeAttachedFile(doctype: string, docname: string, fileUrl: string): Promise<ConnectorResult<boolean>> {
+    try {
+      console.log(`[removeAttachedFile] Fetching files for ${doctype} ${docname}`);
+      // 1. Fetch files attached to this doc
+      const listResponse = await this.http.post(
+        `${this.baseUrl}/api/method/frappe.client.get_list`,
+        {
+          doctype: 'File',
+          filters: [
+            ['attached_to_doctype', '=', doctype],
+            ['attached_to_name', '=', docname]
+          ],
+          fields: ['name', 'file_name', 'file_url']
+        },
+        { headers: this.authHeaders }
+      );
+      
+      const files = listResponse.data?.message || [];
+      console.log(`[removeAttachedFile] Found ${files.length} files attached:`, files);
+      
+      const filesToDelete = files.filter((f: any) => f.file_url === fileUrl || fileUrl.includes(f.file_url) || f.file_url.includes(fileUrl));
+
+      if (filesToDelete.length === 0) {
+        console.warn(`[removeAttachedFile] Could not find file matching ${fileUrl} in `, files);
+        return this.success(true); // Already gone or not attached
+      }
+
+      for (const fileToDelete of filesToDelete) {
+        console.log(`[removeAttachedFile] Deleting file fid=${fileToDelete.name} via REST API`);
+        // 2. Remove the attachment using standard REST API
+        try {
+          await this.http.delete(
+            `${this.baseUrl}/api/resource/File/${encodeURIComponent(fileToDelete.name)}`,
+            { headers: this.authHeaders }
+          );
+          console.log(`[removeAttachedFile] Successfully deleted ${fileToDelete.name} via REST API`);
+        } catch (delErr: any) {
+          console.warn(`[removeAttachedFile] REST API delete failed for ${fileToDelete.name}, trying remove_attach method...`);
+          // Fallback to remove_attach method using POST (since Frappe methods always accept POST)
+          await this.http.post(
+            `${this.baseUrl}/api/method/frappe.desk.form.utils.remove_attach`,
+            {
+              fid: fileToDelete.name,
+              dt: doctype,
+              dn: docname
+            },
+            { headers: this.authHeaders }
+          );
+        }
+      }
+
+      return this.success(true);
+    } catch (error: any) {
+      console.error(`[removeAttachedFile] Error:`, error?.response?.data || error.message);
       return this.failure(error);
     }
   }
