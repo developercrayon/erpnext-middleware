@@ -132,9 +132,7 @@ export class ERPNextConnector extends BaseConnector {
       // Trim trailing slash to avoid double-slash in URL construction
       const baseUrl = this.baseUrl.replace(/\/$/, '');
 
-      const filters: any[] = [
-        ['custom_sync_marketplace', '=', 1],
-      ];
+      const filters: any[] = [];
       if (params?.sku) {
         filters.push(['item_code', '=', params.sku]);
       }
@@ -158,7 +156,6 @@ export class ERPNextConnector extends BaseConnector {
               // Confirmed valid custom fields (verified against live ERPNext)
               // ❌ custom_amazon_asin  — NOT valid in list query (read from full item fetch)
               // ❌ custom_material     — does not exist in this ERPNext
-              'custom_sync_marketplace',
               'custom_amazon',
               'custom_flipkart',
               'custom_mrp',
@@ -387,6 +384,8 @@ export class ERPNextConnector extends BaseConnector {
       return this.failure(error);
     }
   }
+
+
 
   // ─── Inventory ────────────────────────────────────────────────────────────
 

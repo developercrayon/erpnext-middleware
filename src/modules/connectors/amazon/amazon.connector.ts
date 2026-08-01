@@ -5,6 +5,9 @@ import { HttpClientService } from '../../../shared/http-client.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FieldMapping } from '../../../database/entities/mapping.entity';
+import { ErpnextProductField } from '../../../database/entities/erpnext-product-field.entity';
+import { Unit } from '../../../database/entities/unit.entity';
+import { Country } from '../../../database/entities/country.entity';
 import { BaseConnector } from '../base/base-connector.abstract';
 import {
   ConnectorResult,
@@ -35,6 +38,12 @@ export class AmazonConnector extends BaseConnector {
     private readonly http: HttpClientService,
     @InjectRepository(FieldMapping)
     private readonly mappingRepo: Repository<FieldMapping>,
+    @InjectRepository(ErpnextProductField)
+    private readonly erpnextProductFieldRepo: Repository<ErpnextProductField>,
+    @InjectRepository(Unit)
+    private readonly unitRepo: Repository<Unit>,
+    @InjectRepository(Country)
+    private readonly countryRepo: Repository<Country>,
   ) {
     super('AmazonConnector');
     this.clientId = config.get<string>('amazon.clientId');
@@ -634,7 +643,181 @@ export class AmazonConnector extends BaseConnector {
   }
 
 
-  
+
+  /**
+   * Builds a default amazon template JSON string for a mapping when no template is saved.
+   * Checks the erpnext_product_field table to determine if the field is a Table type.
+   * - Table / Table MultiSelect  → array loop with child marker
+   * - Everything else            → simple scalar or standard [{value, language_tag}] wrapper
+   */
+  private async buildDefaultAmazonTemplate(
+    erpnextField: string,
+    amazonField: string,
+  ): Promise<string> {
+    const marketplaceId = this.marketplaceId;
+
+    try {
+      const fieldInfo = await this.erpnextProductFieldRepo.findOne({ where: { name: erpnextField } });
+      const ft = (fieldInfo?.fieldtype || '').toLowerCase().trim();
+      const isTable = ft === 'table' || ft === 'table multiselect';
+
+      if (isTable) {
+        // Derive child key from the field name (strip custom_ prefix)
+        const childKey = erpnextField.startsWith('custom_')
+          ? erpnextField.replace(/^custom_(amazon_|erpnext_)?/, '')
+          : erpnextField;
+        const template = {
+          [amazonField]: [
+            {
+              value: `{{${erpnextField}[*].${childKey}}}`,
+              language_tag: 'en_IN',
+              marketplace_id: marketplaceId,
+            },
+          ],
+        };
+        return JSON.stringify(template);
+      }
+    } catch (e) {
+      // If field lookup fails, fall through to scalar default
+    }
+
+    // Default scalar template
+    const template = {
+      [amazonField]: [
+        {
+          value: `{{${erpnextField}}}`,
+          language_tag: 'en_IN',
+          marketplace_id: marketplaceId,
+        },
+      ],
+    };
+    return JSON.stringify(template);
+  }
+
+  /**
+   * Resolves a template string marker against product data.
+   * Supports:
+   *   {{fieldName}}            → scalar value from erp or raw or product
+   *   {{fieldName[*].child}}   → child table loop — returns array of child values
+   */
+  private async resolveMarker(marker: string, erp: any, raw: any, product?: any): Promise<any> {
+    const applyMapping = async (fieldName: string, value: any): Promise<any> => {
+      if (value === undefined || value === null || value === '') return value;
+      try {
+        const fieldInfo = await this.erpnextProductFieldRepo.findOne({ where: { name: fieldName } });
+        if (fieldInfo && fieldInfo.fieldtype === 'Link' && fieldInfo.options) {
+          const opts = fieldInfo.options.toLowerCase().trim();
+          if (opts === 'uom') {
+            const mapped = await this.unitRepo.findOne({ where: { erpnext: value.toString() } });
+            if (mapped && mapped.amazon) return mapped.amazon;
+          } else if (opts === 'country') {
+            const mapped = await this.countryRepo.findOne({ where: { erpnext: value.toString() } });
+            if (mapped && mapped.amazon) return mapped.amazon;
+          }
+        }
+      } catch (e) {
+        // ignore mapping errors
+      }
+      return value;
+    };
+
+    // Child table loop: {{field[*].child}}
+    const loopMatch = marker.match(/^\{\{(\w+)\[\*\]\.(\w+)\}\}$/);
+    if (loopMatch) {
+      const [, fieldName, childKey] = loopMatch;
+      const arr = erp[fieldName] ?? raw[fieldName];
+      if (Array.isArray(arr)) {
+        const results = [];
+        for (const row of arr) {
+          if (row && row[childKey] !== undefined) {
+            const mappedVal = await applyMapping(childKey, row[childKey]);
+            if (mappedVal !== null && mappedVal !== undefined && mappedVal !== '') {
+              results.push(mappedVal);
+            }
+          }
+        }
+        return results;
+      }
+      return undefined;
+    }
+
+    // Scalar: {{field}}
+    const scalarMatch = marker.match(/^\{\{(\w+)\}\}$/);
+    if (scalarMatch) {
+      const [, fieldName] = scalarMatch;
+      let rawVal = erp[fieldName];
+      if (rawVal === undefined || rawVal === null) rawVal = raw[fieldName];
+      if ((rawVal === undefined || rawVal === null) && product) rawVal = product[fieldName as keyof NormalizedProduct];
+      
+      return await applyMapping(fieldName, rawVal);
+    }
+
+    // Not a marker — static value (e.g. "en_IN")
+    return marker;
+  }
+
+  /**
+   * Recursively resolves all markers in a template object/array/string.
+   * Special case: if a template array contains items that have loop markers,
+   * it expands each row into its own object, copying static fields.
+   */
+  private async resolveTemplate(template: any, erp: any, raw: any, product?: any): Promise<any> {
+    if (typeof template === 'string') {
+      return await this.resolveMarker(template, erp, raw, product);
+    }
+
+    if (Array.isArray(template)) {
+      const expanded: any[] = [];
+      for (const item of template) {
+        if (typeof item === 'object' && item !== null) {
+          // Check if any value in this object is a loop marker
+          const loopEntries: { key: string; values: any[] }[] = [];
+          const staticFields: Record<string, any> = {};
+
+          for (const [k, v] of Object.entries(item)) {
+            if (typeof v === 'string' && /^\{\{\w+\[\*\]\.\w+\}\}$/.test(v)) {
+              const resolved = await this.resolveMarker(v, erp, raw, product);
+              if (Array.isArray(resolved)) {
+                loopEntries.push({ key: k, values: resolved });
+              }
+            } else {
+              staticFields[k] = await this.resolveTemplate(v, erp, raw, product);
+            }
+          }
+
+          if (loopEntries.length > 0) {
+            // Expand: one output object per row of the first loop field
+            const primaryLoop = loopEntries[0];
+            for (let i = 0; i < primaryLoop.values.length; i++) {
+              const obj: any = { ...staticFields };
+              obj[primaryLoop.key] = primaryLoop.values[i];
+              // Handle additional loop fields (rare, but possible)
+              for (let j = 1; j < loopEntries.length; j++) {
+                obj[loopEntries[j].key] = loopEntries[j].values[i] ?? null;
+              }
+              expanded.push(obj);
+            }
+          } else {
+            expanded.push(staticFields);
+          }
+        } else {
+          expanded.push(await this.resolveTemplate(item, erp, raw, product));
+        }
+      }
+      return expanded;
+    }
+
+    if (typeof template === 'object' && template !== null) {
+      const result: any = {};
+      for (const [k, v] of Object.entries(template)) {
+        result[k] = await this.resolveTemplate(v, erp, raw, product);
+      }
+      return result;
+    }
+
+    return template; // number, boolean, null
+  }
+
   async generatePayloadAttributes(product: NormalizedProduct, productType: string, isUpdate: boolean, requirements: string): Promise<any> {
     const payload: any = {
         productType,
@@ -746,6 +929,66 @@ export class AmazonConnector extends BaseConnector {
         const raw = product.amazonRawPayload || {};
 
         for (const mapping of mappings) {
+          // Determine template: use saved amazonTemplate, or auto-generate a default one
+          let templateStr = mapping.amazonTemplate?.trim() || '';
+          if (!templateStr && mapping.erpnextField && mapping.erpnextField.trim()) {
+            templateStr = await this.buildDefaultAmazonTemplate(mapping.erpnextField, mapping.marketplaceField);
+          }
+
+          if (templateStr) {
+            try {
+              const templateObj = JSON.parse(templateStr);
+              const resolved = await this.resolveTemplate(templateObj, erp, raw, product);
+              for (const [key, val] of Object.entries(resolved)) {
+                let finalVal = val;
+
+                // Ensure scalar values (e.g. from {"model_number": "{{item_code}}"}) are wrapped in the standard Amazon array format
+                if (finalVal !== undefined && finalVal !== null && !Array.isArray(finalVal)) {
+                  if (typeof finalVal !== 'object') {
+                    finalVal = [{ value: finalVal, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
+                  } else {
+                    finalVal = [finalVal];
+                  }
+                }
+
+                // Filter out array items that are missing their critical data properties
+                if (Array.isArray(finalVal)) {
+                  finalVal = finalVal.filter((item: any) => {
+                    if (item && typeof item === 'object') {
+                      if ('media_location' in item) {
+                        return item.media_location !== undefined && item.media_location !== null && item.media_location !== '';
+                      }
+                      if ('value' in item) {
+                        return item.value !== undefined && item.value !== null && item.value !== '';
+                      }
+                      // If it's an object but has NEITHER 'value' nor 'media_location', we check if it has any data keys.
+                      // If it only has 'language_tag' or 'marketplace_id', the data value resolved to undefined/empty.
+                      const dataKeys = Object.keys(item).filter(k => k !== 'language_tag' && k !== 'marketplace_id');
+                      if (dataKeys.length > 0) {
+                        return dataKeys.some(k => item[k] !== undefined && item[k] !== null && item[k] !== '');
+                      }
+                      return false; // Effectively empty (only has metadata keys)
+                    }
+                    return item !== undefined && item !== null && item !== '';
+                  });
+                }
+
+                // If empty after resolution, apply the static default value if provided
+                if ((!finalVal || (Array.isArray(finalVal) && finalVal.length === 0)) && mapping.defaultValue && mapping.defaultValue.trim() !== '') {
+                  finalVal = [{ value: mapping.defaultValue, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
+                }
+
+                if (finalVal !== undefined && finalVal !== null && !(Array.isArray(finalVal) && finalVal.length === 0)) {
+                  payload.attributes[key] = finalVal;
+                }
+              }
+            } catch (e) {
+              this.logger.warn(`Failed to apply template for mapping ${mapping.marketplaceField}: ${e.message}`);
+            }
+            continue;
+          }
+
+          // --- Legacy fallback: no template — derive value from raw field ---
           let val: any = undefined;
 
           // 1st: Check if mapped with specific ERPNext field

@@ -24,7 +24,7 @@ export class MappingService {
     @InjectRepository(ErpnextProductField)
     private readonly erpnextProductFieldRepo: Repository<ErpnextProductField>,
     private readonly erpnextConnector: ERPNextConnector,
-  ) {}
+  ) { }
 
   async findAll(marketplace?: MarketplaceSource, productType?: string): Promise<FieldMapping[]> {
     const where: any = {};
@@ -100,7 +100,7 @@ export class MappingService {
     await this.mappingRepo.delete(id);
   }
 
-  async getAmazonFields(productType?: string): Promise<{ label: string; value: string; isRequired?: boolean }[]> {
+  async getAmazonFields(productType?: string): Promise<{ label: string; value: string; isRequired?: boolean; fieldType?: string; schema?: any }[]> {
     if (!productType) {
       return [];
     }
@@ -108,12 +108,18 @@ export class MappingService {
       where: { productTypeName: productType },
       order: { label: 'ASC' },
     });
-    
-    return fields.map(f => ({
-      label: f.label || f.name,
-      value: f.name,
-      isRequired: f.isRequired
-    }));
+
+    return fields.map(f => {
+      let fType = f.schema?.type;
+      if (Array.isArray(fType)) fType = fType[0];
+      return {
+        label: f.label || f.name,
+        value: f.name,
+        isRequired: f.isRequired,
+        fieldType: fType || undefined,
+        schema: f.schema || null,
+      };
+    });
   }
 
   async syncErpnextFields(): Promise<{ message: string; count: number }> {
@@ -157,6 +163,26 @@ export class MappingService {
     return { message: 'ERPNext fields synced successfully', count: entitiesToUpsert.length };
   }
 
+  async getErpnextDocTypeSchema(doctype: string) {
+    try {
+      const result = await this.erpnextConnector.getDocTypeFields(doctype);
+      if (!result.success || !result.data || !Array.isArray(result.data)) {
+        return [];
+      }
+
+      const validFields = result.data.filter((f: any) => !['Column Break', 'Section Break', 'Tab Break', 'HTML', 'Heading', 'Fold'].includes(f.fieldtype));
+      
+      return validFields.map((f: any) => ({
+        label: f.label || this.formatLabel(f.fieldname),
+        value: f.fieldname,
+        fieldtype: f.fieldtype,
+      }));
+    } catch (err: any) {
+      this.logger.error(`getErpnextDocTypeSchema error for ${doctype}: ${err.message}`);
+      return [];
+    }
+  }
+
   async getErpnextFields(page?: number, limit?: number, search?: string) {
     if (page !== undefined || limit !== undefined || search !== undefined) {
       const pageNum = page || 1;
@@ -166,10 +192,10 @@ export class MappingService {
       const [data, total] = await this.erpnextProductFieldRepo.findAndCount({
         where: search
           ? [
-              { name: ILike(`%${search}%`) },
-              { label: ILike(`%${search}%`) },
-              { fieldtype: ILike(`%${search}%`) },
-            ]
+            { name: ILike(`%${search}%`) },
+            { label: ILike(`%${search}%`) },
+            { fieldtype: ILike(`%${search}%`) },
+          ]
           : undefined,
         order: { name: 'ASC' },
         skip,
@@ -187,10 +213,12 @@ export class MappingService {
     const fields = await this.erpnextProductFieldRepo.find({
       order: { label: 'ASC' },
     });
-    
+
     return fields.map(f => ({
       label: f.label,
       value: f.name,
+      fieldtype: f.fieldtype,
+      options: f.options,
     }));
   }
 

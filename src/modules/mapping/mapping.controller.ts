@@ -47,6 +47,12 @@ export class MappingController {
     return this.mappingService.syncErpnextFields();
   }
 
+  @Get('fields/erpnext/:doctype/schema')
+  @ApiOperation({ summary: 'Get schema for a specific ERPNext DocType' })
+  async getErpnextDocTypeSchema(@Param('doctype') doctype: string) {
+    return this.mappingService.getErpnextDocTypeSchema(doctype);
+  }
+
   @Post('bulk')
   @ApiOperation({ summary: 'Create multiple field mappings' })
   async createBulk(@Body() dto: BulkCreateMappingDto) {
