@@ -45,7 +45,7 @@ export class ProductsProcessor {
     this.logger.log(`Executing background job: Fetch Products from ERPNext${skuFilter ? ' (SKU: ' + skuFilter + ')' : ''}`);
 
     try {
-      const result = await this.erpnextService.fetchProducts({ 
+      const result = await this.erpnextService.fetchProducts({
         pageSize: 500,
         sku: skuFilter
       });
@@ -54,7 +54,7 @@ export class ProductsProcessor {
       }
 
       const products = result.data?.items || [];
-      
+
       const syncHistory = this.syncHistoryRepo.create({
         resourceType: SyncResourceType.PRODUCT,
         source: 'ERPNEXT',
@@ -107,7 +107,7 @@ export class ProductsProcessor {
           this.logger.error(`Failed to upsert product ${p.sku}: ${err.message}`);
         }
       }
-      
+
       syncHistory.status = failed > 0 ? (upserted === 0 ? 'FAILED' : 'PARTIAL') : 'COMPLETED';
       syncHistory.itemsSynced = upserted;
       syncHistory.itemsFailed = failed;
@@ -116,7 +116,7 @@ export class ProductsProcessor {
       await this.syncHistoryRepo.save(syncHistory);
 
       this.logger.log(`Products fetched from ERPNext: ${upserted}/${products.length}`);
-      
+
       // Auto-sync single product if triggered by Webhook
       if (skuFilter && products.length > 0) {
         const p = products[0];
@@ -166,7 +166,7 @@ export class ProductsProcessor {
       if (!product) {
         throw new Error(`Product ${sku} not found`);
       }
-      
+
       const normalizedProduct: NormalizedProduct = {
         sku: product.sku,
         amazonAsin: product.amazonAsin,
@@ -185,6 +185,7 @@ export class ProductsProcessor {
         variationTheme: product.variationTheme,
         variantAttributes: product.variantAttributes,
         amazonRawPayload: product.amazonRawPayload,
+        erpnextRawPayload: product.erpnextRawPayload,
         images: product.images,
         rawPayload: product,
       };
@@ -200,9 +201,6 @@ export class ProductsProcessor {
     }
   }
 
-  /**
-   * Syncs specific products to a given marketplace (or all)
-   */
   @Process(JOB_NAMES.SYNC_PRODUCTS)
   async syncProducts(job: Job): Promise<void> {
     const { source, skus } = job.data;
@@ -219,7 +217,6 @@ export class ProductsProcessor {
       return;
     }
 
-    // Sort products: Parents (isParent = true, variantOf = null) first, then children
     products.sort((a, b) => {
       if (a.isParent && !b.isParent) return -1;
       if (!a.isParent && b.isParent) return 1;
@@ -256,9 +253,9 @@ export class ProductsProcessor {
             return valRate || 0;
           };
 
-          const sellingPrice = mp === MarketplaceSource.AMAZON 
+          const sellingPrice = mp === MarketplaceSource.AMAZON
             ? getPrice(product.customAmazonPrice, product.sellingPrice, product.costPrice)
-            : mp === MarketplaceSource.FLIPKART 
+            : mp === MarketplaceSource.FLIPKART
               ? getPrice(product.customFlipkartPrice, product.sellingPrice, product.costPrice)
               : getPrice(0, product.sellingPrice, product.costPrice);
 
@@ -280,25 +277,26 @@ export class ProductsProcessor {
             variationTheme: product.variationTheme,
             variantAttributes: product.variantAttributes,
             amazonRawPayload: product.amazonRawPayload,
+            erpnextRawPayload: product.erpnextRawPayload,
             images: product.images,
             rawPayload: product,
           };
 
           if (product.isParent) {
-             const childProducts = products.filter(p => p.variantOf === product.sku);
-             normalizedProduct.children = childProducts.map(cp => ({
-               sku: cp.sku,
-               amazonAsin: cp.amazonAsin,
-               amazonProductType: cp.amazonProductType,
-               upc: cp.upc,
-               name: cp.name,
-               mrp: cp.mrp,
-               sellingPrice: cp.sellingPrice,
-               isParent: cp.isParent,
-               variantOf: cp.variantOf,
-               variationTheme: cp.variationTheme,
-               variantAttributes: cp.variantAttributes,
-             }));
+            const childProducts = products.filter(p => p.variantOf === product.sku);
+            normalizedProduct.children = childProducts.map(cp => ({
+              sku: cp.sku,
+              amazonAsin: cp.amazonAsin,
+              amazonProductType: cp.amazonProductType,
+              upc: cp.upc,
+              name: cp.name,
+              mrp: cp.mrp,
+              sellingPrice: cp.sellingPrice,
+              isParent: cp.isParent,
+              variantOf: cp.variantOf,
+              variationTheme: cp.variationTheme,
+              variantAttributes: cp.variantAttributes,
+            }));
           }
 
           const result = await connector.createListing(normalizedProduct, true); // true = isDraft
@@ -333,7 +331,7 @@ export class ProductsProcessor {
       }
 
       this.logger.log(`Finished syncing products to ${mp}: ${successCount} succeeded, ${failureCount} failed.`);
-      
+
       syncHistory.status = failureCount > 0 ? (successCount === 0 ? 'FAILED' : 'PARTIAL') : 'COMPLETED';
       syncHistory.itemsSynced = successCount;
       syncHistory.itemsFailed = failureCount;
@@ -341,7 +339,6 @@ export class ProductsProcessor {
       syncHistory.durationMs = syncHistory.completedAt.getTime() - syncHistory.startedAt.getTime();
       await this.syncHistoryRepo.save(syncHistory);
 
-      // Auto-Sync Chain: If products were successfully pushed, queue an inventory sync for them immediately
       if (successCount > 0) {
         const successSkus = products.map(p => p.sku);
         await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, {
@@ -351,9 +348,6 @@ export class ProductsProcessor {
         this.logger.log(`Auto-queued inventory sync to ${mp} for ${successCount} products`);
       }
 
-      if (failureCount > 0) {
-        throw new Error(`Sync to ${mp} finished with ${failureCount} failures. See Error Logs for details.`);
-      }
     }
   }
 

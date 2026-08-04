@@ -105,6 +105,21 @@ export class ProductsController {
     }
   }
 
+  @Post(':id/sync-amazon')
+  @ApiOperation({ summary: 'Directly sync a single product to Amazon SP-API and return full response with issues' })
+  async syncToAmazon(@Param('id', ParseUUIDPipe) id: string) {
+    try {
+      const result = await this.productsService.syncSingleProductToAmazon(id);
+      return {
+        success: result.success,
+        message: result.success ? 'Product synced to Amazon successfully' : 'Amazon sync returned issues',
+        data: result,
+      };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to sync product to Amazon');
+    }
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete product by ID' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {

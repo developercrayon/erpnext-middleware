@@ -224,7 +224,7 @@ export class AmazonConnector extends BaseConnector {
             pageSize: params?.pageSize || 20,
             pageToken: params?.nextToken,
             sellerId: this.sellerId,
-            ...(params?.sku 
+            ...(params?.sku
               ? { identifiers: params.sku, identifiersType: params.sku.startsWith('B0') ? 'ASIN' : 'SKU' }
               : { keywords: 'woodwolf' }),
             includedData: 'attributes,dimensions,identifiers,images,productTypes,relationships,salesRanks,summaries',
@@ -260,11 +260,11 @@ export class AmazonConnector extends BaseConnector {
   ): Promise<ConnectorResult<NormalizedProduct[]>> {
     try {
       await this.ensureAuthenticated();
-      
+
       let attempts = 0;
       let success = false;
       let items: any[] = [];
-      
+
       while (attempts < 3 && !success) {
         try {
           attempts++;
@@ -314,7 +314,7 @@ export class AmazonConnector extends BaseConnector {
           }
         }
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 600));
 
       return this.success(items);
@@ -345,15 +345,15 @@ export class AmazonConnector extends BaseConnector {
       // 60 attempts * 5s = 5 minutes timeout
       await new Promise(resolve => setTimeout(resolve, 5000));
       attempts++;
-      
+
       const statusResponse = await this.http.get(
         `${this.endpoint}/reports/2021-06-30/reports/${reportId}`,
         { headers: this.spApiHeaders }
       );
-      
+
       const status = statusResponse.data.processingStatus;
       this.logger.log(`Report ${reportId} status: ${status}`);
-      
+
       if (status === 'DONE') {
         reportDocumentId = statusResponse.data.reportDocumentId;
         break;
@@ -371,12 +371,12 @@ export class AmazonConnector extends BaseConnector {
       `${this.endpoint}/reports/2021-06-30/documents/${reportDocumentId}`,
       { headers: this.spApiHeaders }
     );
-    
+
     const docUrl = docResponse.data.url;
     const compression = docResponse.data.compressionAlgorithm;
-    
+
     this.logger.log(`Downloading report from URL (compression: ${compression || 'NONE'})...`);
-    
+
     let tsvData = '';
     if (compression === 'GZIP') {
       const downloadResponse = await this.http.get(docUrl, { responseType: 'arraybuffer' });
@@ -385,30 +385,30 @@ export class AmazonConnector extends BaseConnector {
       const downloadResponse = await this.http.get(docUrl, { responseType: 'text' });
       tsvData = typeof downloadResponse.data === 'string' ? downloadResponse.data : String(downloadResponse.data || '');
     }
-    
+
     const lines = tsvData.split('\n');
     if (lines.length < 2) {
       this.logger.warn(`Report contains insufficient lines: ${lines.length}. First 100 chars: ${tsvData.substring(0, 100)}`);
       return [];
     }
-    
+
     const headers = lines[0].split('\t').map(h => h.trim().toLowerCase());
     const skuIndex = headers.indexOf('seller-sku');
     if (skuIndex === -1) {
       this.logger.warn(`Could not find 'seller-sku' column in report! Available columns: ${headers.join(', ')}`);
       return [];
     }
-    
+
     const skus = new Set<string>();
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      
+
       const columns = line.split('\t');
       const sku = columns[skuIndex];
       if (sku) skus.add(sku.trim());
     }
-    
+
     this.logger.log(`Extracted ${skus.size} unique SKUs from report.`);
     return Array.from(skus);
   }
@@ -419,25 +419,25 @@ export class AmazonConnector extends BaseConnector {
   async fetchAllSellerListings(): Promise<ConnectorResult<NormalizedProduct[]>> {
     try {
       await this.ensureAuthenticated();
-      
+
       // Step 1: Get ALL seller SKUs via Reports API
       const allSkus = await this.fetchSkusFromReportsApi();
-      
+
       this.logger.log(`Found ${allSkus.length} total seller SKUs. Fetching full catalog data...`);
-      
+
       if (allSkus.length === 0) {
         return this.success([]);
       }
-      
+
       // Step 2: For each SKU, fetch full Catalog Item data (attributes, relationships, etc.)
       // Catalog API technically accepts up to 20 identifiers per request, but SILENTLY truncates the response to 10 items maximum.
       const allItems: NormalizedProduct[] = [];
       const chunkSize = 10;
-      
+
       for (let i = 0; i < allSkus.length; i += chunkSize) {
         const chunk = allSkus.slice(i, i + chunkSize);
         this.logger.log(`Fetching catalog data for seller SKUs ${i + 1}-${Math.min(i + chunkSize, allSkus.length)}: [${chunk.join(', ')}]`);
-        
+
         let attempts = 0;
         let success = false;
 
@@ -457,10 +457,10 @@ export class AmazonConnector extends BaseConnector {
                 },
               },
             );
-            
+
             const returnedItems = catalogResponse.data?.items || [];
             this.logger.log(`  Catalog returned ${returnedItems.length} items for ${chunk.length} SKUs`);
-            
+
             const items = returnedItems.map((item: any) => {
               let sku = item.asin;
               if (item.identifiers) {
@@ -484,7 +484,7 @@ export class AmazonConnector extends BaseConnector {
                 rawPayload: item,
               };
             });
-            
+
             allItems.push(...items);
             success = true;
           } catch (err: any) {
@@ -497,11 +497,11 @@ export class AmazonConnector extends BaseConnector {
             }
           }
         }
-        
+
         // Amazon Catalog API allows 2 requests per second. Wait 600ms between chunks to be safe.
         await new Promise(resolve => setTimeout(resolve, 600));
       }
-      
+
       return this.success(allItems);
     } catch (error) {
       return this.failure(error);
@@ -510,11 +510,11 @@ export class AmazonConnector extends BaseConnector {
 
 
 
-  
+
   async patchListing(product: NormalizedProduct, changedKeys: string[]): Promise<ConnectorResult<boolean>> {
     try {
       await this.ensureAuthenticated();
-      
+
       let productType = product.amazonProductType || product.erpnextRawPayload?.amazonProductType;
       const productTypeMap: Record<string, string> = { 'HOME_FURNITURE_AND_DECOR': 'SHELF' };
       if (productType && productTypeMap[productType]) productType = productTypeMap[productType];
@@ -522,10 +522,10 @@ export class AmazonConnector extends BaseConnector {
 
       const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
       const attributes = await this.generatePayloadAttributes(product, productType, true, requirements);
-      
+
       // Now filter out only the patches
       const patches: any[] = [];
-      
+
       // Standard static mappings (using ERPNext keys -> Amazon keys)
       // NOTE: 'description' maps to 'product_description' because that is the attribute key
       // generated by generatePayloadAttributes() — not 'description'.
@@ -550,8 +550,8 @@ export class AmazonConnector extends BaseConnector {
         }
         keyMap[key].push(mapping.marketplaceField);
         if (mapping.marketplaceField.match(/item_depth|item_width|item_height|item_length|package_weight|package_height|package_width|package_length|item_package_weight/)) {
-           // Also include the _unit field in the patch if we map a dimension
-           keyMap[key].push(`${mapping.marketplaceField}_unit`);
+          // Also include the _unit field in the patch if we map a dimension
+          keyMap[key].push(`${mapping.marketplaceField}_unit`);
         }
       }
 
@@ -589,12 +589,12 @@ export class AmazonConnector extends BaseConnector {
       this.logger.log(`[PATCH DEBUG] Built ${patches.length} patches: ${JSON.stringify(patches.map(p => p.path))}`);
 
       if (patches.length === 0) {
-         this.logger.log(`No mappable fields found for partial update of ${product.sku} (or they were price fields)`);
-         return this.success(true);
+        this.logger.log(`No mappable fields found for partial update of ${product.sku} (or they were price fields)`);
+        return this.success(true);
       }
 
       this.logger.log(`Patching listing ${product.sku} on Amazon with ${patches.length} patches`);
-      
+
       const payload = {
         productType,
         patches
@@ -705,14 +705,29 @@ export class AmazonConnector extends BaseConnector {
       if (value === undefined || value === null || value === '') return value;
       try {
         const fieldInfo = await this.erpnextProductFieldRepo.findOne({ where: { name: fieldName } });
-        if (fieldInfo && fieldInfo.fieldtype === 'Link' && fieldInfo.options) {
-          const opts = fieldInfo.options.toLowerCase().trim();
-          if (opts === 'uom') {
-            const mapped = await this.unitRepo.findOne({ where: { erpnext: value.toString() } });
-            if (mapped && mapped.amazon) return mapped.amazon;
-          } else if (opts === 'country') {
-            const mapped = await this.countryRepo.findOne({ where: { erpnext: value.toString() } });
-            if (mapped && mapped.amazon) return mapped.amazon;
+
+        const isUom = (fieldInfo && fieldInfo.fieldtype === 'Link' && fieldInfo.options?.toLowerCase().trim() === 'uom') ||
+          fieldName.toLowerCase().includes('uom') ||
+          fieldName.toLowerCase().includes('unit');
+
+        if (isUom) {
+          // If it's wrapped in an array string from ERPNext or template, extract the inner value
+          const strVal = Array.isArray(value) ? value[0] : value.toString();
+          const mapped = await this.unitRepo.findOne({ where: { erpnext: strVal } });
+          if (mapped && mapped.amazon) {
+            // Some templates might expect the return to match the input type (array vs scalar)
+            return Array.isArray(value) ? [mapped.amazon] : mapped.amazon;
+          }
+        }
+
+        const isCountry = (fieldInfo && fieldInfo.fieldtype === 'Link' && fieldInfo.options?.toLowerCase().trim() === 'country') ||
+          fieldName.toLowerCase().includes('country');
+
+        if (isCountry) {
+          const strVal = Array.isArray(value) ? value[0] : value.toString();
+          const mapped = await this.countryRepo.findOne({ where: { erpnext: strVal } });
+          if (mapped && mapped.amazon) {
+            return Array.isArray(value) ? [mapped.amazon] : mapped.amazon;
           }
         }
       } catch (e) {
@@ -725,7 +740,10 @@ export class AmazonConnector extends BaseConnector {
     const loopMatch = marker.match(/^\{\{(\w+)\[\*\]\.(\w+)\}\}$/);
     if (loopMatch) {
       const [, fieldName, childKey] = loopMatch;
-      const arr = erp[fieldName] ?? raw[fieldName];
+      // ✅ FIX: Also check rawPayload (full product entity) for child table arrays
+      const rawEntity = (product as any)?.rawPayload;
+      const rawEntityErp = rawEntity?.erpnextRawPayload || {};
+      const arr = erp[fieldName] ?? raw[fieldName] ?? rawEntityErp[fieldName];
       if (Array.isArray(arr)) {
         const results = [];
         for (const row of arr) {
@@ -748,7 +766,19 @@ export class AmazonConnector extends BaseConnector {
       let rawVal = erp[fieldName];
       if (rawVal === undefined || rawVal === null) rawVal = raw[fieldName];
       if ((rawVal === undefined || rawVal === null) && product) rawVal = product[fieldName as keyof NormalizedProduct];
-      
+      // ✅ FIX: Also check rawPayload entity top-level and its erpnextRawPayload for additional fallback
+      if (rawVal === undefined || rawVal === null) {
+        const rawEntity = (product as any)?.rawPayload;
+        if (rawEntity) {
+          rawVal = rawEntity[fieldName] ?? rawEntity?.erpnextRawPayload?.[fieldName];
+        }
+      }
+
+      // If ERPNext sends an array for a scalar field, extract the first value
+      if (Array.isArray(rawVal)) {
+        rawVal = rawVal.length > 0 ? rawVal[0] : undefined;
+      }
+
       return await applyMapping(fieldName, rawVal);
     }
 
@@ -770,30 +800,63 @@ export class AmazonConnector extends BaseConnector {
       const expanded: any[] = [];
       for (const item of template) {
         if (typeof item === 'object' && item !== null) {
-          // Check if any value in this object is a loop marker
-          const loopEntries: { key: string; values: any[] }[] = [];
-          const staticFields: Record<string, any> = {};
-
-          for (const [k, v] of Object.entries(item)) {
-            if (typeof v === 'string' && /^\{\{\w+\[\*\]\.\w+\}\}$/.test(v)) {
-              const resolved = await this.resolveMarker(v, erp, raw, product);
-              if (Array.isArray(resolved)) {
-                loopEntries.push({ key: k, values: resolved });
+          // Deeply find all loop markers
+          const loopEntries: { path: string[]; values: any[] }[] = [];
+          
+          const findLoops = async (obj: any, currentPath: string[]) => {
+            for (const [k, v] of Object.entries(obj)) {
+              if (typeof v === 'string' && /^\{\{\w+\[\*\]\.\w+\}\}$/.test(v)) {
+                const resolved = await this.resolveMarker(v, erp, raw, product);
+                if (Array.isArray(resolved)) {
+                  loopEntries.push({ path: [...currentPath, k], values: resolved });
+                }
+              } else if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+                await findLoops(v, [...currentPath, k]);
               }
-            } else {
-              staticFields[k] = await this.resolveTemplate(v, erp, raw, product);
             }
-          }
+          };
+          await findLoops(item, []);
+
+          // Deeply resolve static fields (ignoring loop markers)
+          const resolveStatic = async (obj: any): Promise<any> => {
+            const resObj: any = {};
+            for (const [k, v] of Object.entries(obj)) {
+              if (typeof v === 'string' && /^\{\{\w+\[\*\]\.\w+\}\}$/.test(v)) {
+                continue; // Skip loop markers
+              } else if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+                const childRes = await resolveStatic(v);
+                if (Object.keys(childRes).length > 0) resObj[k] = childRes;
+              } else {
+                const resolved = await this.resolveTemplate(v, erp, raw, product);
+                if (resolved !== undefined) resObj[k] = resolved;
+              }
+            }
+            return resObj;
+          };
+          const staticFields = await resolveStatic(item);
 
           if (loopEntries.length > 0) {
             // Expand: one output object per row of the first loop field
             const primaryLoop = loopEntries[0];
             for (let i = 0; i < primaryLoop.values.length; i++) {
-              const obj: any = { ...staticFields };
-              obj[primaryLoop.key] = primaryLoop.values[i];
-              // Handle additional loop fields (rare, but possible)
+              // Deep clone static fields
+              const obj: any = JSON.parse(JSON.stringify(staticFields));
+              
+              // Helper to set value at path
+              const setPath = (target: any, path: string[], val: any) => {
+                let current = target;
+                for (let p = 0; p < path.length - 1; p++) {
+                  if (!current[path[p]]) current[path[p]] = {};
+                  current = current[path[p]];
+                }
+                current[path[path.length - 1]] = val;
+              };
+
+              setPath(obj, primaryLoop.path, primaryLoop.values[i]);
+              
+              // Handle additional loop fields
               for (let j = 1; j < loopEntries.length; j++) {
-                obj[loopEntries[j].key] = loopEntries[j].values[i] ?? null;
+                setPath(obj, loopEntries[j].path, loopEntries[j].values[i] ?? null);
               }
               expanded.push(obj);
             }
@@ -810,9 +873,23 @@ export class AmazonConnector extends BaseConnector {
     if (typeof template === 'object' && template !== null) {
       const result: any = {};
       for (const [k, v] of Object.entries(template)) {
-        result[k] = await this.resolveTemplate(v, erp, raw, product);
+        const res = await this.resolveTemplate(v, erp, raw, product);
+        if (res !== undefined && res !== null && res !== '') {
+          if (Array.isArray(res)) {
+            const filteredArr = res.filter(x => x !== undefined && x !== null && x !== '');
+            if (filteredArr.length > 0) {
+              result[k] = filteredArr;
+            }
+          } else if (typeof res === 'object') {
+            if (Object.keys(res).length > 0) {
+              result[k] = res;
+            }
+          } else {
+            result[k] = res;
+          }
+        }
       }
-      return result;
+      return Object.keys(result).length > 0 ? result : undefined;
     }
 
     return template; // number, boolean, null
@@ -820,339 +897,297 @@ export class AmazonConnector extends BaseConnector {
 
   async generatePayloadAttributes(product: NormalizedProduct, productType: string, isUpdate: boolean, requirements: string): Promise<any> {
     const payload: any = {
-        productType,
-        requirements,
-        attributes: {
-          item_name: [{ value: product.name, language_tag: 'en_IN' }],
-        },
-      };
+      productType,
+      requirements,
+      attributes: {
+        item_name: [{ value: product.name, language_tag: 'en_IN' }],
+      },
+    };
 
-      if (product.isParent) {
-        payload.attributes.parentage_level = [{ value: 'parent' }];
-        payload.attributes.variation_theme = [{ name: product.variationTheme || 'COLOR' }];
-      } else if (product.variantOf) {
-        payload.attributes.parentage_level = [{ value: 'child' }];
-        payload.attributes.child_parent_sku_relationship = [{
-          parent_sku: product.variantOf,
-          relationship_type: 'variation',
-          variation_theme: { name: product.variationTheme || 'COLOR' }
-        }];
-      }
+    if (product.isParent) {
+      payload.attributes.parentage_level = [{ value: 'parent' }];
+      payload.attributes.variation_theme = [{ name: product.variationTheme || 'COLOR' }];
+    } else if (product.variantOf) {
+      payload.attributes.parentage_level = [{ value: 'child' }];
+      payload.attributes.child_parent_sku_relationship = [{
+        parent_sku: product.variantOf,
+        relationship_type: 'variation',
+        variation_theme: { name: product.variationTheme || 'COLOR' }
+      }];
+    }
 
-      if (product.brand) {
-        payload.attributes.brand = [{ value: product.brand, language_tag: 'en_IN' }];
-      }
-
-      if (product.description) {
-        // Amazon expects plain text. Strip HTML tags from rich text editor output.
-        const plainTextDescription = product.description
-          .replace(/<br\s*[\/]?>/gi, '\n') // Replace <br> with newlines
-          .replace(/<\/p>/gi, '\n\n') // Replace </p> with double newlines
-          .replace(/<[^>]+>/g, '') // Strip remaining HTML tags
-          .replace(/&nbsp;/g, ' ') // Decode common entities
-          .replace(/&amp;/g, '&')
-          .trim();
-        payload.attributes.product_description = [{ value: plainTextDescription, language_tag: 'en_IN' }];
-      }
+    if (product.description) {
+      // Amazon expects plain text. Strip HTML tags from rich text editor output.
+      const plainTextDescription = product.description
+        .replace(/<br\s*[\/]?>/gi, '\n') // Replace <br> with newlines
+        .replace(/<\/p>/gi, '\n\n') // Replace </p> with double newlines
+        .replace(/<[^>]+>/g, '') // Strip remaining HTML tags
+        .replace(/&nbsp;/g, ' ') // Decode common entities
+        .replace(/&amp;/g, '&')
+        .trim();
+      payload.attributes.product_description = [{ value: plainTextDescription, language_tag: 'en_IN' }];
+    }
 
 
+    const mainImage = product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null);
+    const allImages = product.images && product.images.length > 0 ? product.images : (mainImage ? [mainImage] : []);
+    const otherImages = allImages.filter(img => img !== mainImage);
 
-
-
-      const mainImage = product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null);
-      const allImages = product.images && product.images.length > 0 ? product.images : (mainImage ? [mainImage] : []);
-      const otherImages = allImages.filter(img => img !== mainImage);
-
-      if (mainImage) {
-        if (requirements === 'LISTING') {
-          // Full listing: use product image locators (these appear in the product detail page)
-          payload.attributes.main_product_image_locator = [{
-            marketplace_id: this.marketplaceId,
-            media_location: mainImage
-          }];
-          // Additional images for product detail page
-          for (let i = 0; i < Math.min(otherImages.length, 8); i++) {
-            payload.attributes[`other_product_image_locator_${i + 1}`] = [{
-              marketplace_id: this.marketplaceId,
-              media_location: otherImages[i]
-            }];
-          }
-        }
-        // Both LISTING and LISTING_OFFER_ONLY: use offer image locators (these appear in the cart/list)
-        payload.attributes.main_offer_image_locator = [{
+    if (mainImage) {
+      if (requirements === 'LISTING') {
+        // Full listing: use product image locators (these appear in the product detail page)
+        payload.attributes.main_product_image_locator = [{
           marketplace_id: this.marketplaceId,
           media_location: mainImage
         }];
-        for (let i = 0; i < Math.min(otherImages.length, 5); i++) {
-          payload.attributes[`other_offer_image_locator_${i + 1}`] = [{
+        // Additional images for product detail page
+        for (let i = 0; i < Math.min(otherImages.length, 8); i++) {
+          payload.attributes[`other_product_image_locator_${i + 1}`] = [{
             marketplace_id: this.marketplaceId,
             media_location: otherImages[i]
           }];
         }
       }
-
-      if (!product.isParent) {
-        if (product.upc) {
-          payload.attributes.externally_assigned_product_identifier = [{
-            type: 'upc',
-            value: product.upc,
-          }];
-        } else if (product.erpnextRawPayload?.ean) {
-          payload.attributes.externally_assigned_product_identifier = [{
-            type: 'ean',
-            value: product.erpnextRawPayload.ean
-          }];
-        }
-      }
-
-      if (!product.isParent) {
-        // Temporarily avoiding purchasable_offer to see if it fixes the validation error
-      }
-
-      // Weight
-      const erp = product.erpnextRawPayload || {};
-      const raw = product.amazonRawPayload || {};
-      const weightVal = raw.weight || product.weight || erp.weight_per_unit;
-      if (weightVal !== undefined && weightVal !== null && weightVal !== '') {
-        payload.attributes.item_weight = [{ value: parseFloat(weightVal), unit: 'kilograms' }];
-      }
-
-      // --- DYNAMIC FIELD MAPPING ---
-      try {
-        const mappings = await this.mappingRepo.find({
-          where: {
-            marketplace: MarketplaceSource.AMAZON,
-            productType: productType
-          }
-        });
-        const erp = product.erpnextRawPayload || {};
-        const raw = product.amazonRawPayload || {};
-
-        for (const mapping of mappings) {
-          // Determine template: use saved amazonTemplate, or auto-generate a default one
-          let templateStr = mapping.amazonTemplate?.trim() || '';
-          if (!templateStr && mapping.erpnextField && mapping.erpnextField.trim()) {
-            templateStr = await this.buildDefaultAmazonTemplate(mapping.erpnextField, mapping.marketplaceField);
-          }
-
-          if (templateStr) {
-            try {
-              const templateObj = JSON.parse(templateStr);
-              const resolved = await this.resolveTemplate(templateObj, erp, raw, product);
-              for (const [key, val] of Object.entries(resolved)) {
-                let finalVal = val;
-
-                // Ensure scalar values (e.g. from {"model_number": "{{item_code}}"}) are wrapped in the standard Amazon array format
-                if (finalVal !== undefined && finalVal !== null && !Array.isArray(finalVal)) {
-                  if (typeof finalVal !== 'object') {
-                    finalVal = [{ value: finalVal, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
-                  } else {
-                    finalVal = [finalVal];
-                  }
-                }
-
-                // Filter out array items that are missing their critical data properties
-                if (Array.isArray(finalVal)) {
-                  finalVal = finalVal.filter((item: any) => {
-                    if (item && typeof item === 'object') {
-                      if ('media_location' in item) {
-                        return item.media_location !== undefined && item.media_location !== null && item.media_location !== '';
-                      }
-                      if ('value' in item) {
-                        return item.value !== undefined && item.value !== null && item.value !== '';
-                      }
-                      // If it's an object but has NEITHER 'value' nor 'media_location', we check if it has any data keys.
-                      // If it only has 'language_tag' or 'marketplace_id', the data value resolved to undefined/empty.
-                      const dataKeys = Object.keys(item).filter(k => k !== 'language_tag' && k !== 'marketplace_id');
-                      if (dataKeys.length > 0) {
-                        return dataKeys.some(k => item[k] !== undefined && item[k] !== null && item[k] !== '');
-                      }
-                      return false; // Effectively empty (only has metadata keys)
-                    }
-                    return item !== undefined && item !== null && item !== '';
-                  });
-                }
-
-                // If empty after resolution, apply the static default value if provided
-                if ((!finalVal || (Array.isArray(finalVal) && finalVal.length === 0)) && mapping.defaultValue && mapping.defaultValue.trim() !== '') {
-                  finalVal = [{ value: mapping.defaultValue, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
-                }
-
-                if (finalVal !== undefined && finalVal !== null && !(Array.isArray(finalVal) && finalVal.length === 0)) {
-                  payload.attributes[key] = finalVal;
-                }
-              }
-            } catch (e) {
-              this.logger.warn(`Failed to apply template for mapping ${mapping.marketplaceField}: ${e.message}`);
-            }
-            continue;
-          }
-
-          // --- Legacy fallback: no template — derive value from raw field ---
-          let val: any = undefined;
-
-          // 1st: Check if mapped with specific ERPNext field
-          if (mapping.erpnextField && mapping.erpnextField.trim() !== '') {
-            val = erp[mapping.erpnextField];
-            if (val === undefined || val === null) {
-              val = raw[mapping.erpnextField];
-            }
-            if (val === undefined || val === null) {
-              val = product[mapping.erpnextField as keyof NormalizedProduct];
-            }
-          }
-
-          // 2nd: If field not selected or empty value, check if defaultValue is set
-          if ((val === undefined || val === null || val === '') && mapping.defaultValue && mapping.defaultValue.trim() !== '') {
-            val = mapping.defaultValue;
-          }
-
-          if (val !== undefined && val !== null && val !== '') {
-            // Special handling for Amazon's strict schemas
-            const field = mapping.marketplaceField;
-
-              if (Array.isArray(val) && val.length > 0) {
-                const mappedArray = val.map(v => {
-                  if (typeof v === 'object') {
-                    const descVal = v.title || v.title_key || v.bullet_point || v.special_feature || v.material || v.room_type || v.care_instruction || v.component || v.description;
-                    if (descVal) return { value: descVal.toString(), language_tag: 'en_IN' };
-
-                    const validKeys = Object.keys(v).filter(k => !['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'parent', 'parentfield', 'parenttype'].includes(k));
-                    if (validKeys.length > 0) {
-                      return { value: v[validKeys[0]].toString(), language_tag: 'en_IN' };
-                    }
-                    return { value: Object.values(v)[0].toString(), language_tag: 'en_IN' };
-                  }
-                  return { value: v.toString(), language_tag: 'en_IN' };
-                });
-                if (mappedArray.length > 0) {
-                  payload.attributes[field] = mappedArray;
-                }
-              } else if (field === 'main_product_image_locator' || field.includes('other_product_image_locator')) {
-                let mediaUrl = val.toString();
-                if (mediaUrl.startsWith('/')) {
-                  const defaultBaseUrl = process.env.ERPNEXT_BASE_URL || 'https://woodwolf.t3elements.com';
-                  if (product.thumbnailUrl && product.thumbnailUrl.startsWith('http')) {
-                    try {
-                      const url = new URL(product.thumbnailUrl);
-                      mediaUrl = url.origin + mediaUrl;
-                    } catch (e) {
-                      mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
-                    }
-                  } else {
-                    mediaUrl = defaultBaseUrl.replace(/\/$/, '') + mediaUrl;
-                  }
-                }
-                payload.attributes[field] = [{ marketplace_id: this.marketplaceId, media_location: mediaUrl }];
-              } else if (field === 'country_of_origin') {
-                let code = val.toString();
-                if (code.toLowerCase() === 'india') code = 'IN';
-                else if (code.toLowerCase() === 'united states' || code.toLowerCase() === 'usa') code = 'US';
-                else if (code.toLowerCase() === 'china') code = 'CN';
-                payload.attributes[field] = [{ value: code, language_tag: 'en_IN' }];
-              } else if (field === 'shelf_thickness') {
-                payload.attributes[field] = [{ value: parseFloat(val.toString()) || 0, unit: 'centimeters', language_tag: 'en_IN' }];
-              } else if (field === 'external_product_information') {
-                const strVal = val.toString().trim();
-
-
-                payload.attributes[field] = [{ value: strVal, language_tag: 'en_IN' }];
-              } else if (field === 'supplier_declared_dg_hz_regulation') {
-                let dgVal = val.toString();
-                if (dgVal.toLowerCase() === 'false' || dgVal.toLowerCase() === 'no') {
-                  dgVal = 'not_applicable';
-                }
-                payload.attributes[field] = [{ value: dgVal, language_tag: 'en_IN' }];
-              } else if (field === 'purchasable_at') {
-                // Ignore purchasable_at as Amazon warns it's not applicable for this product type
-                continue;
-              } else if (['unit_count', 'size', 'package_weight', 'item_package_weight'].includes(field)) {
-                let u = (product.erpnextRawPayload?.custom_unit || '').toString().toLowerCase().trim();
-                let unitStr = 'centimeters';
-
-                // If it's a weight field, default to kilograms, unless specified
-                if (field.includes('weight')) {
-                  unitStr = 'kilograms';
-                  if (u === 'g' || u === 'gram' || u === 'grams') unitStr = 'grams';
-                  else if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') unitStr = 'pounds';
-                  else if (u === 'oz' || u === 'ounce' || u === 'ounces') unitStr = 'ounces';
-                } else {
-                  if (u === 'cm' || u === 'centimeter' || u === 'centimeters') unitStr = 'centimeters';
-                  else if (u === 'inch' || u === 'in' || u === 'inches') unitStr = 'inches';
-                  else if (u === 'mm' || u === 'millimeter' || u === 'millimeters') unitStr = 'millimeters';
-                  else if (u === 'm' || u === 'meter' || u === 'meters') unitStr = 'meters';
-                  else if (u === 'ft' || u === 'foot' || u === 'feet') unitStr = 'feet';
-                  else if (field === 'unit_count') unitStr = u || 'count';
-                }
-
-                const attrPayload: any = { value: parseFloat(val.toString()) || val.toString(), language_tag: 'en_IN' };
-                if (field !== 'size' || u) {
-                  attrPayload.unit = unitStr;
-                }
-                payload.attributes[field] = [attrPayload];
-              } else {
-                // Standard string/number/boolean mapping
-                payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
-              }
-          }
-        }
-      } catch (err) {
-        this.logger.error(`Failed to apply dynamic mappings: ${err.message}`);
-      }
-      // --- END DYNAMIC FIELD MAPPING ---
-
-      console.log("Dynamic mapping of fields", payload);
-
-      if (!payload.attributes.supplier_declared_dg_hz_regulation) {
-        payload.attributes.supplier_declared_dg_hz_regulation = [{ value: "not_applicable", language_tag: "en_IN" }];
-      }
-      if (!payload.attributes.batteries_required) {
-        payload.attributes.batteries_required = [{ value: false }];
-      }
-
-      // Robust fallbacks for SHELF and similar strict categories that require many specific fields
-      const attrs = payload.attributes;
-      if (!attrs.unit_count) attrs.unit_count = [{ value: 1, unit: "count" }];
-      if (!attrs.number_of_packs) attrs.number_of_packs = [{ value: 1 }];
-      if (!attrs.number_of_boxes) attrs.number_of_boxes = [{ value: 1 }];
-      if (!attrs.is_assembly_required) attrs.is_assembly_required = [{ value: false }];
-      if (!attrs.size) attrs.size = [{ value: "Standard", language_tag: "en_IN" }];
-      if (!attrs.manufacturer) attrs.manufacturer = [{ value: product.brand || "Woodwolf", language_tag: "en_IN" }];
-      if (!attrs.item_type_name) attrs.item_type_name = [{ value: product.category || "Shelf", language_tag: "en_IN" }];
-      if (!attrs.packer_contact_information) attrs.packer_contact_information = [{ value: "Woodwolf Studio", language_tag: "en_IN" }];
-      // Removed external_product_information fallback
-
-      if (!attrs.item_package_weight) {
-        let wUnit = 'kilograms';
-        const weightUom = product.rawPayload?.weightUom || product.rawPayload?.weight_uom;
-        if (weightUom && (weightUom.toLowerCase() === 'gram' || weightUom.toLowerCase() === 'g')) {
-          wUnit = 'grams';
-        }
-        const weightVal = product.weight ? parseFloat(product.weight.toString()) : 1.5;
-        attrs.item_package_weight = [{ value: weightVal, unit: wUnit }];
-      }
-
-      // Removed 10x10x10 fallbacks for item_package_dimensions and item_depth_width_height
-
-      // If the product has an ASIN, provide it. Otherwise, Amazon might reject it for LISTING_OFFER_ONLY.
-      if (product.amazonAsin) {
-        payload.attributes.merchant_suggested_asin = [{ value: product.amazonAsin }];
-      } else if (product.upc) {
-        let idType = 'upc';
-        const idLength = product.upc.trim().length;
-        if (idLength === 13) idType = 'ean';
-        else if (idLength === 14) idType = 'gtin';
-        else if (idLength === 10) idType = 'isbn';
-
-        payload.attributes.externally_assigned_product_identifier = [{
-          type: idType,
-          value: product.upc.trim()
+      // Both LISTING and LISTING_OFFER_ONLY: use offer image locators (these appear in the cart/list)
+      payload.attributes.main_offer_image_locator = [{
+        marketplace_id: this.marketplaceId,
+        media_location: mainImage
+      }];
+      for (let i = 0; i < Math.min(otherImages.length, 5); i++) {
+        payload.attributes[`other_offer_image_locator_${i + 1}`] = [{
+          marketplace_id: this.marketplaceId,
+          media_location: otherImages[i]
         }];
-      } else {
-        payload.attributes.supplier_declared_has_product_identifier_exemption = [{ value: true }];
       }
+    }
 
-      
+    // if (!product.isParent) {
+    //   if (product.upc) {
+    //     payload.attributes.externally_assigned_product_identifier = [{
+    //       type: 'upc',
+    //       value: product.upc,
+    //     }];
+    //   } else if (product.erpnextRawPayload?.ean) {
+    //     payload.attributes.externally_assigned_product_identifier = [{
+    //       type: 'ean',
+    //       value: product.erpnextRawPayload.ean
+    //     }];
+    //   }
+    // }
+
+    if (!product.isParent) {
+      // Temporarily avoiding purchasable_offer to see if it fixes the validation error
+    }
+
+    const rawPayloadEntity = (product as any).rawPayload || {};
+    const erpFallback: Record<string, any> =
+      (typeof rawPayloadEntity?.erpnextRawPayload === 'object' && rawPayloadEntity.erpnextRawPayload)
+        ? rawPayloadEntity.erpnextRawPayload
+        : {};
+    const erp: Record<string, any> = Object.keys(product.erpnextRawPayload || {}).length > 0
+      ? (product.erpnextRawPayload || {})
+      : erpFallback;
+    const raw = product.amazonRawPayload || {};
+
+    // Also build a merged product-level field lookup (covers top-level fields like weight, brand, etc.)
+    const productTopLevel: Record<string, any> = {
+      mrp: product.mrp,
+      sellingPrice: product.sellingPrice,
+      thumbnailUrl: product.thumbnailUrl,
+      amazonProductType: product.amazonProductType,
+    };
+
+    // Weight — use unitRepo to resolve the ERPNext UOM to the Amazon-accepted unit string
+    // const weightVal = raw.weight || product.weight || erp.weight_per_unit || rawPayloadEntity.weight;
+    // if (weightVal !== undefined && weightVal !== null && weightVal !== '') {
+    //   const weightUom = erp.weight_uom || rawPayloadEntity.weightUom || rawPayloadEntity.erpnextRawPayload?.weight_uom || null;
+    //   let weightAmazonUnit = 'kilograms'; // safe fallback
+    //   if (weightUom) {
+    //     try {
+    //       const unitMapped = await this.unitRepo.findOne({ where: { erpnext: weightUom } });
+    //       if (unitMapped?.amazon) weightAmazonUnit = unitMapped.amazon;
+    //     } catch (_) { /* keep fallback */ }
+    //   }
+    //   payload.attributes.item_weight = [{ value: parseFloat(weightVal), unit: weightAmazonUnit, marketplace_id: this.marketplaceId }];
+    // }
+
+    // --- DYNAMIC FIELD MAPPING ---
+    try {
+      const mappings = await this.mappingRepo.find({
+        where: {
+          marketplace: MarketplaceSource.AMAZON,
+          productType: productType
+        }
+      });
+      // erp and raw are already defined above with fallback chain
+
+      for (const mapping of mappings) {
+        // Determine template: use saved amazonTemplate, or auto-generate a default one
+        let templateStr = mapping.amazonTemplate?.trim() || '';
+        if (!templateStr && mapping.erpnextField && mapping.erpnextField.trim()) {
+          templateStr = await this.buildDefaultAmazonTemplate(mapping.erpnextField, mapping.marketplaceField);
+        }
+
+        if (templateStr) {
+          try {
+            const templateObj = JSON.parse(templateStr);
+
+            // ✅ If the template has NO {{markers}}, send it as-is (fixed/static value)
+            const hasMarkers = /\{\{[^}]+\}\}/.test(templateStr);
+            if (!hasMarkers) {
+              // Apply template keys directly to payload — no resolution needed
+              for (const [key, val] of Object.entries(templateObj)) {
+                if (val !== undefined && val !== null && !(Array.isArray(val) && (val as any[]).length === 0)) {
+                  payload.attributes[key] = val;
+                }
+              }
+              continue;
+            }
+
+            // Has markers — resolve dynamically
+            const resolved = await this.resolveTemplate(templateObj, erp, raw, product);
+            for (const [key, val] of Object.entries(resolved)) {
+              let finalVal = val;
+
+              // Ensure scalar values (e.g. from {"model_number": "{{item_code}}"}) are wrapped in the standard Amazon array format
+              if (finalVal !== undefined && finalVal !== null && !Array.isArray(finalVal)) {
+                if (typeof finalVal !== 'object') {
+                  finalVal = [{ value: finalVal, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
+                } else {
+                  finalVal = [finalVal];
+                }
+              }
+
+              // Filter out array items that are missing their critical data properties
+              if (Array.isArray(finalVal)) {
+                finalVal = finalVal.filter((item: any) => {
+                  if (item && typeof item === 'object') {
+                    if ('media_location' in item) {
+                      return item.media_location !== undefined && item.media_location !== null && item.media_location !== '';
+                    }
+                    if ('value' in item) {
+                      return item.value !== undefined && item.value !== null && item.value !== '';
+                    }
+                    // If it's an object but has NEITHER 'value' nor 'media_location', we check if it has any data keys.
+                    // If it only has 'language_tag' or 'marketplace_id', the data value resolved to undefined/empty.
+                    const dataKeys = Object.keys(item).filter(k => k !== 'language_tag' && k !== 'marketplace_id');
+                    if (dataKeys.length > 0) {
+                      return dataKeys.some(k => item[k] !== undefined && item[k] !== null && item[k] !== '');
+                    }
+                    return false; // Effectively empty (only has metadata keys)
+                  }
+                  return item !== undefined && item !== null && item !== '';
+                });
+              }
+
+              // If empty after resolution, apply the static default value if provided
+              if ((!finalVal || (Array.isArray(finalVal) && finalVal.length === 0)) && mapping.defaultValue && mapping.defaultValue.trim() !== '') {
+                finalVal = [{ value: mapping.defaultValue, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
+              }
+
+
+              if (finalVal !== undefined && finalVal !== null && !(Array.isArray(finalVal) && finalVal.length === 0)) {
+                payload.attributes[key] = finalVal;
+              }
+            }
+          } catch (e) {
+            this.logger.warn(`Failed to apply template for mapping ${mapping.marketplaceField}: ${e.message}`);
+          }
+          continue;
+        }
+
+        // --- Legacy fallback: no template — derive value from raw field ---
+        let val: any = undefined;
+
+        // 1st: Check if mapped with specific ERPNext field
+        if (mapping.erpnextField && mapping.erpnextField.trim() !== '') {
+          val = erp[mapping.erpnextField];
+          if (val === undefined || val === null) {
+            val = raw[mapping.erpnextField];
+          }
+          if (val === undefined || val === null) {
+            val = product[mapping.erpnextField as keyof NormalizedProduct];
+          }
+        }
+
+        // 2nd: If field not selected or empty value, check if defaultValue is set
+        if ((val === undefined || val === null || val === '') && mapping.defaultValue && mapping.defaultValue.trim() !== '') {
+          val = mapping.defaultValue;
+        }
+
+        if (val !== undefined && val !== null && val !== '') {
+          // Special handling for Amazon's strict schemas
+          const field = mapping.marketplaceField;
+
+          if (Array.isArray(val) && val.length > 0) {
+            const mappedArray = val.map(v => {
+              if (typeof v === 'object') {
+                const validKeys = Object.keys(v).filter(k => !['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'parent', 'parentfield', 'parenttype'].includes(k));
+                if (validKeys.length > 0) {
+                  return { value: v[validKeys[0]].toString(), language_tag: 'en_IN' };
+                }
+                return { value: Object.values(v)[0].toString(), language_tag: 'en_IN' };
+              }
+              return { value: v.toString(), language_tag: 'en_IN' };
+            });
+            if (mappedArray.length > 0) {
+              payload.attributes[field] = mappedArray;
+            }
+          } else {
+            payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
+          }
+        }
+      }
+    } catch (err) {
+      this.logger.error(`Failed to apply dynamic mappings: ${err.message}`);
+    }
+
+    // ─── POST-PROCESSING: Normalize unit strings using unitRepo (DB table) ───
+    // This fixes cases where a mapping template sends an ERPNext UOM name like "Gram"
+    // and we need the Amazon-accepted equivalent like "grams".
+
+    /**
+     * Looks up a unit string in the unitRepo and returns the Amazon equivalent.
+     * Also handles the case where the unit is stored as an array (e.g. from a malformed template).
+     */
+    const resolveUnit = async (rawUnit: string | string[] | undefined): Promise<string | undefined> => {
+      if (!rawUnit) return undefined;
+      const unitStr = Array.isArray(rawUnit) ? rawUnit[0] : rawUnit;
+      if (!unitStr) return undefined;
+      try {
+        const mapped = await this.unitRepo.findOne({ where: { erpnext: unitStr } });
+        return mapped?.amazon || unitStr;
+      } catch (_) {
+        return unitStr;
+      }
+    };
+
+    // Normalize item_weight unit via unitRepo
+    if (payload.attributes.item_weight) {
+      for (let i = 0; i < payload.attributes.item_weight.length; i++) {
+        const w = payload.attributes.item_weight[i];
+        if (w.unit) {
+          const resolved = await resolveUnit(w.unit);
+          if (resolved) payload.attributes.item_weight[i] = { ...w, unit: resolved };
+        }
+      }
+    }
+
+    // Normalize item_package_weight unit via unitRepo
+    if (payload.attributes.item_package_weight) {
+      for (let i = 0; i < payload.attributes.item_package_weight.length; i++) {
+        const w = payload.attributes.item_package_weight[i];
+        if (w.unit) {
+          const resolved = await resolveUnit(w.unit);
+          if (resolved) payload.attributes.item_package_weight[i] = { ...w, unit: resolved };
+        }
+      }
+    }
+    // SKU is passed in the URL for SP-API, it shouldn't be in the payload attributes
+    if (payload.attributes.sku) {
+      delete payload.attributes.sku;
+    }
+
     return payload.attributes;
   }
 
@@ -1176,15 +1211,6 @@ export class AmazonConnector extends BaseConnector {
       // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
       let productType = product.amazonProductType || product.erpnextRawPayload?.amazonProductType;
 
-      // Map invalid ERPNext product types to valid Amazon SP-API product types
-      const productTypeMap: Record<string, string> = {
-        'HOME_FURNITURE_AND_DECOR': 'SHELF',
-      };
-
-      if (productType && productTypeMap[productType]) {
-        productType = productTypeMap[productType];
-      }
-
       if (!productType) {
         if (!isUpdate) {
           return this.failure("Amazon Product Type is required to create new products on Amazon. The generic 'PRODUCT' type is not allowed for new listings.");
@@ -1194,7 +1220,7 @@ export class AmazonConnector extends BaseConnector {
 
       const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
 
-      
+
       const attributes = await this.generatePayloadAttributes(product, productType, isUpdate, requirements);
       const payload: any = {
         productType,
@@ -1204,9 +1230,7 @@ export class AmazonConnector extends BaseConnector {
 
       this.logger.debug(`PUT Listings attributes for ${product.sku}: ` + JSON.stringify(payload.attributes, null, 2));
 
-      console.log(payload)
 
-      // Resolve the actual SKU registered with Amazon — handles - vs _ normalization
       const resolvedSkuForPut = await this.resolveListingSku(product.sku);
       this.logger.log(`[PUT] Resolved SKU for PUT: '${product.sku}' → '${resolvedSkuForPut}'`);
 
@@ -1620,7 +1644,7 @@ export class AmazonConnector extends BaseConnector {
         `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
         {
           headers: this.spApiHeaders,
-          params: { 
+          params: {
             marketplaceIds: this.marketplaceId,
             includedData: 'attributes'
           },

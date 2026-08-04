@@ -1344,6 +1344,90 @@ export class ProductsService {
     return { total: products.length, upserted };
   }
 
+  // ─── Direct Amazon Sync ───────────────────────────────────────────────────
+
+  /**
+   * Synchronously syncs a single product to Amazon and returns the full API response.
+   * This is called from the "Sync to Amazon" button on the product detail page.
+   * Unlike the queue-based sync, this returns Amazon's issues array immediately
+   * so the user can see exactly which fields are missing or invalid.
+   */
+  async syncSingleProductToAmazon(id: string): Promise<{
+    success: boolean;
+    submissionId?: string;
+    asin?: string;
+    issues?: any[];
+    error?: string;
+    payload?: any;
+  }> {
+    const product = await this.findById(id);
+    if (!product) throw new Error('Product not found');
+
+    // Determine amazon product type — check all possible sources
+    const amazonProductType =
+      product.amazonProductType ||
+      product.erpnextRawPayload?.custom_amazon_product_type ||
+      product.erpnextRawPayload?.amazon_product_type ||
+      null;
+
+    this.logger.log(`[SYNC-AMAZON] SKU: ${product.sku}, productType: "${amazonProductType}", erpnextRawPayload keys: ${Object.keys(product.erpnextRawPayload || {}).join(', ')}`);
+
+    // Build a full NormalizedProduct with every field properly populated
+    const normalizedProduct: any = {
+      sku: product.sku,
+      amazonAsin: product.amazonAsin,
+      amazonProductType: amazonProductType,
+      upc: product.upc,
+      thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
+      flipkartSku: product.flipkartSku,
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      brand: product.brand,
+      mrp: product.mrp,
+      sellingPrice: product.customAmazonPrice || product.sellingPrice,
+      weight: product.weight,
+      isParent: product.isParent,
+      variantOf: product.variantOf,
+      variationTheme: product.variationTheme,
+      variantAttributes: product.variantAttributes,
+      amazonRawPayload: product.amazonRawPayload,
+      // ✅ FIX: erpnextRawPayload properly passed so template markers resolve
+      erpnextRawPayload: product.erpnextRawPayload,
+      images: product.images,
+      // rawPayload stores the full product entity as fallback
+      rawPayload: product,
+    };
+
+    try {
+      const result = await this.amazonConnector.createListing(normalizedProduct, false);
+      
+      // Update isAmazonListed flag if sync succeeded
+      if (result.success) {
+        await this.productRepo.update(product.id, {
+          isAmazonListed: true,
+          lastSyncedAt: new Date(),
+          ...(result.meta?.asin ? { amazonAsin: result.meta.asin } : {}),
+        });
+      }
+
+      return {
+        success: result.success,
+        submissionId: result.meta?.submissionId,
+        asin: result.meta?.asin,
+        issues: result.meta?.issues || [],
+        error: result.success ? undefined : result.error,
+      };
+    } catch (err: any) {
+      this.logger.error(`[SYNC-AMAZON] Failed for ${product.sku}: ${err.message}`);
+      return {
+        success: false,
+        error: err.message,
+        issues: [],
+      };
+    }
+  }
+
   // ─── Stats ────────────────────────────────────────────────────────────────
 
   async getStats(): Promise<Record<string, number>> {
