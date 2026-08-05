@@ -273,6 +273,48 @@ export class ProductsService {
     };
   }
 
+  async fetchSingleFromAmazonAndStore(sku: string): Promise<any> {
+    const result = await this.amazonConnector.fetchProductBySku(sku);
+    if (!result.success || !result.data) {
+      throw new Error(`Failed to fetch SKU ${sku} from Amazon: ${result.error}`);
+    }
+
+    const fetchedItem = result.data;
+    const getAmzStr = (attr: any) => {
+      if (!attr || !attr.length) return '';
+      return attr[0].value || '';
+    };
+
+    let product = await this.productRepo.findOne({ where: { sku } });
+    if (!product) {
+      product = this.productRepo.create({ sku });
+    }
+
+    const raw = fetchedItem.amazonRawPayload || fetchedItem.rawPayload || {};
+    const attrs = raw.attributes || {};
+    const summary = raw.summaries && raw.summaries.length > 0 ? raw.summaries[0] : {};
+
+    product.name = summary.itemName || product.name || '';
+    product.brand = summary.brandName || product.brand || '';
+    product.description = getAmzStr(attrs.product_description) || product.description || '';
+    product.category = getAmzStr(attrs.product_category) || product.category || '';
+    
+    // Extract actual Amazon productType (e.g. DECORATIVE_TRAY) instead of item_type_name string
+    let amzProductType = '';
+    if (raw.productTypes && raw.productTypes.length > 0) {
+      amzProductType = raw.productTypes[0].productType;
+    } else if (raw.summaries && raw.summaries.length > 0 && raw.summaries[0].productType) {
+      amzProductType = raw.summaries[0].productType;
+    }
+    product.amazonProductType = amzProductType || product.amazonProductType || '';
+    product.amazonRawPayload = raw;
+    
+    product.isFromAmazon = true;
+    product.customAmazon = true;
+
+    return this.productRepo.save(product);
+  }
+
   async findAll(query: ProductQueryDto): Promise<{ data: Product[]; total: number }> {
     const { status, marketplace, sku, category, brand, page = 1, pageSize = 20 } = query;
 
@@ -367,7 +409,7 @@ export class ProductsService {
     if (product.isParent) {
       erpPayload.has_variants = 1;
       let parentAttrs = product.variantAttributes || [];
-      
+
       // If parent has no attributes (e.g. auto-generated stub), infer from children
       if (parentAttrs.length === 0) {
         const children = await this.productRepo.find({ where: { variantOf: product.sku } });
@@ -422,7 +464,7 @@ export class ProductsService {
 
     // ── Image handling ─────────────────────────────────────────────────────────
     let productImages = product.images && product.images.length > 0 ? product.images : undefined;
-    
+
     // Fallback to attributes only if product.images is truly empty/unset
     if (!productImages && product.amazonRawPayload?.images) {
       if (Array.isArray(product.amazonRawPayload.images) && product.amazonRawPayload.images.length > 0) {
@@ -482,7 +524,7 @@ export class ProductsService {
       if (!attrsObj || !key) return [];
       const val = attrsObj[key];
       if (!val) return [];
-      
+
       const extractStr = (v: any): string => {
         if (v === null || v === undefined) return '';
         if (typeof v === 'object') {
@@ -619,9 +661,9 @@ export class ProductsService {
           for (let rawAmzVal of amazonValues) {
             let amzVal = rawAmzVal;
             if (typeof amzVal === 'string' && amzVal.startsWith('{') && amzVal.endsWith('}')) {
-              try { amzVal = JSON.parse(amzVal); } catch (e) {}
+              try { amzVal = JSON.parse(amzVal); } catch (e) { }
             }
-            
+
             const uniqueName = `child-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
 
             if (typeof amzVal === 'object' && amzVal !== null && !Array.isArray(amzVal) && !resolutionDoctype) {
@@ -690,7 +732,7 @@ export class ProductsService {
                     [valueField]: amzVal
                   };
                   let createRes = await connector.createDocTypeEntry(resolutionDoctype, payloadWithField);
-                  
+
                   if (!createRes.success) {
                     this.logger.warn(`[DYNAMIC-MAP] First attempt failed creating "${amzVal}" in "${resolutionDoctype}" with ${valueField}: ${JSON.stringify(createRes.error)}. Retrying with basic fields...`);
                     // Retry with just name and title (often the valueField from the child table doesn't exist on the parent)
@@ -730,7 +772,7 @@ export class ProductsService {
             const existingResult = await connector.getDocTypeEntries(linkedDoctype, amzVal);
             const existing: any[] = existingResult.success ? (existingResult.data || []) : [];
             const found = existing.find(e => (e.name || '').toLowerCase() === amzVal.toLowerCase());
-            
+
             if (!found) {
               this.logger.log(`[DYNAMIC-MAP] Link "${amzVal}" not in "${linkedDoctype}" — creating...`);
               try {
@@ -783,13 +825,13 @@ export class ProductsService {
           if (match) {
             const existingItemCode = match[1];
             this.logger.warn(`Item variant exists with same attributes. Mapping ${sellerSku} to duplicate existing item: ${existingItemCode}`);
-            
+
             this.logger.log(`Updating duplicate existing item ${existingItemCode} with new payload...`);
             const payloadForUpdate = { ...erpPayload };
             delete payloadForUpdate.item_code;
             delete payloadForUpdate.sku;
             await this.erpnextService.updateItem(existingItemCode, payloadForUpdate);
-            
+
             itemCode = existingItemCode;
           } else {
             throw createErr;
@@ -956,7 +998,7 @@ export class ProductsService {
             if (erpPayload[f] === undefined) {
               erpPayload[f] = cleanFields[f];
             }
-            
+
             // Map back to local DB fields for fast local loads
             if (f === 'item_name') product.name = cleanFields[f];
             if (f === 'description') product.description = cleanFields[f];
@@ -974,7 +1016,7 @@ export class ProductsService {
             if (f === 'disabled') product.status = cleanFields[f] === 1 ? ProductStatus.INACTIVE : ProductStatus.ACTIVE;
             if (f === 'custom_amazon') product.customAmazon = cleanFields[f] === 1 || cleanFields[f] === true;
             if (f === 'custom_flipkart') product.customFlipkart = cleanFields[f] === 1 || cleanFields[f] === true;
-            
+
             delete cleanFields[f];
           }
         });
@@ -995,7 +1037,7 @@ export class ProductsService {
           if (Object.keys(erpPayload).length > 0) {
             await this.erpnextService.updateItem(product.erpnextItemCode, erpPayload);
           }
-          
+
           // Automatically trigger marketplace syncs if configured.
           // Also trigger for products that originated from Amazon (isFromAmazon=true)
           // even if customAmazon hasn't been explicitly set yet.
@@ -1200,14 +1242,14 @@ export class ProductsService {
       this.logger.log('No active products found to update prices.');
       return;
     }
-    
+
     // If no specific SKUs provided, update all Amazon listed products
     if (!skus || skus.length === 0) {
       skus = products.map(p => p.sku).filter(sku => sku);
     }
-    
+
     this.logger.log(`Fetching exact pricing (MRP & Selling Price) from Amazon Listings API for ${skus.length} SKUs...`);
-    
+
     const logsDir = path.join(process.cwd(), 'logs');
     await fs.mkdir(logsDir, { recursive: true });
     const jsonPath = path.join(logsDir, `amazon_listing_prices_${Date.now()}.json`);
@@ -1216,7 +1258,7 @@ export class ProductsService {
     // Listings Items API allows 5 requests per second. We will process 5 SKUs concurrently per batch.
     const batchSize = 5;
     let successCount = 0;
-    
+
     for (let i = 0; i < skus.length; i += batchSize) {
       const batchSkus = skus.slice(i, i + batchSize);
       try {
@@ -1224,22 +1266,22 @@ export class ProductsService {
           const result = await this.amazonConnector.fetchListingPricing(sku);
           if (result.success && result.data) {
             allResponses.push({ sku, data: result.data });
-            
+
             const product = products.find(p => p.sku === sku);
             if (product && result.data.attributes) {
               const attrs = result.data.attributes;
-              
+
               // Extract list_price (MRP)
               let mrp = null;
               if (attrs.list_price && attrs.list_price.length > 0) {
                 mrp = attrs.list_price[0].value_with_tax || attrs.list_price[0].value;
               }
-              
+
               // Extract purchasable_offer (Selling Price and sometimes MRP)
               let sellingPrice = null;
               if (attrs.purchasable_offer && attrs.purchasable_offer.length > 0) {
                 const offer = attrs.purchasable_offer[0];
-                
+
                 // Sometimes MRP is inside purchasable_offer as maximum_retail_price
                 if (!mrp && offer.maximum_retail_price && offer.maximum_retail_price.length > 0) {
                   const mrpSchedule = offer.maximum_retail_price[0].schedule;
@@ -1247,7 +1289,7 @@ export class ProductsService {
                     mrp = mrpSchedule[0].value_with_tax;
                   }
                 }
-                
+
                 if (offer.our_price && offer.our_price.length > 0) {
                   const schedule = offer.our_price[0].schedule;
                   if (schedule && schedule.length > 0) {
@@ -1255,7 +1297,7 @@ export class ProductsService {
                   }
                 }
               }
-              
+
               // Update DB
               product.amazonPrice = result.data;
               if (mrp) {
@@ -1267,27 +1309,27 @@ export class ProductsService {
                   product.mrp = parseFloat(sellingPrice); // Fallback if MRP is missing
                 }
               }
-              
+
               await this.productRepo.save(product);
               successCount++;
             }
           } else if (result.success && result.data === null) {
-             this.logger.debug(`SKU ${sku} not found on Amazon Listings API`);
+            this.logger.debug(`SKU ${sku} not found on Amazon Listings API`);
           } else {
             this.logger.error(`Failed to fetch listing pricing for SKU ${sku}: ${result.error}`);
           }
         });
 
         await Promise.all(batchPromises);
-        
+
       } catch (error) {
         this.logger.error(`Error processing listing price batch starting at ${i}: ${error.message}`);
       }
-      
+
       // Sleep to avoid rate limits (Listings API has 5 requests per second)
       await new Promise(resolve => setTimeout(resolve, 1200));
     }
-    
+
     await fs.writeFile(jsonPath, JSON.stringify(allResponses, null, 2), 'utf-8');
     this.logger.log(`Successfully updated exact pricing for ${successCount} products. Response saved to ${jsonPath}`);
   }
@@ -1401,7 +1443,7 @@ export class ProductsService {
 
     try {
       const result = await this.amazonConnector.createListing(normalizedProduct, false);
-      
+
       // Update isAmazonListed flag if sync succeeded
       if (result.success) {
         await this.productRepo.update(product.id, {

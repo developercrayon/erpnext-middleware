@@ -19,6 +19,21 @@ export class LogQueryDto {
   @IsString()
   level?: string;
 
+  @ApiPropertyOptional({ description: 'Filter by service' })
+  @IsOptional()
+  @IsString()
+  service?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by HTTP method' })
+  @IsOptional()
+  @IsString()
+  method?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by status (success/error)' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
   @ApiPropertyOptional({ description: 'Filter from date (ISO string)' })
   @IsOptional()
   @IsString()

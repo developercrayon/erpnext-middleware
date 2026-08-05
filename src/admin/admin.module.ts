@@ -77,7 +77,7 @@ export class AdminModule {
         const patchEntity = (target: any) => {
           if (typeof target !== 'function' || target.getRepository) return;
           const repo: any = dataSource.getRepository(target);
-          
+
           // Static methods
           target.getRepository = () => repo;
           target.find = (...args) => repo.find(...args);
@@ -89,8 +89,8 @@ export class AdminModule {
           target.remove = (...args) => repo.remove(...args);
 
           // Instance methods
-          target.prototype.save = function(options) { return repo.save(this, options); };
-          target.prototype.remove = function(options) { return repo.remove(this, options); };
+          target.prototype.save = function (options) { return repo.save(this, options); };
+          target.prototype.remove = function (options) { return repo.remove(this, options); };
         };
 
         for (const entity of entities) patchEntity(entity);
@@ -131,8 +131,8 @@ export class AdminModule {
             locale: {
               language: 'en',
               translations: {
-                en: { 
-                  labels: { navigation: '' }, 
+                en: {
+                  labels: { navigation: '' },
                   components: {
                     Login: {
                       welcomeMessage: "From customized printing to premium office gifts and modern corporate packaging, we create products that add value to your brand and everyday life. Whether you're designing items for internal use or building your online merchandise store, our high-quality, fully customizable goods help your brand stand out with style and purpose.",
@@ -156,9 +156,11 @@ export class AdminModule {
             resources: [
               {
                 resource: Order,
-                options: { navigation: null,
+                options: {
+                  navigation: null,
                   sort: { sortBy: 'createdAt', direction: 'desc' },
-                  actions: { new: { isAccessible: false },
+                  actions: {
+                    new: { isAccessible: false },
                     syncToERPNext: {
                       actionType: 'record',
                       component: false,
@@ -220,7 +222,8 @@ export class AdminModule {
               },
               {
                 resource: Product,
-                options: { navigation: null,
+                options: {
+                  navigation: null,
                   properties: {
                     description: {
                       isVisible: { list: false, show: true, edit: true, filter: true }
@@ -251,12 +254,44 @@ export class AdminModule {
                     },
                     customAmazonBulletPoint: { isVisible: { list: false, show: true, edit: true, filter: true }, position: 10, label: 'Amazon Bullet Point', components: { show: Components.JsonArrayList } },
                   },
-                  actions: { new: { isAccessible: false },
+                  actions: {
+                    new: { isAccessible: false },
+                    fetchSingleFromAmazon: {
+                      actionType: 'record',
+                      component: false,
+                      icon: 'Download',
+                      label: 'Fetch from Amazon',
+                      isVisible: (context) => {
+                        return !!context.record;
+                      },
+                      handler: async (request, response, context) => {
+                        const { record } = context;
+                        const sku = record.param('sku');
+                        try {
+                          await productsService.fetchSingleFromAmazonAndStore(sku);
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Product ${sku} successfully fetched from Amazon.`,
+                              type: 'success',
+                            },
+                          };
+                        } catch (err) {
+                          return {
+                            record: record.toJSON(),
+                            notice: {
+                              message: `Failed to fetch product ${sku} from Amazon: ${err.message}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
                     fetchFromAmazon: {
                       actionType: 'resource',
                       component: false,
                       icon: 'Download',
-                      label: 'Fetch from Amazon',
+                      label: 'Fetch All from Amazon',
                       handler: async (request, response, context) => {
                         try {
                           const result = await productsService.fetchFromAmazonAndStore();
@@ -380,7 +415,7 @@ export class AdminModule {
                         const skus = (records || [])
                           .filter(r => r.params.customAmazon === true || r.params.customAmazon === 1 || r.params.customAmazon === 'true')
                           .map(r => r.params.sku);
-                        
+
                         if (skus.length === 0) {
                           return {
                             records: context.records || [],
@@ -390,7 +425,7 @@ export class AdminModule {
                             },
                           };
                         }
-                        
+
                         try {
                           const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, skus);
                           return {
@@ -411,6 +446,55 @@ export class AdminModule {
                         }
                       },
                     },
+                    bulkFetchFromAmazon: {
+                      actionType: 'bulk',
+                      component: false,
+                      icon: 'Download',
+                      label: 'Fetch from Amazon',
+                      handler: async (request, response, context) => {
+                        const { records } = context;
+                        const skus = (records || []).map(r => r.params.sku);
+
+                        if (skus.length === 0) {
+                          return {
+                            records: context.records || [],
+                            notice: {
+                              message: 'No products selected.',
+                              type: 'error',
+                            },
+                          };
+                        }
+
+                        let successCount = 0;
+                        let errorMsg = '';
+                        for (const sku of skus) {
+                          try {
+                            await productsService.fetchSingleFromAmazonAndStore(sku);
+                            successCount++;
+                          } catch (err: any) {
+                            errorMsg = err.message;
+                          }
+                        }
+
+                        if (successCount === skus.length) {
+                          return {
+                            records: context.records || [],
+                            notice: {
+                              message: `Successfully fetched ${successCount} product(s) from Amazon.`,
+                              type: 'success',
+                            },
+                          };
+                        } else {
+                          return {
+                            records: context.records || [],
+                            notice: {
+                              message: `Fetched ${successCount} out of ${skus.length} product(s). Last error: ${errorMsg}`,
+                              type: 'error',
+                            },
+                          };
+                        }
+                      },
+                    },
                     bulkSyncToFlipkart: {
                       actionType: 'bulk',
                       component: false,
@@ -421,7 +505,7 @@ export class AdminModule {
                         const skus = (records || [])
                           .filter(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
                           .map(r => r.params.sku);
-                        
+
                         if (skus.length === 0) {
                           return {
                             records: context.records || [],
@@ -465,7 +549,7 @@ export class AdminModule {
                         const flipkartSkus = (records || [])
                           .filter(r => r.params.customFlipkart === true || r.params.customFlipkart === 1 || r.params.customFlipkart === 'true')
                           .map(r => r.params.sku);
-                        
+
                         if (amazonSkus.length === 0 && flipkartSkus.length === 0) {
                           return {
                             records: context.records || [],
@@ -633,9 +717,11 @@ export class AdminModule {
               },
               {
                 resource: Inventory,
-                options: { navigation: false,
+                options: {
+                  navigation: false,
                   sort: { sortBy: 'createdAt', direction: 'desc' },
-                  actions: { new: { isAccessible: false },
+                  actions: {
+                    new: { isAccessible: false },
                     syncSkuInventory: {
                       actionType: 'record',
                       component: false,
@@ -707,8 +793,8 @@ export class AdminModule {
               },
               {
                 resource: QueueJob,
-                options: { 
-                  navigation: { name: 'Operational', icon: 'List' }, 
+                options: {
+                  navigation: { name: 'Operational', icon: 'List' },
                   actions: { new: { isAccessible: false } },
                   listProperties: ['id', 'queueName', 'jobName', 'status', 'attempts', 'createdDate', 'completedAt'],
                   sort: {
@@ -723,38 +809,38 @@ export class AdminModule {
               },
               {
                 resource: ConnectorLog,
-                options: { 
-                  navigation: false, 
+                options: {
+                  navigation: false,
                   listProperties: ['id', 'connector', 'action', 'level', 'message', 'createdAt'],
-                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
-                  actions: { new: { isAccessible: false } } 
+                  sort: { sortBy: 'createdAt', direction: 'desc' },
+                  actions: { new: { isAccessible: false } }
                 },
               },
               {
                 resource: WebhookLog,
-                options: { 
-                  navigation: { name: 'Logs', icon: 'Activity' }, 
+                options: {
+                  navigation: { name: 'Logs', icon: 'Activity' },
                   listProperties: ['id', 'source', 'eventType', 'processed', 'createdAt'],
-                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
-                  actions: { new: { isAccessible: false } } 
+                  sort: { sortBy: 'createdAt', direction: 'desc' },
+                  actions: { new: { isAccessible: false } }
                 },
               },
               {
                 resource: ApiLog,
-                options: { 
-                  navigation: { name: 'Logs', icon: 'Activity' }, 
+                options: {
+                  navigation: { name: 'Logs', icon: 'Activity' },
                   listProperties: ['id', 'service', 'method', 'url', 'responseStatus', 'createdAt'],
-                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
-                  actions: { new: { isAccessible: false } } 
+                  sort: { sortBy: 'createdAt', direction: 'desc' },
+                  actions: { new: { isAccessible: false } }
                 },
               },
               {
                 resource: ErrorLog,
-                options: { 
-                  navigation: { name: 'Logs', icon: 'Activity' }, 
+                options: {
+                  navigation: { name: 'Logs', icon: 'Activity' },
                   listProperties: ['id', 'source', 'context', 'message', 'createdAt'],
-                  sort: { sortBy: 'createdAt', direction: 'desc' }, 
-                  actions: { new: { isAccessible: false } } 
+                  sort: { sortBy: 'createdAt', direction: 'desc' },
+                  actions: { new: { isAccessible: false } }
                 },
               },
               {

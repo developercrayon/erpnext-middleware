@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import * as zlib from 'zlib';
 import { ConfigService } from '@nestjs/config';
 import { HttpClientService } from '../../../shared/http-client.service';
@@ -54,7 +54,7 @@ export class AmazonConnector extends BaseConnector {
     this.endpoint = config.get<string>('amazon.endpoint');
   }
 
-  // ─── Authentication (LWA) ─────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Authentication (LWA) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async authenticate(): Promise<ConnectorResult<boolean>> {
     try {
@@ -86,7 +86,7 @@ export class AmazonConnector extends BaseConnector {
     };
   }
 
-  // ─── Health Check ─────────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Health Check ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async healthCheck(): Promise<ConnectorResult<{ status: string; latencyMs: number }>> {
     try {
@@ -103,7 +103,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Fetch Orders ─────────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Fetch Orders ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async fetchOrders(
     params?: FetchOrdersParams,
@@ -157,7 +157,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Fetch Product Types ───────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Fetch Product Types ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async fetchProductTypes(): Promise<ConnectorResult<string[]>> {
     try {
@@ -178,7 +178,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Fetch Product Fields ──────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Fetch Product Fields ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async fetchProductFields(productType: string): Promise<ConnectorResult<any>> {
     try {
@@ -208,7 +208,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Fetch Products ───────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Fetch Products ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async fetchProducts(
     params?: FetchProductsParams,
@@ -251,53 +251,6 @@ export class AmazonConnector extends BaseConnector {
         nextToken: response.data?.pagination?.nextToken,
       });
     } catch (error) {
-      return this.failure(error);
-    }
-  }
-
-  async fetchProductBySku(sku: string): Promise<ConnectorResult<NormalizedProduct>> {
-    try {
-      this.logger.log(`Fetching single product from Amazon for SKU: ${sku}`);
-      await this.ensureAuthenticated();
-
-      const response = await this.http.get(
-        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${sku}`,
-        {
-          headers: this.spApiHeaders,
-          params: {
-            marketplaceIds: this.marketplaceId,
-            includedData: 'attributes,summaries,issues,offers,fulfillmentAvailability',
-          }
-        }
-      );
-      const item = response.data;
-
-      if (!item || !item.sku) {
-        throw new Error(`SKU ${sku} not found in Seller Listings on Amazon`);
-      }
-
-      const getAmzStr = (attr: any) => {
-        if (!attr || !attr.length) return '';
-        return attr[0].value || '';
-      };
-
-      const summary = item.summaries && item.summaries.length > 0 ? item.summaries[0] : {};
-
-      const normalized: NormalizedProduct = {
-        amazonAsin: item.asin || summary.asin,
-        sku: getAmzStr(item.attributes?.part_number) || sku,
-        name: summary.itemName || '',
-        brand: summary.brandName || '',
-        category: getAmzStr(item.attributes?.product_category) || '',
-        mrp: 0,
-        sellingPrice: 0,
-        amazonRawPayload: item,
-        thumbnailUrl: summary.mainImage?.link || '',
-      };
-
-      return this.success(normalized);
-    } catch (error: any) {
-      this.logger.error(`Failed to fetch product ${sku} from Amazon: ${error.message}`);
       return this.failure(error);
     }
   }
@@ -460,7 +413,7 @@ export class AmazonConnector extends BaseConnector {
     return Array.from(skus);
   }
 
-  // ─── Fetch ALL Seller Listings (no keyword needed) ────────────────────────
+  // ÔöÇÔöÇÔöÇ Fetch ALL Seller Listings (no keyword needed) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
   // Uses Reports API to get every SKU a seller has, then enriches
   // each with full Catalog data (attributes, relationships, summaries, etc.)
   async fetchAllSellerListings(): Promise<ConnectorResult<NormalizedProduct[]>> {
@@ -575,7 +528,7 @@ export class AmazonConnector extends BaseConnector {
 
       // Standard static mappings (using ERPNext keys -> Amazon keys)
       // NOTE: 'description' maps to 'product_description' because that is the attribute key
-      // generated by generatePayloadAttributes() — not 'description'.
+      // generated by generatePayloadAttributes() ÔÇö not 'description'.
       const keyMap: Record<string, string[]> = {
         'item_name': ['item_name'],
         'brand': ['brand'],
@@ -647,9 +600,9 @@ export class AmazonConnector extends BaseConnector {
         patches
       };
 
-      // Resolve the actual SKU registered with Amazon — handles - vs _ normalization
+      // Resolve the actual SKU registered with Amazon ÔÇö handles - vs _ normalization
       const resolvedSku = await this.resolveListingSku(product.sku);
-      this.logger.log(`[PATCH] Resolved SKU for PATCH: '${product.sku}' → '${resolvedSku}'`);
+      this.logger.log(`[PATCH] Resolved SKU for PATCH: '${product.sku}' ÔåÆ '${resolvedSku}'`);
 
       const response = await this.http.patch(
         `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(resolvedSku)}`,
@@ -694,8 +647,8 @@ export class AmazonConnector extends BaseConnector {
   /**
    * Builds a default amazon template JSON string for a mapping when no template is saved.
    * Checks the erpnext_product_field table to determine if the field is a Table type.
-   * - Table / Table MultiSelect  → array loop with child marker
-   * - Everything else            → simple scalar or standard [{value, language_tag}] wrapper
+   * - Table / Table MultiSelect  ÔåÆ array loop with child marker
+   * - Everything else            ÔåÆ simple scalar or standard [{value, language_tag}] wrapper
    */
   private async buildDefaultAmazonTemplate(
     erpnextField: string,
@@ -744,8 +697,8 @@ export class AmazonConnector extends BaseConnector {
   /**
    * Resolves a template string marker against product data.
    * Supports:
-   *   {{fieldName}}            → scalar value from erp or raw or product
-   *   {{fieldName[*].child}}   → child table loop — returns array of child values
+   *   {{fieldName}}            ÔåÆ scalar value from erp or raw or product
+   *   {{fieldName[*].child}}   ÔåÆ child table loop ÔÇö returns array of child values
    */
   private async resolveMarker(marker: string, erp: any, raw: any, product?: any): Promise<any> {
     const applyMapping = async (fieldName: string, value: any): Promise<any> => {
@@ -787,7 +740,7 @@ export class AmazonConnector extends BaseConnector {
     const loopMatch = marker.match(/^\{\{(\w+)\[\*\]\.(\w+)\}\}$/);
     if (loopMatch) {
       const [, fieldName, childKey] = loopMatch;
-      // ✅ FIX: Also check rawPayload (full product entity) for child table arrays
+      // Ô£à FIX: Also check rawPayload (full product entity) for child table arrays
       const rawEntity = (product as any)?.rawPayload;
       const rawEntityErp = rawEntity?.erpnextRawPayload || {};
       const arr = erp[fieldName] ?? raw[fieldName] ?? rawEntityErp[fieldName];
@@ -813,7 +766,7 @@ export class AmazonConnector extends BaseConnector {
       let rawVal = erp[fieldName];
       if (rawVal === undefined || rawVal === null) rawVal = raw[fieldName];
       if ((rawVal === undefined || rawVal === null) && product) rawVal = product[fieldName as keyof NormalizedProduct];
-      // ✅ FIX: Also check rawPayload entity top-level and its erpnextRawPayload for additional fallback
+      // Ô£à FIX: Also check rawPayload entity top-level and its erpnextRawPayload for additional fallback
       if (rawVal === undefined || rawVal === null) {
         const rawEntity = (product as any)?.rawPayload;
         if (rawEntity) {
@@ -829,7 +782,7 @@ export class AmazonConnector extends BaseConnector {
       return await applyMapping(fieldName, rawVal);
     }
 
-    // Not a marker — static value (e.g. "en_IN")
+    // Not a marker ÔÇö static value (e.g. "en_IN")
     return marker;
   }
 
@@ -849,7 +802,7 @@ export class AmazonConnector extends BaseConnector {
         if (typeof item === 'object' && item !== null) {
           // Deeply find all loop markers
           const loopEntries: { path: string[]; values: any[] }[] = [];
-
+          
           const findLoops = async (obj: any, currentPath: string[]) => {
             for (const [k, v] of Object.entries(obj)) {
               if (typeof v === 'string' && /^\{\{\w+\[\*\]\.\w+\}\}$/.test(v)) {
@@ -888,7 +841,7 @@ export class AmazonConnector extends BaseConnector {
             for (let i = 0; i < primaryLoop.values.length; i++) {
               // Deep clone static fields
               const obj: any = JSON.parse(JSON.stringify(staticFields));
-
+              
               // Helper to set value at path
               const setPath = (target: any, path: string[], val: any) => {
                 let current = target;
@@ -900,7 +853,7 @@ export class AmazonConnector extends BaseConnector {
               };
 
               setPath(obj, primaryLoop.path, primaryLoop.values[i]);
-
+              
               // Handle additional loop fields
               for (let j = 1; j < loopEntries.length; j++) {
                 setPath(obj, loopEntries[j].path, loopEntries[j].values[i] ?? null);
@@ -946,16 +899,10 @@ export class AmazonConnector extends BaseConnector {
     const payload: any = {
       productType,
       requirements,
-      attributes: {},
+      attributes: {
+        item_name: [{ value: product.name, language_tag: 'en_IN' }],
+      },
     };
-
-    if (product.amazonRawPayload?.attributes) {
-      // Start with the existing Amazon attributes so we don't lose any fields not mapped in ERPNext
-      payload.attributes = JSON.parse(JSON.stringify(product.amazonRawPayload.attributes));
-    }
-
-    // Overwrite with our core product fields
-    payload.attributes.item_name = [{ value: product.name, language_tag: 'en_IN' }];
 
     if (product.isParent) {
       payload.attributes.parentage_level = [{ value: 'parent' }];
@@ -1029,12 +976,7 @@ export class AmazonConnector extends BaseConnector {
     // }
 
     if (!product.isParent) {
-      payload.attributes.purchasable_offer = [{
-        currency: 'INR',
-        our_price: [{ schedule: [{ value_with_tax: product.sellingPrice }] }],
-        maximum_retail_price: product.mrp ? [{ schedule: [{ value_with_tax: product.mrp }] }] : undefined
-
-      }];
+      // Temporarily avoiding purchasable_offer to see if it fixes the validation error
     }
 
     const rawPayloadEntity = (product as any).rawPayload || {};
@@ -1047,24 +989,6 @@ export class AmazonConnector extends BaseConnector {
       : erpFallback;
     const raw = product.amazonRawPayload || {};
 
-    // Pass specific missing identifiers from Amazon Raw Payload if they exist
-    if (raw?.attributes) {
-      if (raw.attributes.externally_assigned_product_identifier) {
-        payload.attributes.externally_assigned_product_identifier = raw.attributes.externally_assigned_product_identifier;
-      }
-      if (raw.attributes.merchant_suggested_asin) {
-        payload.attributes.merchant_suggested_asin = raw.attributes.merchant_suggested_asin;
-      } else if (product.amazonAsin) {
-        payload.attributes.merchant_suggested_asin = [{ value: product.amazonAsin, marketplace_id: this.marketplaceId }];
-      }
-      if (raw.attributes.external_product_information) {
-        payload.attributes.external_product_information = raw.attributes.external_product_information;
-      }
-      if (raw.attributes.supplier_declared_has_product_identifier_exemption) {
-        payload.attributes.supplier_declared_has_product_identifier_exemption = raw.attributes.supplier_declared_has_product_identifier_exemption;
-      }
-    }
-
     // Also build a merged product-level field lookup (covers top-level fields like weight, brand, etc.)
     const productTopLevel: Record<string, any> = {
       mrp: product.mrp,
@@ -1073,7 +997,7 @@ export class AmazonConnector extends BaseConnector {
       amazonProductType: product.amazonProductType,
     };
 
-    // Weight — use unitRepo to resolve the ERPNext UOM to the Amazon-accepted unit string
+    // Weight ÔÇö use unitRepo to resolve the ERPNext UOM to the Amazon-accepted unit string
     // const weightVal = raw.weight || product.weight || erp.weight_per_unit || rawPayloadEntity.weight;
     // if (weightVal !== undefined && weightVal !== null && weightVal !== '') {
     //   const weightUom = erp.weight_uom || rawPayloadEntity.weightUom || rawPayloadEntity.erpnextRawPayload?.weight_uom || null;
@@ -1108,10 +1032,10 @@ export class AmazonConnector extends BaseConnector {
           try {
             const templateObj = JSON.parse(templateStr);
 
-            // ✅ If the template has NO {{markers}}, send it as-is (fixed/static value)
+            // Ô£à If the template has NO {{markers}}, send it as-is (fixed/static value)
             const hasMarkers = /\{\{[^}]+\}\}/.test(templateStr);
             if (!hasMarkers) {
-              // Apply template keys directly to payload — no resolution needed
+              // Apply template keys directly to payload ÔÇö no resolution needed
               for (const [key, val] of Object.entries(templateObj)) {
                 if (val !== undefined && val !== null && !(Array.isArray(val) && (val as any[]).length === 0)) {
                   payload.attributes[key] = val;
@@ -1120,7 +1044,7 @@ export class AmazonConnector extends BaseConnector {
               continue;
             }
 
-            // Has markers — resolve dynamically
+            // Has markers ÔÇö resolve dynamically
             const resolved = await this.resolveTemplate(templateObj, erp, raw, product);
             for (const [key, val] of Object.entries(resolved)) {
               let finalVal = val;
@@ -1172,7 +1096,7 @@ export class AmazonConnector extends BaseConnector {
           continue;
         }
 
-        // --- Legacy fallback: no template — derive value from raw field ---
+        // --- Legacy fallback: no template ÔÇö derive value from raw field ---
         let val: any = undefined;
 
         // 1st: Check if mapped with specific ERPNext field
@@ -1218,7 +1142,7 @@ export class AmazonConnector extends BaseConnector {
       this.logger.error(`Failed to apply dynamic mappings: ${err.message}`);
     }
 
-    // ─── POST-PROCESSING: Normalize unit strings using unitRepo (DB table) ───
+    // ÔöÇÔöÇÔöÇ POST-PROCESSING: Normalize unit strings using unitRepo (DB table) ÔöÇÔöÇÔöÇ
     // This fixes cases where a mapping template sends an ERPNext UOM name like "Gram"
     // and we need the Amazon-accepted equivalent like "grams".
 
@@ -1262,42 +1186,6 @@ export class AmazonConnector extends BaseConnector {
     // SKU is passed in the URL for SP-API, it shouldn't be in the payload attributes
     if (payload.attributes.sku) {
       delete payload.attributes.sku;
-    }
-
-    // Append specific fields from amazonRawPayload or erpnextRawPayload if they exist
-    const payloadFieldsToAppend = [
-      'externally_assigned_product_identifier',
-      'merchant_suggested_asin',
-      'external_product_information',
-      'item_weight',
-      'item_package_weight',
-      'item_package_dimensions',
-      'bullet_point',
-      'item_length_width_height'
-    ];
-
-    for (const field of payloadFieldsToAppend) {
-      if (!payload.attributes[field]) {
-        // Try amazonRawPayload first
-        if (product.amazonRawPayload) {
-          if (product.amazonRawPayload[field]) {
-            payload.attributes[field] = product.amazonRawPayload[field];
-            continue;
-          } else if (product.amazonRawPayload.attributes && product.amazonRawPayload.attributes[field]) {
-            payload.attributes[field] = product.amazonRawPayload.attributes[field];
-            continue;
-          }
-        }
-        
-        // Fallback to erpnextRawPayload
-        if (product.erpnextRawPayload) {
-          if (product.erpnextRawPayload[field]) {
-            payload.attributes[field] = product.erpnextRawPayload[field];
-          } else if (product.erpnextRawPayload.attributes && product.erpnextRawPayload.attributes[field]) {
-            payload.attributes[field] = product.erpnextRawPayload.attributes[field];
-          }
-        }
-      }
     }
 
     return payload.attributes;
@@ -1344,7 +1232,7 @@ export class AmazonConnector extends BaseConnector {
 
 
       const resolvedSkuForPut = await this.resolveListingSku(product.sku);
-      this.logger.log(`[PUT] Resolved SKU for PUT: '${product.sku}' → '${resolvedSkuForPut}'`);
+      this.logger.log(`[PUT] Resolved SKU for PUT: '${product.sku}' ÔåÆ '${resolvedSkuForPut}'`);
 
       const response = await this.http.put(
         `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(resolvedSkuForPut)}`,
@@ -1420,7 +1308,7 @@ export class AmazonConnector extends BaseConnector {
    *
    * This helper:
    *  1. Tries the exact SKU as stored.
-   *  2. If no listing is found (404 / no summaries), swaps every '-' ↔ '_' and retries.
+   *  2. If no listing is found (404 / no summaries), swaps every '-' Ôåö '_' and retries.
    *  3. Returns whichever form resolves to a live listing, or falls back to the original SKU.
    */
   private async resolveListingSku(sku: string): Promise<string> {
@@ -1465,7 +1353,7 @@ export class AmazonConnector extends BaseConnector {
         return swapped;
       }
 
-      // 3. If both single-swap variants failed, try mixed (replace dashes → underscore AND underscore → dash)
+      // 3. If both single-swap variants failed, try mixed (replace dashes ÔåÆ underscore AND underscore ÔåÆ dash)
       if (hasDash && hasUnderscore) {
         const dashToUnderscore = sku.replace(/-/g, '_');
         if (await listingExists(dashToUnderscore)) {
@@ -1488,12 +1376,12 @@ export class AmazonConnector extends BaseConnector {
     // Fallback: return original and let Amazon API return whatever error it returns
     this.logger.warn(
       `[SKU-NORMALIZE] Could not resolve a live Amazon listing for SKU '${sku}'. ` +
-      `Proceeding with original SKU — the API call may fail if it does not exist on Amazon.`
+      `Proceeding with original SKU ÔÇö the API call may fail if it does not exist on Amazon.`
     );
     return sku;
   }
 
-  // ─── Delete Listing ───────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Delete Listing ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async deleteItem(sku: string): Promise<ConnectorResult<boolean>> {
     try {
@@ -1525,7 +1413,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Update Inventory ─────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Update Inventory ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async updateInventory(items: NormalizedInventory[]): Promise<ConnectorResult<UpdateResult>> {
     try {
@@ -1584,7 +1472,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Update Price ─────────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Update Price ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async updatePrice(items: NormalizedPrice[]): Promise<ConnectorResult<UpdateResult>> {
     try {
@@ -1596,7 +1484,7 @@ export class AmazonConnector extends BaseConnector {
           const res = await this.http.patch(
             `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(item.sku)}`,
             {
-              productType: item.productType || 'PRODUCT',
+              productType: 'PRODUCT',
               patches: [
                 {
                   op: 'replace',
@@ -1612,16 +1500,7 @@ export class AmazonConnector extends BaseConnector {
                             }
                           ]
                         }
-                      ],
-                      maximum_retail_price: item.mrp ? [
-                        {
-                          schedule: [
-                            {
-                              value_with_tax: item.mrp
-                            }
-                          ]
-                        }
-                      ] : undefined
+                      ]
                     }
                   ]
                 }
@@ -1656,7 +1535,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Create Shipment ──────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Create Shipment ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async createShipment(shipment: NormalizedShipment): Promise<ConnectorResult<{ shipmentId: string }>> {
     try {
@@ -1681,7 +1560,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Cancel Order ─────────────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Cancel Order ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   async cancelOrder(orderId: string, reason?: string): Promise<ConnectorResult<boolean>> {
     try {
@@ -1696,7 +1575,7 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  // ─── Order Normalization ──────────────────────────────────────────────────
+  // ÔöÇÔöÇÔöÇ Order Normalization ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
   private async normalizeOrder(rawOrder: any): Promise<NormalizedOrder> {
     const shippingAddress = rawOrder.ShippingAddress || {};

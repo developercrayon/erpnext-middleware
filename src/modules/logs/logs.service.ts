@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindManyOptions, Between } from 'typeorm';
+import { Repository, FindManyOptions, Between, LessThan, MoreThanOrEqual, IsNull, Not, In } from 'typeorm';
 import {
   ConnectorLog,
   WebhookLog,
@@ -83,10 +83,32 @@ export class LogsService {
   // ─── API Logs ─────────────────────────────────────────────────────────────
 
   async getApiLogs(query: LogQueryDto): Promise<{ data: ApiLog[]; total: number }> {
-    const { source, fromDate, toDate, page = 1, pageSize = 50 } = query;
+    const { source, service, status, method, fromDate, toDate, page = 1, pageSize = 50 } = query;
 
-    const where: any = {};
+    let where: any = {};
     if (source) where.service = source;
+    if (method && method !== 'all') where.method = method;
+    if (service && service !== 'all') {
+      if (service === 'AMAZON') {
+        where.service = In(['AMAZON', 'AmazonConnector']);
+      } else if (service === 'FLIPKART') {
+        where.service = In(['FLIPKART', 'FlipkartConnector']);
+      } else if (service === 'ERPNEXT') {
+        where.service = In(['ERPNEXT', 'ERPNextService']);
+      } else {
+        where.service = service;
+      }
+    }
+
+    if (status === 'success') {
+      where.responseStatus = LessThan(400);
+      where.error = IsNull();
+    } else if (status === 'error') {
+      where = [
+        { ...where, responseStatus: MoreThanOrEqual(400) },
+        { ...where, error: Not(IsNull()) }
+      ];
+    }
 
     const options: FindManyOptions<ApiLog> = {
       where,
@@ -96,7 +118,12 @@ export class LogsService {
     };
 
     if (fromDate && toDate) {
-      options.where = { ...where, createdAt: Between(new Date(fromDate), new Date(toDate)) };
+      if (Array.isArray(where)) {
+        where.forEach(w => w.createdAt = Between(new Date(fromDate), new Date(toDate)));
+      } else {
+        where.createdAt = Between(new Date(fromDate), new Date(toDate));
+      }
+      options.where = where;
     }
 
     const [data, total] = await this.apiLogRepo.findAndCount(options);

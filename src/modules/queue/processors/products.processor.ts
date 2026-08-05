@@ -28,6 +28,7 @@ export class ProductsProcessor {
     private readonly flipkartConnector: FlipkartConnector,
     @InjectQueue(QUEUE_NAMES.PRODUCTS) private readonly productsQueue: Queue,
     @InjectQueue(QUEUE_NAMES.INVENTORY) private readonly inventoryQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.PRICING) private readonly pricingQueue: Queue,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
     @InjectRepository(ErrorLog)
@@ -121,8 +122,21 @@ export class ProductsProcessor {
       if (skuFilter && products.length > 0) {
         const p = products[0];
         if (p.customAmazon) {
+          // 2. Sync to amazon (full)
           await this.productsQueue.add(JOB_NAMES.SYNC_PRODUCTS, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, QUEUE_DEFAULT_OPTIONS);
           this.logger.log(`Auto-queued Amazon sync for ${skuFilter}`);
+
+          // 3. Amazon price update
+          await this.pricingQueue.add(JOB_NAMES.SYNC_PRICES_TO_MARKETPLACE, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, { ...QUEUE_DEFAULT_OPTIONS, delay: 5000 });
+          this.logger.log(`Auto-queued Amazon price sync for ${skuFilter}`);
+
+          // 4. Amazon inventory update
+          await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, { ...QUEUE_DEFAULT_OPTIONS, delay: 10000 });
+          this.logger.log(`Auto-queued Amazon inventory sync for ${skuFilter}`);
+
+          // 5. Fetch from Amazon
+          await this.productsQueue.add('fetch-amazon-product-single', { sku: skuFilter }, { ...QUEUE_DEFAULT_OPTIONS, delay: 15000 });
+          this.logger.log(`Auto-queued Amazon fetch single for ${skuFilter}`);
         }
         if (p.customFlipkart) {
           await this.productsQueue.add(JOB_NAMES.SYNC_PRODUCTS, { source: MarketplaceSource.FLIPKART, skus: [skuFilter] }, QUEUE_DEFAULT_OPTIONS);
@@ -142,6 +156,18 @@ export class ProductsProcessor {
       await this.productsService.fetchFromAmazonAndStore();
     } catch (error) {
       this.logger.error(`Error in fetchAmazonProducts: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  @Process('fetch-amazon-product-single')
+  async fetchAmazonProductSingle(job: Job): Promise<void> {
+    const { sku } = job.data;
+    this.logger.log(`Executing background job: Fetch single product from Amazon for SKU: ${sku}`);
+    try {
+      await this.productsService.fetchSingleFromAmazonAndStore(sku);
+    } catch (error) {
+      this.logger.error(`Error in fetchAmazonProductSingle: ${error.message}`, error.stack);
       throw error;
     }
   }

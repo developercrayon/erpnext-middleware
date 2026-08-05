@@ -132,6 +132,7 @@ export interface NormalizedPrice {
   mrp?: number;
   priceList?: string;
   currency?: string;
+  productType?: string;
 }
 
 export interface NormalizedShipment {

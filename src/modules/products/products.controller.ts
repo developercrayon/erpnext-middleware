@@ -165,6 +165,21 @@ export class ProductsController {
     return { message: 'Amazon fetch job queued', jobId };
   }
 
+  @Post('sync/amazon-fetch-single')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Fetch a single product from Amazon by SKU and store in DB' })
+  async fetchSingleFromAmazon(@Body('sku') sku: string) {
+    if (!sku) {
+      throw new BadRequestException('SKU is required to fetch a single product from Amazon');
+    }
+    try {
+      const result = await this.productsService.fetchSingleFromAmazonAndStore(sku);
+      return { success: true, message: `Product ${sku} fetched from Amazon successfully`, data: result };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || `Failed to fetch product ${sku} from Amazon`);
+    }
+  }
+
   @Post('sync/amazon-prices')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Queue job to fetch all product prices from Amazon, save to JSON, and update DB' })

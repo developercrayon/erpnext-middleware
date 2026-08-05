@@ -8,8 +8,9 @@ import { ERPNextService } from '../../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector';
 import { SyncHistory, SyncResourceType, ItemSyncLog } from '../../../database/entities/operational.entity';
-import { MarketplaceSource } from '../../../database/entities/order.entity';
+import { MarketplaceSource, Order } from '../../../database/entities/order.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
+import { Product } from '../../../database/entities/product.entity';
 
 @Processor(QUEUE_NAMES.PRICING)
 export class PricingProcessor {
@@ -23,30 +24,94 @@ export class PricingProcessor {
     private readonly itemSyncLogRepo: Repository<ItemSyncLog>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
+    @InjectRepository(Product)
+    private readonly productRepo: Repository<Product>,
   ) {}
 
   @Process(JOB_NAMES.SYNC_PRICES_TO_MARKETPLACE)
   async syncPricesToMarketplace(job: Job): Promise<void> {
+    require('fs').appendFileSync('C:\\Users\\jalpa\\OneDrive\\Documents\\Git repo\\erpnext-middleware\\debug.log', JSON.stringify({time: new Date(), data: job.data}) + '\n');
     const { source, skus } = job.data;
     this.logger.log(`Syncing prices to ${source || 'all'} marketplaces`);
 
-    // Fetch prices from ERPNext
-    const priceMap = await this.erpnextService.getPricesForSkus(skus || []);
-
-    if (!Object.keys(priceMap).length) {
-      this.logger.warn('No price data found in ERPNext');
+    const skusToSync = skus || [];
+    if (!skusToSync.length) {
+      this.logger.warn('No SKUs provided for price sync');
       return;
     }
 
-    const priceItems = Object.entries(priceMap).map(([sku, price]) => ({
-      sku,
-      sellingPrice: price,
-      currency: 'INR',
-    }));
+    // Skip fetching from ERPNext as per user request to directly push local price to Amazon/Flipkart
+    // const priceMap = await this.erpnextService.getPricesForSkus(skusToSync);
+    const priceMap: Record<string, number> = {};
+
+    // Fetch products from local DB
+    const localProducts = await this.productRepo.find({
+      where: skusToSync.map(sku => ({ sku }))
+    });
+    const localProductMap = new Map(localProducts.map(p => [p.sku, p]));
+
+    const priceItems: any[] = [];
+    const missingSkus: string[] = [];
 
     const marketplaces = source
       ? [source]
       : [MarketplaceSource.AMAZON, MarketplaceSource.FLIPKART];
+
+    for (const sku of skusToSync) {
+      let finalPrice = 0;
+
+      const localProd = localProductMap.get(sku);
+      if (localProd) {
+        // Use marketplace specific custom price if available, else generic selling price
+        if (source === MarketplaceSource.AMAZON && localProd.customAmazonPrice) {
+          finalPrice = parseFloat(localProd.customAmazonPrice.toString());
+        } else if (source === MarketplaceSource.FLIPKART && localProd.customFlipkartPrice) {
+          finalPrice = parseFloat(localProd.customFlipkartPrice.toString());
+        } else if (localProd.sellingPrice) {
+          finalPrice = parseFloat(localProd.sellingPrice.toString());
+        }
+      }
+
+      if (finalPrice && finalPrice > 0) {
+        const localProd = localProductMap.get(sku);
+        const productType = localProd?.amazonRawPayload?.summaries?.[0]?.productType 
+          || localProd?.amazonRawPayload?.productType 
+          || 'PRODUCT';
+          
+        priceItems.push({
+          sku,
+          sellingPrice: finalPrice,
+          mrp: localProd?.mrp || finalPrice,
+          currency: 'INR',
+          productType
+        });
+      } else {
+        missingSkus.push(sku);
+      }
+    }
+
+    if (missingSkus.length > 0) {
+      this.logger.warn(`No price data found in ERPNext or local DB for SKUs: ${missingSkus.join(', ')}`);
+      // Log failed sync for these items so user can see it in UI
+      for (const mp of marketplaces) {
+        for (const sku of missingSkus) {
+          await this.itemSyncLogRepo.save({
+            resourceType: SyncResourceType.PRICE,
+            referenceId: sku,
+            source: mp,
+            syncStatus: 'FAILED',
+            errorMessage: 'Price missing in ERPNext and local Database.',
+            details: {}
+          });
+        }
+      }
+    }
+
+    if (priceItems.length === 0) {
+      require('fs').appendFileSync('C:\\Users\\jalpa\\OneDrive\\Documents\\Git repo\\erpnext-middleware\\debug.log', JSON.stringify({time: new Date(), message: "early return", missingSkus}) + '\n');
+      return;
+    }
+    require('fs').appendFileSync('C:\\Users\\jalpa\\OneDrive\\Documents\\Git repo\\erpnext-middleware\\debug.log', JSON.stringify({time: new Date(), priceItems}) + '\n');
 
     for (const mp of marketplaces) {
       const connector =
