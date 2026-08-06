@@ -71,7 +71,7 @@ export class MappingController {
   @Post('bulk')
   @ApiOperation({ summary: 'Create multiple field mappings' })
   async createBulk(@Body() dto: BulkCreateMappingDto) {
-    return this.mappingService.createBulk(dto.mappings);
+    return this.mappingService.createBulk(dto.mappings, dto.marketplace, dto.productType);
   }
 
   @Post()

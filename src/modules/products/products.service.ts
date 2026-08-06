@@ -1353,6 +1353,19 @@ export class ProductsService {
     const customAmazon = doc.custom_amazon === 1 || doc.custom_amazon === true;
     const customFlipkart = doc.custom_flipkart === 1 || doc.custom_flipkart === true;
 
+    const isParent = doc.has_variants === 1;
+    const variantOf = doc.variant_of || null;
+    let variantAttributes = null;
+    let variationTheme = null;
+
+    if (doc.attributes && Array.isArray(doc.attributes) && doc.attributes.length > 0) {
+      variantAttributes = doc.attributes.map((attr: any) => ({
+        name: attr.attribute,
+        value: attr.attribute_value,
+      }));
+      variationTheme = variantAttributes.map((a: any) => a.name.toUpperCase().replace(/[^A-Z0-9]/g, '_')).join('_');
+    }
+
     await this.productRepo.upsert(
       {
         sku,
@@ -1373,6 +1386,11 @@ export class ProductsService {
         amazonAsin: doc.custom_amazon_asin || null,
         amazonProductType: doc.custom_amazon_product_type || null,
         status: doc.disabled === 1 ? ProductStatus.INACTIVE : ProductStatus.ACTIVE,
+        
+        isParent,
+        variantOf,
+        variationTheme,
+        variantAttributes,
 
         customAmazon,
         customFlipkart,
@@ -1628,6 +1646,11 @@ export class ProductsService {
             amazonAsin: p.amazonAsin || null,
             amazonProductType: p.amazonProductType || null,
             status: ProductStatus.ACTIVE,
+
+            isParent: p.isParent,
+            variantOf: p.variantOf,
+            variationTheme: p.variationTheme,
+            variantAttributes: p.variantAttributes,
 
             erpnextRawPayload: p.rawPayload || p.erpnextRawPayload || null,
             lastSyncedAt: new Date(),

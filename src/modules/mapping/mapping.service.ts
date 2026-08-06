@@ -51,22 +51,27 @@ export class MappingService {
     return this.mappingRepo.save(mapping);
   }
 
-  async createBulk(mappings: CreateMappingDto[]): Promise<FieldMapping[]> {
-    if (!mappings || mappings.length === 0) return [];
+  async createBulk(mappings: CreateMappingDto[], marketplaceFilter?: string, productTypeFilter?: string): Promise<FieldMapping[]> {
+    const marketplace = marketplaceFilter || (mappings.length > 0 ? mappings[0].marketplace : null);
+    const productType = productTypeFilter || (mappings.length > 0 ? mappings[0].productType : null);
 
-    const marketplace = mappings[0].marketplace;
-    const productType = mappings[0].productType;
+    if (!marketplace || !productType) {
+      return [];
+    }
 
     const existingMappings = await this.mappingRepo.find({
-      where: { marketplace, productType },
+      where: { marketplace: marketplace as MarketplaceSource, productType },
     });
 
     const existingMap = new Map(
       existingMappings.map(m => [`${m.marketplace}_${m.productType}_${m.marketplaceField}`, m])
     );
 
+    const incomingKeys = new Set(mappings.map(m => `${m.marketplace}_${m.productType}_${m.marketplaceField}`));
+
     const toUpdate: FieldMapping[] = [];
     const toCreate: FieldMapping[] = [];
+    const toDeleteIds: string[] = [];
 
     for (const dto of mappings) {
       const key = `${dto.marketplace}_${dto.productType}_${dto.marketplaceField}`;
@@ -78,6 +83,17 @@ export class MappingService {
       } else {
         toCreate.push(this.mappingRepo.create(dto));
       }
+    }
+
+    for (const existing of existingMappings) {
+      const key = `${existing.marketplace}_${existing.productType}_${existing.marketplaceField}`;
+      if (!incomingKeys.has(key)) {
+        toDeleteIds.push(existing.id);
+      }
+    }
+
+    if (toDeleteIds.length > 0) {
+      await this.mappingRepo.delete(toDeleteIds);
     }
 
     const savedEntities: FieldMapping[] = [];

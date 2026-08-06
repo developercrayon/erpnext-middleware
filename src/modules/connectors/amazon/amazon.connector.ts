@@ -965,6 +965,16 @@ export class AmazonConnector extends BaseConnector {
       }];
     }
 
+    if (product.variantAttributes && product.variantAttributes.length > 0) {
+      for (const attr of product.variantAttributes) {
+        // Amazon attribute names are typically lowercase (e.g., 'color', 'size')
+        const amzAttrKey = attr.name.toLowerCase();
+        if (!payload.attributes[amzAttrKey]) {
+          payload.attributes[amzAttrKey] = [{ value: attr.value, language_tag: 'en_IN' }];
+        }
+      }
+    }
+
     if (product.description) {
       // Amazon expects plain text. Strip HTML tags from rich text editor output.
       const plainTextDescription = product.description

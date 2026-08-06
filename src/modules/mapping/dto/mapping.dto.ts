@@ -45,6 +45,16 @@ import { ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class BulkCreateMappingDto {
+  @ApiPropertyOptional({ enum: MarketplaceSource })
+  @IsOptional()
+  @IsEnum(MarketplaceSource)
+  marketplace?: MarketplaceSource;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  productType?: string;
+
   @ApiProperty({ type: [CreateMappingDto] })
   @IsArray()
   @ValidateNested({ each: true })
