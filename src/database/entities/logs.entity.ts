@@ -129,6 +129,9 @@ export class ApiLog {
   @Column({ name: 'correlation_id', type: 'varchar', nullable: true })
   correlationId: string;
 
+  @Column({ name: 'issue_count', type: 'int', default: 0 })
+  issueCount: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

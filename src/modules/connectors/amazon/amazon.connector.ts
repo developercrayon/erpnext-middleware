@@ -647,12 +647,8 @@ export class AmazonConnector extends BaseConnector {
         patches
       };
 
-      // Resolve the actual SKU registered with Amazon — handles - vs _ normalization
-      const resolvedSku = await this.resolveListingSku(product.sku);
-      this.logger.log(`[PATCH] Resolved SKU for PATCH: '${product.sku}' → '${resolvedSku}'`);
-
       const response = await this.http.patch(
-        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(resolvedSku)}`,
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(product.sku)}`,
         payload,
         {
           headers: this.spApiHeaders,
@@ -1028,13 +1024,19 @@ export class AmazonConnector extends BaseConnector {
     //   }
     // }
 
-    if (!product.isParent) {
+    if (!product.isParent && isUpdate) {
       payload.attributes.purchasable_offer = [{
         currency: 'INR',
         our_price: [{ schedule: [{ value_with_tax: product.sellingPrice }] }],
         maximum_retail_price: product.mrp ? [{ schedule: [{ value_with_tax: product.mrp }] }] : undefined
-
       }];
+
+      if (product.availableQty !== undefined && product.availableQty !== null) {
+        payload.attributes.fulfillment_availability = [{
+          fulfillment_channel_code: 'DEFAULT',
+          quantity: product.availableQty
+        }];
+      }
     }
 
     const rawPayloadEntity = (product as any).rawPayload || {};
@@ -1047,23 +1049,7 @@ export class AmazonConnector extends BaseConnector {
       : erpFallback;
     const raw = product.amazonRawPayload || {};
 
-    // Pass specific missing identifiers from Amazon Raw Payload if they exist
-    if (raw?.attributes) {
-      if (raw.attributes.externally_assigned_product_identifier) {
-        payload.attributes.externally_assigned_product_identifier = raw.attributes.externally_assigned_product_identifier;
-      }
-      if (raw.attributes.merchant_suggested_asin) {
-        payload.attributes.merchant_suggested_asin = raw.attributes.merchant_suggested_asin;
-      } else if (product.amazonAsin) {
-        payload.attributes.merchant_suggested_asin = [{ value: product.amazonAsin, marketplace_id: this.marketplaceId }];
-      }
-      if (raw.attributes.external_product_information) {
-        payload.attributes.external_product_information = raw.attributes.external_product_information;
-      }
-      if (raw.attributes.supplier_declared_has_product_identifier_exemption) {
-        payload.attributes.supplier_declared_has_product_identifier_exemption = raw.attributes.supplier_declared_has_product_identifier_exemption;
-      }
-    }
+
 
     // Also build a merged product-level field lookup (covers top-level fields like weight, brand, etc.)
     const productTopLevel: Record<string, any> = {
@@ -1072,20 +1058,6 @@ export class AmazonConnector extends BaseConnector {
       thumbnailUrl: product.thumbnailUrl,
       amazonProductType: product.amazonProductType,
     };
-
-    // Weight — use unitRepo to resolve the ERPNext UOM to the Amazon-accepted unit string
-    // const weightVal = raw.weight || product.weight || erp.weight_per_unit || rawPayloadEntity.weight;
-    // if (weightVal !== undefined && weightVal !== null && weightVal !== '') {
-    //   const weightUom = erp.weight_uom || rawPayloadEntity.weightUom || rawPayloadEntity.erpnextRawPayload?.weight_uom || null;
-    //   let weightAmazonUnit = 'kilograms'; // safe fallback
-    //   if (weightUom) {
-    //     try {
-    //       const unitMapped = await this.unitRepo.findOne({ where: { erpnext: weightUom } });
-    //       if (unitMapped?.amazon) weightAmazonUnit = unitMapped.amazon;
-    //     } catch (_) { /* keep fallback */ }
-    //   }
-    //   payload.attributes.item_weight = [{ value: parseFloat(weightVal), unit: weightAmazonUnit, marketplace_id: this.marketplaceId }];
-    // }
 
     // --- DYNAMIC FIELD MAPPING ---
     try {
@@ -1264,42 +1236,6 @@ export class AmazonConnector extends BaseConnector {
       delete payload.attributes.sku;
     }
 
-    // Append specific fields from amazonRawPayload or erpnextRawPayload if they exist
-    const payloadFieldsToAppend = [
-      'externally_assigned_product_identifier',
-      'merchant_suggested_asin',
-      'external_product_information',
-      'item_weight',
-      'item_package_weight',
-      'item_package_dimensions',
-      'bullet_point',
-      'item_length_width_height'
-    ];
-
-    for (const field of payloadFieldsToAppend) {
-      if (!payload.attributes[field]) {
-        // Try amazonRawPayload first
-        if (product.amazonRawPayload) {
-          if (product.amazonRawPayload[field]) {
-            payload.attributes[field] = product.amazonRawPayload[field];
-            continue;
-          } else if (product.amazonRawPayload.attributes && product.amazonRawPayload.attributes[field]) {
-            payload.attributes[field] = product.amazonRawPayload.attributes[field];
-            continue;
-          }
-        }
-        
-        // Fallback to erpnextRawPayload
-        if (product.erpnextRawPayload) {
-          if (product.erpnextRawPayload[field]) {
-            payload.attributes[field] = product.erpnextRawPayload[field];
-          } else if (product.erpnextRawPayload.attributes && product.erpnextRawPayload.attributes[field]) {
-            payload.attributes[field] = product.erpnextRawPayload.attributes[field];
-          }
-        }
-      }
-    }
-
     return payload.attributes;
   }
 
@@ -1316,44 +1252,75 @@ export class AmazonConnector extends BaseConnector {
         this.logger.debug(`Could not check existing ASIN for ${product.sku}`);
       }
 
-      const isUpdate = !!existingAsin;
-
-      console.log(`[DEBUG] amazonConnector.createListing called for SKU: ${product.sku}. amazonProductType:`, product.amazonProductType, 'attributes:', product.erpnextRawPayload?.amazonProductType);
-
       // Determine product type. Amazon requires specific types (e.g. MUG, SHIRT) to create new products.
       let productType = product.amazonProductType || product.erpnextRawPayload?.amazonProductType;
 
-      if (!productType) {
-        if (!isUpdate) {
-          return this.failure("Amazon Product Type is required to create new products on Amazon. The generic 'PRODUCT' type is not allowed for new listings.");
-        }
-        productType = 'PRODUCT'; // Only fallback to generic PRODUCT for updating existing offers
+      let requirements = 'LISTING_OFFER_ONLY';
+      if (productType && productType !== 'PRODUCT') {
+        requirements = 'LISTING';
+      } else {
+        productType = 'PRODUCT'; // Default to PRODUCT if not mapped
       }
 
-      const requirements = productType === 'PRODUCT' ? 'LISTING_OFFER_ONLY' : 'LISTING';
+      let response;
+      let usedMethod = 'PATCH';
 
+      try {
+        // ALWAYS try PATCH first (update mode)
+        const patchAttributes = await this.generatePayloadAttributes(product, productType, true, requirements);
+        
+        const patchOperations = Object.keys(patchAttributes).map(key => ({
+          op: 'replace',
+          path: `/attributes/${key}`,
+          value: patchAttributes[key]
+        }));
 
-      const attributes = await this.generatePayloadAttributes(product, productType, isUpdate, requirements);
-      const payload: any = {
-        productType,
-        requirements,
-        attributes,
-      };
+        const payload: any = {
+          productType,
+          patches: patchOperations,
+        };
 
-      this.logger.debug(`PUT Listings attributes for ${product.sku}: ` + JSON.stringify(payload.attributes, null, 2));
+        this.logger.debug(`PATCH Listings patches for ${product.sku}: ` + JSON.stringify(payload.patches, null, 2));
 
+        response = await this.http.patch(
+          `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(product.sku)}`,
+          payload,
+          {
+            headers: this.spApiHeaders,
+            params: { marketplaceIds: this.marketplaceId, issueLocale: 'en_IN' },
+          },
+        );
+      } catch (err: any) {
+        // If PATCH returns 404 Not Found, it means the listing does not exist in SP-API. Fallback to PUT.
+        if (err.status === 404 || err.response?.status === 404 || err.message?.includes('404')) {
+          this.logger.debug(`PATCH returned 404 Not Found for ${product.sku}, falling back to PUT for new listing.`);
+          usedMethod = 'PUT';
 
-      const resolvedSkuForPut = await this.resolveListingSku(product.sku);
-      this.logger.log(`[PUT] Resolved SKU for PUT: '${product.sku}' → '${resolvedSkuForPut}'`);
+          if (productType === 'PRODUCT') {
+            return this.failure("Amazon Product Type is required to create new products on Amazon. The generic 'PRODUCT' type is not allowed for new listings.");
+          }
 
-      const response = await this.http.put(
-        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(resolvedSkuForPut)}`,
-        payload,
-        {
-          headers: this.spApiHeaders,
-          params: { marketplaceIds: this.marketplaceId },
-        },
-      );
+          const putAttributes = await this.generatePayloadAttributes(product, productType, false, requirements);
+          const payload: any = {
+            productType,
+            requirements,
+            attributes: putAttributes,
+          };
+
+          this.logger.debug(`PUT Listings attributes for ${product.sku}: ` + JSON.stringify(payload.attributes, null, 2));
+
+          response = await this.http.put(
+            `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(product.sku)}`,
+            payload,
+            {
+              headers: this.spApiHeaders,
+              params: { marketplaceIds: this.marketplaceId, issueLocale: 'en_IN' },
+            },
+          );
+        } else {
+          throw err;
+        }
+      }
 
       // SP-API returns 200/202 but might contain submission issues in the body
       const data = response.data || {};
@@ -1361,13 +1328,8 @@ export class AmazonConnector extends BaseConnector {
 
       if (issues.length > 0) {
         this.logger.warn(`Amazon Sync Issues for ${product.sku}: ` + JSON.stringify(issues));
-      }
-
-      const errors = issues.filter((i: any) => i.severity === 'ERROR');
-
-      if (errors.length > 0) {
-        const errorMsg = errors.map((e: any) => `[${e.code}] ${e.message}`).join(' | ');
-        return this.failure(`Amazon accepted submission but rejected listing with issues: ${errorMsg}`, 400);
+        const errorMsg = issues.map((e: any) => `[${e.severity || 'ISSUE'}] [${e.code}] ${e.message}`).join(' | ');
+        return this.failure(`Amazon returned issues during sync: ${errorMsg}`, 400);
       }
 
       let fetchedAsin = null;
@@ -1393,7 +1355,7 @@ export class AmazonConnector extends BaseConnector {
         `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
         {
           headers: this.spApiHeaders,
-          params: { marketplaceIds: this.marketplaceId },
+          params: { marketplaceIds: this.marketplaceId, includedData: 'summaries' },
         }
       );
 
@@ -1411,87 +1373,6 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
-  /**
-   * Resolves the actual SKU string registered with Amazon for a given local SKU.
-   *
-   * Amazon SKUs are case-sensitive and treat '-' and '_' as distinct characters.
-   * If our local DB stores 'ABC-123' but Amazon has 'ABC_123' (or vice versa),
-   * PATCH/PUT calls using the wrong form silently fail or hit a 404.
-   *
-   * This helper:
-   *  1. Tries the exact SKU as stored.
-   *  2. If no listing is found (404 / no summaries), swaps every '-' ↔ '_' and retries.
-   *  3. Returns whichever form resolves to a live listing, or falls back to the original SKU.
-   */
-  private async resolveListingSku(sku: string): Promise<string> {
-    // Helper: check whether a listing exists for a given SKU string
-    const listingExists = async (candidateSku: string): Promise<boolean> => {
-      try {
-        const response = await this.http.get(
-          `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(candidateSku)}`,
-          {
-            headers: this.spApiHeaders,
-            params: { marketplaceIds: this.marketplaceId },
-          }
-        );
-        const summaries = response.data?.summaries || [];
-        return summaries.length > 0;
-      } catch (error: any) {
-        // 404 = not found; any other error => assume not found
-        return false;
-      }
-    };
-
-    // 1. Try exact SKU first
-    if (await listingExists(sku)) {
-      return sku;
-    }
-
-    // 2. Try with - and _ swapped
-    const hasDash = sku.includes('-');
-    const hasUnderscore = sku.includes('_');
-
-    if (hasDash || hasUnderscore) {
-      // Swap all dashes to underscores or vice-versa
-      const swapped = hasDash
-        ? sku.replace(/-/g, '_')
-        : sku.replace(/_/g, '-');
-
-      if (swapped !== sku && await listingExists(swapped)) {
-        this.logger.warn(
-          `[SKU-NORMALIZE] Local SKU '${sku}' not found on Amazon. ` +
-          `Using swapped form '${swapped}' instead.`
-        );
-        return swapped;
-      }
-
-      // 3. If both single-swap variants failed, try mixed (replace dashes → underscore AND underscore → dash)
-      if (hasDash && hasUnderscore) {
-        const dashToUnderscore = sku.replace(/-/g, '_');
-        if (await listingExists(dashToUnderscore)) {
-          this.logger.warn(
-            `[SKU-NORMALIZE] Using dash-to-underscore variant '${dashToUnderscore}' for SKU '${sku}'`
-          );
-          return dashToUnderscore;
-        }
-
-        const underscoreToDash = sku.replace(/_/g, '-');
-        if (await listingExists(underscoreToDash)) {
-          this.logger.warn(
-            `[SKU-NORMALIZE] Using underscore-to-dash variant '${underscoreToDash}' for SKU '${sku}'`
-          );
-          return underscoreToDash;
-        }
-      }
-    }
-
-    // Fallback: return original and let Amazon API return whatever error it returns
-    this.logger.warn(
-      `[SKU-NORMALIZE] Could not resolve a live Amazon listing for SKU '${sku}'. ` +
-      `Proceeding with original SKU — the API call may fail if it does not exist on Amazon.`
-    );
-    return sku;
-  }
 
   // ─── Delete Listing ───────────────────────────────────────────────────────
 

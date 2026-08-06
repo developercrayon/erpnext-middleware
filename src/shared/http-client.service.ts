@@ -110,6 +110,7 @@ export class HttpClientService {
       requestBody: this.sanitizeForJsonB(requestBody),
       responseStatus: response?.status || null,
       responseBody: this.sanitizeForJsonB(response?.data || null),
+      issueCount: Array.isArray(response?.data?.issues) ? response.data.issues.length : 0,
       durationMs: duration,
       error: error ? (error.message || String(error)) : null,
     });

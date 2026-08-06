@@ -330,18 +330,35 @@ export class ProductsProcessor {
           if (result.success) {
             successCount++;
             if (mp === MarketplaceSource.AMAZON) {
-              const updateData: any = { isAmazonListed: true, lastSyncedAt: new Date() };
+              const updateData: any = { 
+                isAmazonListed: true, 
+                amazonSync: true,
+                amazonLastSync: new Date(),
+                lastSyncedAt: new Date() 
+              };
               if (result.meta && result.meta.asin) {
                 updateData.amazonAsin = result.meta.asin;
               }
               await this.productRepo.update(product.id, updateData);
             } else if (mp === MarketplaceSource.FLIPKART) {
-              await this.productRepo.update(product.id, { isFlipkartListed: true, lastSyncedAt: new Date() });
+              await this.productRepo.update(product.id, { 
+                isFlipkartListed: true, 
+                flipkartSync: true,
+                flipkartLastSync: new Date(),
+                lastSyncedAt: new Date() 
+              });
             }
           } else {
             failureCount++;
             const errorMsg = result.error || 'Unknown error from marketplace connector';
             this.logger.error(`Failed to push product ${product.sku} to ${mp}: ${errorMsg}`);
+            
+            if (mp === MarketplaceSource.AMAZON) {
+              await this.productRepo.update(product.id, { amazonSync: false, amazonLastSync: new Date(), lastSyncedAt: new Date() });
+            } else if (mp === MarketplaceSource.FLIPKART) {
+              await this.productRepo.update(product.id, { flipkartSync: false, flipkartLastSync: new Date(), lastSyncedAt: new Date() });
+            }
+
             await this.errorLogRepo.save({
               source: QUEUE_NAMES.PRODUCTS,
               context: `sync-to-${mp.toLowerCase()}`,
@@ -350,9 +367,15 @@ export class ProductsProcessor {
               payload: { sku: product.sku, marketplace: mp },
             });
           }
-        } catch (error) {
+        } catch (error: any) {
           failureCount++;
           this.logger.error(`Error syncing product ${product.sku} to ${mp}: ${error.message}`);
+          
+          if (mp === MarketplaceSource.AMAZON) {
+            await this.productRepo.update(product.id, { amazonSync: false, amazonLastSync: new Date(), lastSyncedAt: new Date() });
+          } else if (mp === MarketplaceSource.FLIPKART) {
+            await this.productRepo.update(product.id, { flipkartSync: false, flipkartLastSync: new Date(), lastSyncedAt: new Date() });
+          }
         }
       }
 

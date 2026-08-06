@@ -3,7 +3,10 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductsService } from './products.service';
+import { PricingService } from '../pricing/pricing.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { WebhookLog } from '../../database/entities/logs.entity';
+import { MarketplaceSource } from '../../database/entities/order.entity';
 
 @ApiTags('Webhooks')
 @Controller('webhooks')
@@ -12,6 +15,8 @@ export class ProductsWebhookController {
 
   constructor(
     private readonly productsService: ProductsService,
+    private readonly pricingService: PricingService,
+    private readonly inventoryService: InventoryService,
     @InjectRepository(WebhookLog)
     private readonly webhookLogRepo: Repository<WebhookLog>,
   ) {}
@@ -56,13 +61,44 @@ export class ProductsWebhookController {
 
     this.logger.log(`Received ERPNext webhook for item: ${itemCode}`);
     
-    // Trigger targeted fetch
-    const jobId = await this.productsService.triggerFetchFromERPNext(itemCode);
+    // Process payload locally (no need to fetch from ERPNext)
+    let processedData;
+    try {
+      processedData = await this.productsService.processWebhookPayload(doc, payload);
+    } catch (err: any) {
+      this.logger.error(`Failed to process webhook payload for ${itemCode}: ${err.message}`);
+      logEntry.processingError = err.message;
+      await this.webhookLogRepo.save(logEntry);
+      return { success: false, message: 'Failed to process payload', error: err.message };
+    }
+
+    const queuedJobs = [];
+
+    // Trigger Amazon syncs if enabled
+    if (processedData.customAmazon) {
+      this.logger.log(`Queueing Amazon syncs for ${itemCode}`);
+      
+      const syncJobId = await this.productsService.triggerSync(MarketplaceSource.AMAZON, [itemCode]);
+      queuedJobs.push({ type: 'Amazon Full Sync', jobId: syncJobId });
+      
+      const priceJobId = await this.pricingService.triggerSync(MarketplaceSource.AMAZON, [itemCode]);
+      queuedJobs.push({ type: 'Amazon Price Sync', jobId: priceJobId });
+      
+      const inventoryJobId = await this.inventoryService.triggerSync(MarketplaceSource.AMAZON, [itemCode]);
+      queuedJobs.push({ type: 'Amazon Inventory Sync', jobId: inventoryJobId });
+    }
+
+    // Trigger Flipkart syncs if enabled
+    if (processedData.customFlipkart) {
+      this.logger.log(`Queueing Flipkart syncs for ${itemCode}`);
+      const fkSyncJobId = await this.productsService.triggerSync(MarketplaceSource.FLIPKART, [itemCode]);
+      queuedJobs.push({ type: 'Flipkart Sync', jobId: fkSyncJobId });
+    }
     
-    logEntry.queueJobId = jobId;
+    logEntry.processed = true;
     await this.webhookLogRepo.save(logEntry);
     
-    return { success: true, message: 'Sync job queued', jobId };
+    return { success: true, message: 'Processed locally', queuedJobs };
   }
 
   @Post('erpnext/fetch-from-amazon')

@@ -57,6 +57,7 @@ export interface NormalizedProduct {
   marketplaceSku?: string;
   amazonAsin?: string;
   amazonProductType?: string;
+  availableQty?: number;
   upc?: string;
   thumbnailUrl?: string;
   flipkartSku?: string;

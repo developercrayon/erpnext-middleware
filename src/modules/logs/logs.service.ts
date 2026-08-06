@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindManyOptions, Between, LessThan, MoreThanOrEqual, IsNull, Not, In } from 'typeorm';
+import { Repository, FindManyOptions, Between, LessThan, MoreThanOrEqual, MoreThan, IsNull, Not, In } from 'typeorm';
 import {
   ConnectorLog,
   WebhookLog,
@@ -103,10 +103,12 @@ export class LogsService {
     if (status === 'success') {
       where.responseStatus = LessThan(400);
       where.error = IsNull();
+      where.issueCount = 0;
     } else if (status === 'error') {
       where = [
         { ...where, responseStatus: MoreThanOrEqual(400) },
-        { ...where, error: Not(IsNull()) }
+        { ...where, error: Not(IsNull()) },
+        { ...where, issueCount: MoreThan(0) }
       ];
     }
 

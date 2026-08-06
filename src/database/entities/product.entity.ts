@@ -139,6 +139,18 @@ export class Product {
   @Column({ name: 'last_synced_at', type: 'timestamptz', nullable: true })
   lastSyncedAt: Date;
 
+  @Column({ name: 'amazon_sync', type: 'boolean', default: false })
+  amazonSync: boolean;
+
+  @Column({ name: 'amazon_last_sync', type: 'timestamptz', nullable: true })
+  amazonLastSync: Date;
+
+  @Column({ name: 'flipkart_sync', type: 'boolean', default: false })
+  flipkartSync: boolean;
+
+  @Column({ name: 'flipkart_last_sync', type: 'timestamptz', nullable: true })
+  flipkartLastSync: Date;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

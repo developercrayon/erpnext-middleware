@@ -100,6 +100,20 @@ export class MappingService {
     await this.mappingRepo.delete(id);
   }
 
+  async getUniqueAmazonFields(): Promise<{ label: string; value: string }[]> {
+    const fields = await this.amazonProductFieldRepo
+      .createQueryBuilder('field')
+      .select(['field.name', 'field.label'])
+      .distinct(true)
+      .orderBy('field.label', 'ASC')
+      .getRawMany();
+
+    return fields.map(f => ({
+      label: f.field_label || f.field_name,
+      value: f.field_name,
+    }));
+  }
+
   async getAmazonFields(productType?: string): Promise<{ label: string; value: string; isRequired?: boolean; fieldType?: string; schema?: any }[]> {
     if (!productType) {
       return [];
@@ -181,6 +195,11 @@ export class MappingService {
       this.logger.error(`getErpnextDocTypeSchema error for ${doctype}: ${err.message}`);
       return [];
     }
+  }
+
+  async updateErpnextField(id: string, dto: { amazonTemplate?: string; flipkartTemplate?: string }) {
+    await this.erpnextProductFieldRepo.update(id, dto);
+    return this.erpnextProductFieldRepo.findOne({ where: { id } });
   }
 
   async getErpnextFields(page?: number, limit?: number, search?: string) {

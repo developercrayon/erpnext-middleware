@@ -26,6 +26,12 @@ export class ErpnextProductField {
   @Column({ name: 'is_custom', type: 'boolean', default: false })
   isCustom: boolean;
 
+  @Column({ name: 'amazon_template', type: 'text', nullable: true })
+  amazonTemplate: string;
+
+  @Column({ name: 'flipkart_template', type: 'text', nullable: true })
+  flipkartTemplate: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions, ILike, IsNull } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
@@ -18,6 +19,7 @@ import { QueueJob, QueueJobStatus } from '../../database/entities/operational.en
 import { FieldMapping } from '../../database/entities/mapping.entity';
 import { ErpnextProductField } from '../../database/entities/erpnext-product-field.entity';
 import { ErrorLog } from '../../database/entities/logs.entity';
+import { Country } from '../../database/entities/country.entity';
 
 @Injectable()
 export class ProductsService {
@@ -39,6 +41,9 @@ export class ProductsService {
     private readonly queueJobRepo: Repository<QueueJob>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
+    @InjectRepository(Country)
+    private readonly countryRepo: Repository<Country>,
+    private readonly config: ConfigService,
   ) { }
 
   // ─── Query Methods ────────────────────────────────────────────────────────
@@ -298,7 +303,7 @@ export class ProductsService {
     product.brand = summary.brandName || product.brand || '';
     product.description = getAmzStr(attrs.product_description) || product.description || '';
     product.category = getAmzStr(attrs.product_category) || product.category || '';
-    
+
     // Extract actual Amazon productType (e.g. DECORATIVE_TRAY) instead of item_type_name string
     let amzProductType = '';
     if (raw.productTypes && raw.productTypes.length > 0) {
@@ -308,7 +313,7 @@ export class ProductsService {
     }
     product.amazonProductType = amzProductType || product.amazonProductType || '';
     product.amazonRawPayload = raw;
-    
+
     product.isFromAmazon = true;
     product.customAmazon = true;
 
@@ -392,6 +397,21 @@ export class ProductsService {
       }
     }
 
+    let customMrp = product.mrp || 0;
+    let customAmazonPrice = product.customAmazonPrice || 0;
+
+    if (product.amazonPrice) {
+      try {
+        const pricePayload = typeof product.amazonPrice === 'string' ? JSON.parse(product.amazonPrice) : product.amazonPrice;
+        const mrpFromAmazon = pricePayload?.purchasable_offer?.maximum_retail_price?.schedule?.[0]?.value_with_tax || pricePayload?.purchasable_offer?.maximum_retail_price?.schedule?.value_with_tax;
+        const ourPriceFromAmazon = pricePayload?.purchasable_offer?.our_price?.schedule?.[0]?.value_with_tax || pricePayload?.purchasable_offer?.our_price?.schedule?.value_with_tax;
+        if (mrpFromAmazon) customMrp = mrpFromAmazon;
+        if (ourPriceFromAmazon) customAmazonPrice = ourPriceFromAmazon;
+      } catch (e) {
+        this.logger.warn(`Failed to parse amazonPrice for product ${product.sku}`);
+      }
+    }
+
     const erpPayload: Record<string, any> = {
       item_code: sellerSku,
       sku: sellerSku,
@@ -401,8 +421,8 @@ export class ProductsService {
       custom_amazon: 1,
       disabled: 0,
       is_sales_item: 0,
-      custom_mrp: product.mrp || 0,
-      custom_amazon_price: product.customAmazonPrice || 0,
+      custom_mrp: customMrp,
+      custom_amazon_price: customAmazonPrice,
     };
 
     // ── Variant handling ───────────────────────────────────────────────────────
@@ -462,7 +482,86 @@ export class ProductsService {
       }
     }
 
-    // ── Image handling ─────────────────────────────────────────────────────────
+    // ── Apply amazon_template mappings from erpnext_product_field ─────────────
+    const rawPayload = product.amazonRawPayload || {};
+    const erpnextFields = await this.erpnextFieldRepo.find();
+    if (rawPayload && typeof rawPayload === 'object') {
+      const getPath = (obj: any, path: string): any => {
+        return path.split(/[.\[\]]+/).filter(Boolean).reduce((res, key) => (res !== null && res !== undefined ? res[key] : undefined), obj);
+      };
+
+      const evaluateAmazonTemplate = (template: any, payload: any): any => {
+        if (typeof template === 'string') {
+          return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+            const val = getPath(payload, path.trim());
+            return val !== undefined ? String(val) : '';
+          });
+        }
+        if (Array.isArray(template)) {
+          let result: any[] = [];
+          for (const item of template) {
+            const itemStr = JSON.stringify(item);
+            const arrayMatch = itemStr.match(/\{\{([^}]+)\[\*\]([^}]*)\}\}/);
+            if (arrayMatch) {
+              const basePath = arrayMatch[1].trim();
+              const arrayData = getPath(payload, basePath);
+              if (Array.isArray(arrayData)) {
+                for (let i = 0; i < arrayData.length; i++) {
+                  let expandedStr = itemStr.replace(new RegExp(`\\[\\*\\]`, 'g'), `[${i}]`);
+                  try {
+                    result.push(evaluateAmazonTemplate(JSON.parse(expandedStr), payload));
+                  } catch (e) { }
+                }
+              } else {
+                result.push(evaluateAmazonTemplate(item, payload));
+              }
+            } else {
+              result.push(evaluateAmazonTemplate(item, payload));
+            }
+          }
+          return result;
+        }
+        if (template && typeof template === 'object') {
+          const result: any = {};
+          for (const key of Object.keys(template)) {
+            result[key] = evaluateAmazonTemplate(template[key], payload);
+          }
+          return result;
+        }
+        return template;
+      };
+
+      for (const erpField of erpnextFields) {
+        if (erpField.amazonTemplate && erpField.amazonTemplate.trim() !== '') {
+          let evaluated;
+          try {
+            const templateObj = JSON.parse(erpField.amazonTemplate);
+            evaluated = evaluateAmazonTemplate(templateObj, rawPayload);
+          } catch (e) {
+            // Not valid JSON, treat as raw string template
+            evaluated = evaluateAmazonTemplate(erpField.amazonTemplate, rawPayload);
+          }
+
+          // Map country codes (like 'IN') to ERPNext country names (like 'India')
+          if ((erpField.options?.trim() === 'Country' || erpField.name === 'country_of_origin') && typeof evaluated === 'string' && evaluated.trim() !== '') {
+            const country = await this.countryRepo.findOne({ where: { amazon: evaluated.trim() } });
+            if (country && country.erpnext) {
+              evaluated = country.erpnext;
+            }
+          }
+
+          // If the template returns an object, we merge it into the erpPayload
+          if (evaluated && typeof evaluated === 'object' && !Array.isArray(evaluated)) {
+            Object.assign(erpPayload, evaluated);
+          } else {
+            // Otherwise, we assume it maps directly to the field
+            erpPayload[erpField.name] = evaluated;
+          }
+        }
+      }
+    }
+
+    // ── Create or Update ERPNext Item ─────────────────────────────────────────────────────────
     let productImages = product.images && product.images.length > 0 ? product.images : undefined;
 
     // Fallback to attributes only if product.images is truly empty/unset
@@ -491,7 +590,6 @@ export class ProductsService {
     }
 
     // ── Resolve product type from Amazon attributes ─────────────────────────────
-    const rawPayload = product.amazonRawPayload || {};
     const attrs = rawPayload.attributes || rawPayload;
     const productTypesArr: any[] = rawPayload.productTypes || attrs.productTypes || [];
     const productType: string = (productTypesArr[0]?.productType || product.amazonProductType || '').toUpperCase();
@@ -512,7 +610,6 @@ export class ProductsService {
     }
 
     // ── Load all ERPNext field definitions into a quick-lookup Map ───────────────
-    const erpnextFields = await this.erpnextFieldRepo.find();
     const erpFieldMap = new Map<string, ErpnextProductField>(erpnextFields.map(f => [f.name, f]));
 
     // ── Cache for child doctype value-field discovery ────────────────────────────
@@ -551,6 +648,13 @@ export class ProductsService {
       }
 
       const erpField = erpFieldMap.get(mapping.erpnextField);
+
+      // If the field has an amazonTemplate, we ALREADY processed it above. We should skip this legacy mapping to avoid overwriting it.
+      if (erpField && erpField.amazonTemplate && erpField.amazonTemplate.trim() !== '') {
+        this.logger.debug(`[DYNAMIC-MAP] Field "${mapping.erpnextField}" is handled by amazon_template. Skipping legacy mapping.`);
+        continue;
+      }
+
       const isTable = erpField?.fieldtype === 'Table';
 
       const amazonValues = extractAmzValues(attrs, mapping.marketplaceField, isTable);
@@ -802,6 +906,108 @@ export class ProductsService {
     }
 
     // Dynamic mapping handles all fields now (including complex dimension/weight arrays).
+
+    // ── Final Pass: Auto-Create Missing Linked Records & Inject Child Table Meta ─────────────────────────
+    for (const erpField of erpnextFields) {
+      if (erpPayload[erpField.name] === undefined || erpPayload[erpField.name] === null) continue;
+
+      if ((erpField.fieldtype === 'Table' || erpField.fieldtype === 'Table MultiSelect') && Array.isArray(erpPayload[erpField.name])) {
+        const childDoctype = erpField.options;
+        if (!childDoctype) continue;
+
+        let vfInfo = childValueFieldCache.get(childDoctype);
+        if (!vfInfo) {
+          const schemaResult = await connector.getDocTypeFields(childDoctype);
+          let fieldname = 'name';
+          let fieldtype = 'Data';
+          let linkedDoctype: string | null = null;
+          let schemaFields: string[] = [];
+          if (schemaResult.success && schemaResult.data && schemaResult.data.length > 0) {
+            schemaFields = schemaResult.data.map((f: any) => f.fieldname);
+            const SYSTEM_FIELDS = ['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'parent', 'parentfield', 'parenttype', 'doctype'];
+            const FORMATTING_TYPES = ['Column Break', 'Section Break', 'Tab Break', 'HTML'];
+            const firstField = schemaResult.data.find((f: any) => !SYSTEM_FIELDS.includes(f.fieldname) && !FORMATTING_TYPES.includes(f.fieldtype));
+            if (firstField) {
+              fieldname = firstField.fieldname;
+              fieldtype = firstField.fieldtype;
+              linkedDoctype = firstField.fieldtype === 'Link' ? firstField.options : null;
+            }
+          }
+          vfInfo = { fieldname, fieldtype, linkedDoctype, schemaFields };
+          childValueFieldCache.set(childDoctype, vfInfo);
+        }
+
+        const { linkedDoctype } = vfInfo;
+
+        for (const row of erpPayload[erpField.name]) {
+          // Inject required child table fields if missing
+          if (row.__islocal === undefined) row.__islocal = 1;
+          if (!row.doctype) row.doctype = childDoctype;
+          if (!row.name) row.name = `child-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
+
+          if (linkedDoctype) {
+            // Find the first data field to use as the Link value
+            let linkVal: string | null = null;
+            let linkKey: string | null = null;
+            for (const key of Object.keys(row)) {
+              if (!['doctype', 'name', '__islocal', 'parent', 'parentfield', 'parenttype'].includes(key)) {
+                if (typeof row[key] === 'string' && row[key].trim() !== '') {
+                  linkVal = row[key];
+                  linkKey = key;
+                  break;
+                }
+              }
+            }
+
+            if (linkVal && linkKey) {
+              if (linkVal.length > 140) {
+                linkVal = linkVal.substring(0, 140).trim();
+                row[linkKey] = linkVal;
+              }
+
+              const existingResult = await connector.getDocTypeEntries(linkedDoctype, linkVal);
+              const existing: any[] = existingResult.success ? (existingResult.data || []) : [];
+              const found = existing.find(e => (e.name || '').toLowerCase() === linkVal!.toLowerCase());
+
+              if (!found) {
+                this.logger.log(`[TEMPLATE/FINAL] "${linkVal}" not in "${linkedDoctype}" — creating...`);
+                try {
+                  let createRes = await connector.createDocTypeEntry(linkedDoctype, { name: linkVal, title: linkVal, [linkKey]: linkVal });
+                  if (!createRes.success) {
+                    createRes = await connector.createDocTypeEntry(linkedDoctype, { name: linkVal, title: linkVal });
+                  }
+                  if (!createRes.success) {
+                    this.logger.warn(`[TEMPLATE/FINAL] Failed to create "${linkVal}" in "${linkedDoctype}": ${JSON.stringify(createRes.error)}`);
+                  }
+                } catch (e: any) {
+                  this.logger.warn(`[TEMPLATE/FINAL] Exception creating "${linkVal}" in "${linkedDoctype}": ${e.message}`);
+                }
+              }
+            }
+          }
+        }
+      } else if (erpField.fieldtype === 'Link' && typeof erpPayload[erpField.name] === 'string' && erpPayload[erpField.name].trim() !== '') {
+        const linkedDoctype = erpField.options;
+        const skipAutoCreate = ['Warehouse', 'Item Group', 'Brand', 'Country'];
+        if (linkedDoctype && !skipAutoCreate.includes(linkedDoctype)) {
+          let linkVal = erpPayload[erpField.name];
+          if (linkVal.length > 140) {
+            linkVal = linkVal.substring(0, 140).trim();
+            erpPayload[erpField.name] = linkVal;
+          }
+
+          const existingResult = await connector.getDocTypeEntries(linkedDoctype, linkVal);
+          const existing: any[] = existingResult.success ? (existingResult.data || []) : [];
+          const found = existing.find(e => (e.name || '').toLowerCase() === linkVal.toLowerCase());
+          if (!found) {
+            this.logger.log(`[TEMPLATE/FINAL] Link "${linkVal}" not in "${linkedDoctype}" — creating...`);
+            try {
+              await connector.createDocTypeEntry(linkedDoctype, { name: linkVal, title: linkVal });
+            } catch (e: any) { }
+          }
+        }
+      }
+    }
 
     this.logger.log(`[DYNAMIC-MAP] Final ERPNext payload for ${sellerSku}: ${JSON.stringify(erpPayload)}`);
 
@@ -1126,7 +1332,59 @@ export class ProductsService {
     return product;
   }
 
-  // ─── Sync Triggers ────────────────────────────────────────────────────────
+  async processWebhookPayload(doc: any, rawPayload?: any): Promise<any> {
+    const sku = doc.item_code || doc.name;
+    if (!sku) throw new Error('Missing item_code or name in webhook payload');
+
+    const baseUrl = this.config.get<string>('ERPNEXT_URL');
+
+    let images: string[] = [];
+    if (doc.image) {
+      const clean = doc.image.startsWith('/') ? doc.image.substring(1) : doc.image;
+      images.push(clean.startsWith('http') ? clean : `${baseUrl}/${clean}`);
+    }
+
+    let upc = '';
+    if (doc.barcodes && doc.barcodes.length > 0) {
+      const upcEntry = doc.barcodes.find((b: any) => b.barcode_type === 'UPC');
+      upc = upcEntry ? upcEntry.barcode : doc.barcodes[0].barcode;
+    }
+
+    const customAmazon = doc.custom_amazon === 1 || doc.custom_amazon === true;
+    const customFlipkart = doc.custom_flipkart === 1 || doc.custom_flipkart === true;
+
+    await this.productRepo.upsert(
+      {
+        sku,
+        erpnextItemCode: sku,
+        name: doc.item_name || doc.name || sku,
+        description: doc.description || '',
+        category: doc.item_group || '',
+        brand: doc.brand || '',
+        thumbnailUrl: images.length > 0 ? images[0] : null,
+        images: images,
+        mrp: doc.custom_mrp || 0,
+        sellingPrice: doc.standard_rate || 0, // Fallback if no specific price field
+        customAmazonPrice: doc.custom_amazon_price,
+        customFlipkartPrice: doc.custom_flipkart_price,
+        hsnCode: doc.gst_hsn_code || '',
+        weight: doc.weight_per_unit || doc.net_weight || 0,
+        upc: upc || null,
+        amazonAsin: doc.custom_amazon_asin || null,
+        amazonProductType: doc.custom_amazon_product_type || null,
+        status: doc.disabled === 1 ? ProductStatus.INACTIVE : ProductStatus.ACTIVE,
+
+        customAmazon,
+        customFlipkart,
+
+        erpnextRawPayload: rawPayload || doc,
+        lastSyncedAt: new Date(),
+      },
+      ['sku'],
+    );
+
+    return { sku, customAmazon, customFlipkart };
+  }
 
   /**
    * Triggers a product sync job:
@@ -1444,14 +1702,14 @@ export class ProductsService {
     try {
       const result = await this.amazonConnector.createListing(normalizedProduct, false);
 
-      // Update isAmazonListed flag if sync succeeded
-      if (result.success) {
-        await this.productRepo.update(product.id, {
-          isAmazonListed: true,
-          lastSyncedAt: new Date(),
-          ...(result.meta?.asin ? { amazonAsin: result.meta.asin } : {}),
-        });
-      }
+      // Update isAmazonListed flag and sync timestamps
+      await this.productRepo.update(product.id, {
+        ...(result.success ? { isAmazonListed: true } : {}),
+        amazonSync: result.success,
+        amazonLastSync: new Date(),
+        lastSyncedAt: new Date(),
+        ...(result.success && result.meta?.asin ? { amazonAsin: result.meta.asin } : {}),
+      });
 
       return {
         success: result.success,
@@ -1462,6 +1720,14 @@ export class ProductsService {
       };
     } catch (err: any) {
       this.logger.error(`[SYNC-AMAZON] Failed for ${product.sku}: ${err.message}`);
+
+      // Still update sync timestamps to reflect the failure time
+      await this.productRepo.update(product.id, {
+        amazonSync: false,
+        amazonLastSync: new Date(),
+        lastSyncedAt: new Date(),
+      });
+
       return {
         success: false,
         error: err.message,

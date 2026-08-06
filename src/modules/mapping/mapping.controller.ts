@@ -21,6 +21,12 @@ export class MappingController {
     return this.mappingService.findAll(marketplace, productType);
   }
 
+  @Get('fields/amazon/unique')
+  @ApiOperation({ summary: 'Get unique Amazon fields' })
+  async getUniqueAmazonFields() {
+    return this.mappingService.getUniqueAmazonFields();
+  }
+
   @Get('fields/amazon')
   @ApiOperation({ summary: 'Get available Amazon fields' })
   async getAmazonFields(@Query('productType') productType?: string) {
@@ -51,6 +57,15 @@ export class MappingController {
   @ApiOperation({ summary: 'Get schema for a specific ERPNext DocType' })
   async getErpnextDocTypeSchema(@Param('doctype') doctype: string) {
     return this.mappingService.getErpnextDocTypeSchema(doctype);
+  }
+
+  @Put('fields/erpnext/:id')
+  @ApiOperation({ summary: 'Update an ERPNext field (e.g. templates)' })
+  async updateErpnextField(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { amazonTemplate?: string; flipkartTemplate?: string }
+  ) {
+    return this.mappingService.updateErpnextField(id, dto);
   }
 
   @Post('bulk')
