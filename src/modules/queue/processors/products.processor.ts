@@ -90,8 +90,6 @@ export class ProductsProcessor {
               customFlipkart: p.customFlipkart,
               amazonProductType: p.amazonProductType || null,
               upc: p.upc || null,
-              thumbnailUrl: p.thumbnailUrl || (p.images && p.images.length > 0 ? p.images[0] : null),
-              images: p.images,
               isParent: p.isParent || false,
               variantOf: p.variantOf || null,
               variationTheme: p.variationTheme || null,
@@ -198,7 +196,6 @@ export class ProductsProcessor {
         amazonAsin: product.amazonAsin,
         amazonProductType: product.amazonProductType,
         upc: product.upc,
-        thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
         flipkartSku: product.flipkartSku,
         name: product.name,
         description: product.description ? product.description.replace(/<[^>]*>?/gm, '') : product.description,
@@ -211,7 +208,6 @@ export class ProductsProcessor {
         variantAttributes: product.variantAttributes,
         amazonRawPayload: product.amazonRawPayload,
         erpnextRawPayload: product.erpnextRawPayload,
-        images: product.images,
         rawPayload: product,
       };
 
@@ -289,7 +285,6 @@ export class ProductsProcessor {
             amazonAsin: product.amazonAsin,
             amazonProductType: product.amazonProductType,
             upc: product.upc,
-            thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
             flipkartSku: product.flipkartSku,
             name: product.name,
             description: product.description ? product.description.replace(/<[^>]*>?/gm, '') : product.description,
@@ -303,7 +298,6 @@ export class ProductsProcessor {
             variantAttributes: product.variantAttributes,
             amazonRawPayload: product.amazonRawPayload,
             erpnextRawPayload: product.erpnextRawPayload,
-            images: product.images,
             rawPayload: product,
           };
 

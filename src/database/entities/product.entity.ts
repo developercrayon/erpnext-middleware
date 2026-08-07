@@ -41,9 +41,6 @@ export class Product {
   @Column({ name: 'flipkart_sku', type: 'varchar', nullable: true })
   flipkartSku: string;
 
-  @Column({ name: 'thumbnail_url', type: 'text', nullable: true })
-  thumbnailUrl: string;
-
   @Column({ name: 'name', type: 'varchar' })
   name: string;
 
@@ -79,9 +76,6 @@ export class Product {
 
   @Column({ name: 'weight_uom', type: 'varchar', default: 'Kg' })
   weightUom: string;
-
-  @Column({ name: 'images', type: 'jsonb', nullable: true })
-  images: string[];
 
   @Column({ name: 'amazon_raw_payload', type: 'jsonb', nullable: true })
   amazonRawPayload: any;

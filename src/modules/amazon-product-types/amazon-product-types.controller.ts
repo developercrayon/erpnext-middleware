@@ -33,4 +33,11 @@ export class AmazonProductTypesController {
   async syncProductFields(@Param('name') name: string) {
     return this.service.syncProductFields(name);
   }
+
+  @Get(':name/variation-themes')
+  @ApiOperation({ summary: 'Get variation themes for a product type from raw schema' })
+  async getVariationThemes(@Param('name') name: string) {
+    const themes = await this.service.getVariationThemes(name);
+    return { data: themes };
+  }
 }

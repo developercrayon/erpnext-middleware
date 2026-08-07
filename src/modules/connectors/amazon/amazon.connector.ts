@@ -3,11 +3,12 @@ import * as zlib from 'zlib';
 import { ConfigService } from '@nestjs/config';
 import { HttpClientService } from '../../../shared/http-client.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { FieldMapping } from '../../../database/entities/mapping.entity';
 import { ErpnextProductField } from '../../../database/entities/erpnext-product-field.entity';
 import { Unit } from '../../../database/entities/unit.entity';
 import { Country } from '../../../database/entities/country.entity';
+import { AmazonVariantMapping } from '../../../database/entities/amazon-variant-mapping.entity';
 import { BaseConnector } from '../base/base-connector.abstract';
 import {
   ConnectorResult,
@@ -44,6 +45,8 @@ export class AmazonConnector extends BaseConnector {
     private readonly unitRepo: Repository<Unit>,
     @InjectRepository(Country)
     private readonly countryRepo: Repository<Country>,
+    @InjectRepository(AmazonVariantMapping)
+    private readonly variantMappingRepo: Repository<AmazonVariantMapping>,
   ) {
     super('AmazonConnector');
     this.clientId = config.get<string>('amazon.clientId');
@@ -199,10 +202,8 @@ export class AmazonConnector extends BaseConnector {
       // Amazon SP-API returns a link to download the actual JSON Schema
       if (definition?.schema?.link?.resource) {
         const schemaResponse = await require('axios').default.get(definition.schema.link.resource);
-        // Save it to a new field so the original `schema` object (with `link`) remains untouched
         definition.downloadedSchema = schemaResponse.data;
       } else {
-        // If it already is the raw schema (has $id instead of link), map it over for consistency
         definition.downloadedSchema = definition?.schema;
       }
 
@@ -957,27 +958,67 @@ export class AmazonConnector extends BaseConnector {
     // Overwrite with our core product fields
     payload.attributes.item_name = [{ value: product.name, language_tag: 'en_IN' }];
 
-    if (!product.isParent && product.variantOf) {
+    if (!product.isParent && product.variantAttributes && product.variantAttributes.length > 0) {
+      // Find variant mappings for this product type
+      let variantMappings: AmazonVariantMapping[] = [];
+      if (product.amazonProductType) {
+        variantMappings = await this.variantMappingRepo.find({
+          where: {
+            marketplace: ILike('Amazon'),
+            productType: ILike(product.amazonProductType),
+          }
+        });
+      }
+
+      const mappedThemes: string[] = [];
+
+      for (const attr of product.variantAttributes) {
+        const mapping = variantMappings.find(m => m.erpnextAttribute.toLowerCase() === attr.name.toLowerCase());
+
+        if (mapping && mapping.amazonVariationTheme) {
+          mappedThemes.push(mapping.amazonVariationTheme);
+        }
+
+        // If the mapping contains a slash, it's a combined theme, so we can't use it as the exact field name.
+        // In that case, we fall back to the attribute name lowercased with underscores.
+        let amzAttrKey = attr.name.toLowerCase().replace(/ /g, '_');
+        if (mapping && mapping.amazonVariationTheme && !mapping.amazonVariationTheme.includes('/')) {
+          amzAttrKey = mapping.amazonVariationTheme.toLowerCase();
+        }
+
+        if (!payload.attributes[amzAttrKey]) {
+          payload.attributes[amzAttrKey] = [{ value: attr.value, language_tag: 'en_IN' }];
+        }
+      }
+
+      if (product.variantOf) {
+        const uniqueThemes = [...new Set(mappedThemes)];
+        const finalVariationTheme = uniqueThemes.length > 0
+          ? uniqueThemes.join('-')
+          : (product.variationTheme || 'COLOR');
+
+        payload.attributes.parentage_level = [{ value: 'child' }];
+        payload.attributes.child_parent_sku_relationship = [{
+          parent_sku: product.variantOf,
+          relationship_type: 'variation',
+          variation_theme: { name: finalVariationTheme }
+        }];
+      }
+    } else if (!product.isParent && product.variantOf) {
+      // Fallback if no variant attributes but it is a child
       payload.attributes.parentage_level = [{ value: 'child' }];
       payload.attributes.child_parent_sku_relationship = [{
         parent_sku: product.variantOf,
         relationship_type: 'variation',
         variation_theme: { name: product.variationTheme || 'COLOR' }
       }];
-    }
-
-    if (!product.isParent && product.variantAttributes && product.variantAttributes.length > 0) {
-      for (const attr of product.variantAttributes) {
-        // Amazon attribute names are typically lowercase (e.g., 'color', 'size')
-        const amzAttrKey = attr.name.toLowerCase();
-        if (!payload.attributes[amzAttrKey]) {
-          payload.attributes[amzAttrKey] = [{ value: attr.value, language_tag: 'en_IN' }];
-        }
-      }
+      payload.attributes.item_condition = [{
+        value: 'new_new',
+        marketplace_id: this.marketplaceId
+      }];
     }
 
     if (product.description) {
-      // Amazon expects plain text. Strip HTML tags from rich text editor output.
       const plainTextDescription = product.description
         .replace(/<br\s*[\/]?>/gi, '\n') // Replace <br> with newlines
         .replace(/<\/p>/gi, '\n\n') // Replace </p> with double newlines
@@ -989,9 +1030,46 @@ export class AmazonConnector extends BaseConnector {
     }
 
 
-    const mainImage = product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null);
-    const allImages = product.images && product.images.length > 0 ? product.images : (mainImage ? [mainImage] : []);
-    const otherImages = allImages.filter(img => img !== mainImage);
+    const erpRaw = product.erpnextRawPayload || {};
+    const baseUrl = this.config.get<string>('erpnext.baseUrl') || '';
+
+    let mainImage = null;
+    let otherImages: string[] = [];
+
+    // Primary image lookup
+    if (erpRaw.custom_thumbnail_image) {
+      mainImage = erpRaw.custom_thumbnail_image;
+    } else if (erpRaw.image) {
+      mainImage = erpRaw.image;
+    } else if (erpRaw.attachments && erpRaw.attachments.length > 0 && erpRaw.attachments[0].file_url) {
+      mainImage = erpRaw.attachments[0].file_url;
+    }
+
+    if (mainImage && mainImage.startsWith('/')) {
+      const clean = mainImage.substring(1);
+      mainImage = clean.startsWith('http') ? clean : `${baseUrl}/${clean}`;
+    }
+
+    // Other images lookup
+    if (erpRaw.image && erpRaw.image !== erpRaw.custom_thumbnail_image) {
+      let url = erpRaw.image;
+      if (url.startsWith('/')) url = url.substring(1);
+      url = url.startsWith('http') ? url : `${baseUrl}/${url}`;
+      if (url !== mainImage) otherImages.push(url);
+    }
+
+    if (erpRaw.attachments && Array.isArray(erpRaw.attachments)) {
+      for (const att of erpRaw.attachments) {
+        if (att.file_url) {
+          let url = att.file_url;
+          if (url.startsWith('/')) url = url.substring(1);
+          url = url.startsWith('http') ? url : `${baseUrl}/${url}`;
+          if (url !== mainImage && !otherImages.includes(url)) {
+            otherImages.push(url);
+          }
+        }
+      }
+    }
 
     if (mainImage) {
       if (requirements === 'LISTING') {
@@ -1050,6 +1128,36 @@ export class AmazonConnector extends BaseConnector {
       }
     }
 
+    if (product.isParent) {
+      payload.attributes.parentage_level = [{ value: 'parent' }];
+
+      const attrs = product.erpnextRawPayload?.attributes;
+      if (Array.isArray(attrs) && attrs.length > 0) {
+        const mappedThemes: string[] = [];
+        for (const attr of attrs) {
+          if (attr.attribute) {
+            const mapping = await this.variantMappingRepo.findOne({
+              where: {
+                marketplace: ILike(MarketplaceSource.AMAZON),
+                productType: ILike(productType),
+                erpnextAttribute: ILike(attr.attribute)
+              }
+            });
+            if (mapping && mapping.amazonVariationTheme) {
+              mappedThemes.push(mapping.amazonVariationTheme);
+            } else {
+              mappedThemes.push(attr.attribute);
+            }
+          }
+        }
+
+        const themeName = mappedThemes.join('-');
+        if (themeName) {
+          payload.attributes.variation_theme = [{ name: themeName }];
+        }
+      }
+    }
+
     const rawPayloadEntity = (product as any).rawPayload || {};
     const erpFallback: Record<string, any> =
       (typeof rawPayloadEntity?.erpnextRawPayload === 'object' && rawPayloadEntity.erpnextRawPayload)
@@ -1066,7 +1174,7 @@ export class AmazonConnector extends BaseConnector {
     const productTopLevel: Record<string, any> = {
       mrp: product.mrp,
       sellingPrice: product.sellingPrice,
-      thumbnailUrl: product.thumbnailUrl,
+      thumbnailUrl: mainImage,
       amazonProductType: product.amazonProductType,
     };
 
@@ -1270,9 +1378,7 @@ export class AmazonConnector extends BaseConnector {
 
     // Ensure variation attributes are NEVER sent for parent products
     if (product.isParent) {
-      delete payload.attributes.parentage_level;
       delete payload.attributes.child_parent_sku_relationship;
-      delete payload.attributes.variation_theme;
       if (product.variantAttributes && product.variantAttributes.length > 0) {
         for (const attr of product.variantAttributes) {
           delete payload.attributes[attr.name.toLowerCase()];

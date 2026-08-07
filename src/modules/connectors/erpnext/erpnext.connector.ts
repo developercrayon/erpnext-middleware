@@ -78,6 +78,18 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async fetchItemAttributes(): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.get(
+        `${this.baseUrl}/api/method/get_item_attributes`,
+        { headers: this.authHeaders }
+      );
+      return this.success(response.data);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
   // ─── Health Check ─────────────────────────────────────────────────────────
 
   async healthCheck(): Promise<ConnectorResult<{ status: string; latencyMs: number }>> {
@@ -178,17 +190,8 @@ export class ERPNextConnector extends BaseConnector {
       const itemsData: any[] = listResponse.data?.data || [];
       this.logger.log(`ERPNext returned ${itemsData.length} items for sync`);
 
-      // ── Step 2: Enrich each item with barcodes, attributes, and images ──
+      // ── Step 2: Enrich each item with barcodes and attributes ──
       const items: NormalizedProduct[] = await Promise.all(itemsData.map(async (listItem: any) => {
-        let images: string[] = [];
-
-        // Build image list — prefer image
-        const thumbSrc = listItem.image;
-        if (thumbSrc) {
-          const clean = thumbSrc.startsWith('/') ? thumbSrc.substring(1) : thumbSrc;
-          images.push(clean.startsWith('http') ? clean : `${baseUrl}/${clean}`);
-        }
-
         // Custom fields are now in the list response directly ✅
         const customAmazon = listItem.custom_amazon === 1 || listItem.custom_amazon === true;
         const customFlipkart = listItem.custom_flipkart === 1 || listItem.custom_flipkart === true;
@@ -260,35 +263,7 @@ export class ERPNextConnector extends BaseConnector {
             }
           }
 
-          // ── Step 3: Fetch attached File records for images ──────────────
-          const addImagesForCode = async (code: string) => {
-            try {
-              const filesRes = await this.http.get(`${baseUrl}/api/resource/File`, {
-                headers: this.authHeaders,
-                params: {
-                  fields: JSON.stringify(['file_url']),
-                  filters: JSON.stringify([
-                    ['attached_to_doctype', '=', 'Item'],
-                    ['attached_to_name', '=', code],
-                  ]),
-                },
-              });
-              for (const f of filesRes.data?.data || []) {
-                if (f.file_url) {
-                  const clean = f.file_url.startsWith('/') ? f.file_url.substring(1) : f.file_url;
-                  const url = clean.startsWith('http') ? clean : `${baseUrl}/${clean}`;
-                  if (!images.includes(url)) images.push(url);
-                }
-              }
-            } catch { /* ignore image fetch errors */ }
-          };
-
-          await addImagesForCode(listItem.item_code);
-
-          // Image inheritance: if no images found, try parent template
-          if (images.length === 0 && listItem.variant_of) {
-            await addImagesForCode(listItem.variant_of);
-          }
+          // Removed image fetching logic
 
         } catch (e: any) {
           this.logger.warn(`Could not fully fetch item ${listItem.item_code}: ${e.message}`);
@@ -316,8 +291,6 @@ export class ERPNextConnector extends BaseConnector {
           variantOf: listItem.variant_of || undefined,
           variationTheme,
           variantAttributes: variantAttributes.length > 0 ? variantAttributes : undefined,
-          thumbnailUrl: images.length > 0 ? images[0] : undefined,
-          images,
           attributes: { ...listItem, ...(full || {}) },
           rawPayload: full ? { ...listItem, ...full } : listItem,
         };

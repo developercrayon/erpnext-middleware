@@ -14,6 +14,8 @@ import { AmazonModule } from './modules/connectors/amazon/amazon.module';
 import { FlipkartModule } from './modules/connectors/flipkart/flipkart.module';
 import { MappingModule } from './modules/mapping/mapping.module';
 import { AmazonProductTypesModule } from './modules/amazon-product-types/amazon-product-types.module';
+import { AmazonVariantMappingModule } from './modules/amazon-variant-mapping/amazon-variant-mapping.module';
+import { ErpnextAttributesModule } from './modules/erpnext-attributes/erpnext-attributes.module';
 
 // Business Modules
 import { AuthModule } from './modules/auth/auth.module';
@@ -94,6 +96,8 @@ import { AdminModule } from './admin/admin.module';
     FlipkartModule,
     MappingModule,
     AmazonProductTypesModule,
+    AmazonVariantMappingModule,
+    ErpnextAttributesModule,
 
     // ─── Business Modules ─────────────────────────────────────────────────────
     AuthModule,

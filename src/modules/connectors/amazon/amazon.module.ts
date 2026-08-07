@@ -6,9 +6,10 @@ import { ErpnextProductField } from '../../../database/entities/erpnext-product-
 import { Unit } from '../../../database/entities/unit.entity';
 import { Country } from '../../../database/entities/country.entity';
 import { AmazonConnector } from './amazon.connector';
+import { AmazonVariantMapping } from '../../../database/entities/amazon-variant-mapping.entity';
 
 @Module({
-  imports: [SharedModule, TypeOrmModule.forFeature([FieldMapping, ErpnextProductField, Unit, Country])],
+  imports: [SharedModule, TypeOrmModule.forFeature([FieldMapping, ErpnextProductField, Unit, Country, AmazonVariantMapping])],
   providers: [AmazonConnector],
   exports: [AmazonConnector],
 })

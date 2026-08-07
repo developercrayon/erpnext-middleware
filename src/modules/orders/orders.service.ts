@@ -201,13 +201,23 @@ export class OrdersService {
 
             try {
               const product = await this.productRepo.findOne({ where: { sku: item.sku } });
-              if (product && product.thumbnailUrl) {
-                embeds.push({
-                  title: item.productName.substring(0, 256),
-                  description: `SKU: ${item.sku} | Qty: ${item.quantity}\nPrice: ${itemPriceAmount} ${itemPriceCurrency}`,
-                  thumbnail: { url: product.thumbnailUrl },
-                  color: 0x3498db
-                });
+              if (product) {
+                const raw = product.erpnextRawPayload || {};
+                let thumb = raw.custom_thumbnail_image || raw.image;
+                if (!thumb && raw.attachments && raw.attachments.length > 0) {
+                  thumb = raw.attachments[0]?.file_url;
+                }
+                if (thumb) {
+                  const clean = thumb.startsWith('/') ? thumb.substring(1) : thumb;
+                  const baseUrl = process.env.ERPNEXT_BASE_URL || '';
+                  thumb = clean.startsWith('http') ? clean : `${baseUrl}/${clean}`;
+                  embeds.push({
+                    title: item.productName.substring(0, 256),
+                    description: `SKU: ${item.sku} | Qty: ${item.quantity}\nPrice: ${itemPriceAmount} ${itemPriceCurrency}`,
+                    thumbnail: { url: thumb },
+                    color: 0x3498db
+                  });
+                }
               }
             } catch (err) {
               // Ignore db error for thumbnail lookup

@@ -44,6 +44,11 @@ export class LogQueryDto {
   @IsString()
   toDate?: string;
 
+  @ApiPropertyOptional({ description: 'Search query for URL and payload' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)

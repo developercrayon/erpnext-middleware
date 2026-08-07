@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindManyOptions, Between, LessThan, MoreThanOrEqual, MoreThan, IsNull, Not, In } from 'typeorm';
+import { Repository, FindManyOptions, Between, LessThan, MoreThanOrEqual, MoreThan, IsNull, Not, In, Brackets } from 'typeorm';
 import {
   ConnectorLog,
   WebhookLog,
@@ -83,52 +83,62 @@ export class LogsService {
   // ─── API Logs ─────────────────────────────────────────────────────────────
 
   async getApiLogs(query: LogQueryDto): Promise<{ data: ApiLog[]; total: number }> {
-    const { source, service, status, method, fromDate, toDate, page = 1, pageSize = 50 } = query;
+    const { source, service, status, method, fromDate, toDate, search, page = 1, pageSize = 50 } = query;
 
-    let where: any = {};
-    if (source) where.service = source;
-    if (method && method !== 'all') where.method = method;
+    const qb = this.apiLogRepo.createQueryBuilder('log');
+
+    if (source) {
+      qb.andWhere('log.service = :source', { source });
+    }
+
+    if (method && method !== 'all') {
+      qb.andWhere('log.method = :method', { method });
+    }
+
     if (service && service !== 'all') {
       if (service === 'AMAZON') {
-        where.service = In(['AMAZON', 'AmazonConnector']);
+        qb.andWhere('log.service IN (:...services)', { services: ['AMAZON', 'AmazonConnector'] });
       } else if (service === 'FLIPKART') {
-        where.service = In(['FLIPKART', 'FlipkartConnector']);
+        qb.andWhere('log.service IN (:...services)', { services: ['FLIPKART', 'FlipkartConnector'] });
       } else if (service === 'ERPNEXT') {
-        where.service = In(['ERPNEXT', 'ERPNextService']);
+        qb.andWhere('log.service IN (:...services)', { services: ['ERPNEXT', 'ERPNextService'] });
       } else {
-        where.service = service;
+        qb.andWhere('log.service = :svc', { svc: service });
       }
     }
 
     if (status === 'success') {
-      where.responseStatus = LessThan(400);
-      where.error = IsNull();
-      where.issueCount = 0;
+      qb.andWhere('log.responseStatus < 400')
+        .andWhere('log.error IS NULL')
+        .andWhere('log.issueCount = 0');
     } else if (status === 'error') {
-      where = [
-        { ...where, responseStatus: MoreThanOrEqual(400) },
-        { ...where, error: Not(IsNull()) },
-        { ...where, issueCount: MoreThan(0) }
-      ];
+      qb.andWhere(new Brackets(sqb => {
+        sqb.where('log.responseStatus >= 400')
+           .orWhere('log.error IS NOT NULL')
+           .orWhere('log.issueCount > 0');
+      }));
     }
-
-    const options: FindManyOptions<ApiLog> = {
-      where,
-      order: { createdAt: 'DESC' },
-      take: pageSize,
-      skip: (page - 1) * pageSize,
-    };
 
     if (fromDate && toDate) {
-      if (Array.isArray(where)) {
-        where.forEach(w => w.createdAt = Between(new Date(fromDate), new Date(toDate)));
-      } else {
-        where.createdAt = Between(new Date(fromDate), new Date(toDate));
-      }
-      options.where = where;
+      qb.andWhere('log.createdAt BETWEEN :fromDate AND :toDate', { 
+        fromDate: new Date(fromDate), 
+        toDate: new Date(toDate) 
+      });
     }
 
-    const [data, total] = await this.apiLogRepo.findAndCount(options);
+    if (search) {
+      qb.andWhere(new Brackets(sqb => {
+        sqb.where('log.url ILIKE :search', { search: `%${search}%` })
+           .orWhere('CAST(log.requestBody AS TEXT) ILIKE :search')
+           .orWhere('CAST(log.responseBody AS TEXT) ILIKE :search');
+      }));
+    }
+
+    qb.orderBy('log.createdAt', 'DESC')
+      .take(pageSize)
+      .skip((page - 1) * pageSize);
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total };
   }
 

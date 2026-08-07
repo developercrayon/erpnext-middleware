@@ -52,4 +52,39 @@ export class AmazonProductTypesService {
     const job = await this.amazonProductTypesQueue.add(JOB_NAMES.FETCH_AMAZON_PRODUCT_FIELDS, { productType: productTypeName });
     return { success: true, jobId: job.id, message: 'Sync job queued' };
   }
+
+  async getVariationThemes(productTypeName: string) {
+    const productType = await this.typeRepo.findOne({ where: { name: productTypeName } });
+    if (!productType || !productType.rawSchema) {
+      return [];
+    }
+
+    const schema = productType.rawSchema.downloadedSchema || productType.rawSchema.schema || productType.rawSchema;
+    if (!schema) return [];
+
+    const themes = new Set<string>();
+
+    const extractThemes = (obj: any) => {
+      if (!obj || typeof obj !== 'object') return;
+      
+      // Match structure: variation_theme.properties.name.enum
+      if (obj.variation_theme?.properties?.name?.enum && Array.isArray(obj.variation_theme.properties.name.enum)) {
+        obj.variation_theme.properties.name.enum.forEach((val: string) => themes.add(val));
+      }
+      
+      // Match structure: variation_theme.contains.properties.name.enum (used in newer schemas)
+      if (obj.variation_theme?.contains?.properties?.name?.enum && Array.isArray(obj.variation_theme.contains.properties.name.enum)) {
+        obj.variation_theme.contains.properties.name.enum.forEach((val: string) => themes.add(val));
+      }
+
+      // Recursively search children
+      for (const key of Object.keys(obj)) {
+        extractThemes(obj[key]);
+      }
+    };
+
+    extractThemes(schema);
+
+    return Array.from(themes).sort();
+  }
 }

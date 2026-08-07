@@ -562,32 +562,6 @@ export class ProductsService {
     }
 
     // ── Create or Update ERPNext Item ─────────────────────────────────────────────────────────
-    let productImages = product.images && product.images.length > 0 ? product.images : undefined;
-
-    // Fallback to attributes only if product.images is truly empty/unset
-    if (!productImages && product.amazonRawPayload?.images) {
-      if (Array.isArray(product.amazonRawPayload.images) && product.amazonRawPayload.images.length > 0) {
-        productImages = product.amazonRawPayload.images[0].images || product.amazonRawPayload.images;
-      } else if (product.amazonRawPayload.images?.images) {
-        productImages = product.amazonRawPayload.images.images;
-      } else {
-        productImages = product.amazonRawPayload.images;
-      }
-    }
-
-    // Set erpPayload.image based on thumbnailUrl or fallback to first product image
-    if (product.thumbnailUrl !== null && product.thumbnailUrl !== undefined) {
-      erpPayload.image = product.thumbnailUrl === '' ? '' : product.thumbnailUrl;
-      erpPayload.custom_thumbnail_image = product.thumbnailUrl === '' ? '' : product.thumbnailUrl;
-    } else if (productImages && Array.isArray(productImages) && productImages.length > 0) {
-      const firstImage = productImages[0] as any;
-      const firstImageUrl = typeof firstImage === 'string' ? firstImage : firstImage?.link;
-      erpPayload.image = firstImageUrl;
-      erpPayload.custom_thumbnail_image = firstImageUrl;
-    } else {
-      erpPayload.image = '';
-      erpPayload.custom_thumbnail_image = '';
-    }
 
     // ── Resolve product type from Amazon attributes ─────────────────────────────
     const attrs = rawPayload.attributes || rawPayload;
@@ -1049,21 +1023,7 @@ export class ProductsService {
       product.erpnextItemCode = itemCode;
       await this.productRepo.save(product);
 
-      // Attach remaining images as File attachments
-      if (productImages && Array.isArray(productImages) && productImages.length > 1) {
-        this.logger.log(`Attaching ${productImages.length - 1} additional images to Item ${itemCode}...`);
-        for (let i = 1; i < productImages.length; i++) {
-          const img = productImages[i] as any;
-          const url = typeof img === 'string' ? img : img?.link;
-          if (url) {
-            try {
-              await this.erpnextService.attachFile('Item', itemCode, url);
-            } catch (err: any) {
-              this.logger.warn(`Failed to attach image ${url} to Item ${itemCode}: ${err.message}`);
-            }
-          }
-        }
-      }
+
 
       return product;
     } catch (err: any) {
@@ -1127,39 +1087,12 @@ export class ProductsService {
     const product = await this.findById(id);
     if (!product) throw new Error('Product not found');
 
-    const oldThumbnailUrl = product.thumbnailUrl;
-    const oldImages = product.images ? [...product.images] : [];
-
     // Update local DB fields
     Object.assign(product, dto);
     if (dto.erpnextFields?.custom_amazon_product_type !== undefined) {
       product.amazonProductType = dto.erpnextFields.custom_amazon_product_type;
     }
     await this.productRepo.save(product);
-
-    // Remove deleted images from ERPNext File attachments
-    if (product.erpnextItemCode) {
-      if (dto.thumbnailUrl === '' && oldThumbnailUrl) {
-        try {
-          await this.erpnextService.removeAttachedFile('Item', product.erpnextItemCode, oldThumbnailUrl);
-          this.logger.log(`Removed attached thumbnail file from ERPNext: ${oldThumbnailUrl}`);
-        } catch (e: any) {
-          this.logger.warn(`Failed to remove thumbnail file attachment from ERPNext: ${e.message}`);
-        }
-      }
-
-      if (dto.images) {
-        const deletedImages = oldImages.filter((img) => !dto.images.includes(img));
-        for (const img of deletedImages) {
-          try {
-            await this.erpnextService.removeAttachedFile('Item', product.erpnextItemCode, img);
-            this.logger.log(`Removed attached gallery file from ERPNext: ${img}`);
-          } catch (e: any) {
-            this.logger.warn(`Failed to remove gallery file attachment from ERPNext: ${e.message}`);
-          }
-        }
-      }
-    }
 
     // Map back to ERPNext schema and push
     if (product.erpnextItemCode) {
@@ -1194,9 +1127,6 @@ export class ProductsService {
         const systemFields = ['name', 'creation', 'modified', 'modified_by', 'owner', 'docstatus', 'idx', 'doctype', 'has_variants', 'variant_of', '_user_tags', '_comments', '_assign', '_liked_by'];
         systemFields.forEach(f => delete cleanFields[f]);
 
-        // For standard fields that we usually map from the root DTO, if they were sent inside erpnextFields 
-        // (which the admin panel does), we should preserve them in erpPayload before deleting from cleanFields.
-        // We also want to save them back to the product's local database root fields so they stay in sync.
         const explicitFields = ['item_name', 'item_code', 'disabled', 'brand', 'item_group', 'gst_hsn_code', 'weight_per_unit', 'weight_uom', 'standard_rate', 'custom_amazon_price', 'custom_mrp', 'custom_upc', 'custom_model_name', 'description', 'custom_amazon', 'custom_flipkart', 'custom_flipkart_price', 'custom_amazon_product_type'];
 
         explicitFields.forEach(f => {
@@ -1393,8 +1323,7 @@ export class ProductsService {
         description: doc.description || '',
         category: doc.item_group || '',
         brand: doc.brand || '',
-        thumbnailUrl: images.length > 0 ? images[0] : null,
-        images: images,
+
         mrp: doc.custom_mrp || 0,
         sellingPrice: doc.standard_rate || 0, // Fallback if no specific price field
         customAmazonPrice: doc.custom_amazon_price,
@@ -1405,7 +1334,7 @@ export class ProductsService {
         amazonAsin: doc.custom_amazon_asin || null,
         amazonProductType: doc.custom_amazon_product_type || null,
         status: doc.disabled === 1 ? ProductStatus.INACTIVE : ProductStatus.ACTIVE,
-        
+
         isParent,
         variantOf,
         variationTheme,
@@ -1654,8 +1583,7 @@ export class ProductsService {
             description: p.description,
             category: p.category,
             brand: p.brand,
-            thumbnailUrl: p.thumbnailUrl || (p.images && p.images.length > 0 ? p.images[0] : null),
-            images: p.images || [],
+
             mrp: p.mrp || 0,
             sellingPrice: p.sellingPrice || 0,
             hsnCode: p.hsnCode,
@@ -1720,7 +1648,6 @@ export class ProductsService {
       amazonAsin: product.amazonAsin,
       amazonProductType: amazonProductType,
       upc: product.upc,
-      thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
       flipkartSku: product.flipkartSku,
       name: product.name,
       description: product.description,
@@ -1736,7 +1663,6 @@ export class ProductsService {
       amazonRawPayload: product.amazonRawPayload,
       // ✅ FIX: erpnextRawPayload properly passed so template markers resolve
       erpnextRawPayload: product.erpnextRawPayload,
-      images: product.images,
       // rawPayload stores the full product entity as fallback
       rawPayload: product,
     };
