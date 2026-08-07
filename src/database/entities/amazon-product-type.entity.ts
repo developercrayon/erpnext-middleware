@@ -12,6 +12,9 @@ export class AmazonProductType {
   @Column({ type: 'jsonb', nullable: true })
   marketplaces: string[];
 
+  @Column({ name: 'raw_schema', type: 'jsonb', nullable: true })
+  rawSchema: any;
+
   @OneToMany(() => AmazonProductField, (field) => field.productType)
   fields: AmazonProductField[];
 

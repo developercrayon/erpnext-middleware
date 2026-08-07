@@ -199,7 +199,11 @@ export class AmazonConnector extends BaseConnector {
       // Amazon SP-API returns a link to download the actual JSON Schema
       if (definition?.schema?.link?.resource) {
         const schemaResponse = await require('axios').default.get(definition.schema.link.resource);
-        definition.schema = schemaResponse.data;
+        // Save it to a new field so the original `schema` object (with `link`) remains untouched
+        definition.downloadedSchema = schemaResponse.data;
+      } else {
+        // If it already is the raw schema (has $id instead of link), map it over for consistency
+        definition.downloadedSchema = definition?.schema;
       }
 
       return this.success(definition);
@@ -953,10 +957,7 @@ export class AmazonConnector extends BaseConnector {
     // Overwrite with our core product fields
     payload.attributes.item_name = [{ value: product.name, language_tag: 'en_IN' }];
 
-    if (product.isParent) {
-      payload.attributes.parentage_level = [{ value: 'parent' }];
-      payload.attributes.variation_theme = [{ name: product.variationTheme || 'COLOR' }];
-    } else if (product.variantOf) {
+    if (!product.isParent && product.variantOf) {
       payload.attributes.parentage_level = [{ value: 'child' }];
       payload.attributes.child_parent_sku_relationship = [{
         parent_sku: product.variantOf,
@@ -965,7 +966,7 @@ export class AmazonConnector extends BaseConnector {
       }];
     }
 
-    if (product.variantAttributes && product.variantAttributes.length > 0) {
+    if (!product.isParent && product.variantAttributes && product.variantAttributes.length > 0) {
       for (const attr of product.variantAttributes) {
         // Amazon attribute names are typically lowercase (e.g., 'color', 'size')
         const amzAttrKey = attr.name.toLowerCase();
@@ -1107,6 +1108,27 @@ export class AmazonConnector extends BaseConnector {
             for (const [key, val] of Object.entries(resolved)) {
               let finalVal = val;
 
+              if (key === 'product_description' || key === 'description') {
+                const stripHtml = (str: string) => typeof str === 'string' ? str
+                  .replace(/<br\s*[\/]?>/gi, '\n')
+                  .replace(/<\/p>/gi, '\n\n')
+                  .replace(/<[^>]+>/g, '')
+                  .replace(/&nbsp;/g, ' ')
+                  .replace(/&amp;/g, '&')
+                  .trim() : str;
+
+                if (typeof finalVal === 'string') {
+                  finalVal = stripHtml(finalVal);
+                } else if (Array.isArray(finalVal)) {
+                  finalVal = finalVal.map(item => {
+                    if (item && typeof item === 'object' && typeof item.value === 'string') {
+                      return { ...item, value: stripHtml(item.value) };
+                    }
+                    return item;
+                  });
+                }
+              }
+
               // Ensure scalar values (e.g. from {"model_number": "{{item_code}}"}) are wrapped in the standard Amazon array format
               if (finalVal !== undefined && finalVal !== null && !Array.isArray(finalVal)) {
                 if (typeof finalVal !== 'object') {
@@ -1246,6 +1268,18 @@ export class AmazonConnector extends BaseConnector {
       delete payload.attributes.sku;
     }
 
+    // Ensure variation attributes are NEVER sent for parent products
+    if (product.isParent) {
+      delete payload.attributes.parentage_level;
+      delete payload.attributes.child_parent_sku_relationship;
+      delete payload.attributes.variation_theme;
+      if (product.variantAttributes && product.variantAttributes.length > 0) {
+        for (const attr of product.variantAttributes) {
+          delete payload.attributes[attr.name.toLowerCase()];
+        }
+      }
+    }
+
     return payload.attributes;
   }
 
@@ -1278,7 +1312,7 @@ export class AmazonConnector extends BaseConnector {
       try {
         // ALWAYS try PATCH first (update mode)
         const patchAttributes = await this.generatePayloadAttributes(product, productType, true, requirements);
-        
+
         const patchOperations = Object.keys(patchAttributes).map(key => ({
           op: 'replace',
           path: `/attributes/${key}`,

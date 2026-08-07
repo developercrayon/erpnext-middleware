@@ -54,7 +54,16 @@ export class AmazonProductTypesProcessor {
       throw new Error(`Failed to fetch fields for ${productType}: ${result.error}`);
     }
 
-    const schema = result.data?.schema;
+    const schema = result.data?.downloadedSchema || result.data?.schema;
+
+    // Save the complete API response (with original schema.link intact) PLUS the downloaded schema
+    try {
+       await this.typeRepo.update({ name: productType }, { rawSchema: result.data });
+       this.logger.log(`Saved raw schema for product type ${productType}`);
+    } catch (e) {
+       this.logger.warn(`Could not save raw schema for ${productType}: ${e.message}`);
+    }
+
     if (!schema || !schema.properties) {
        this.logger.warn(`No schema properties found for product type ${productType}`);
        return;
