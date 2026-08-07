@@ -1358,6 +1358,25 @@ export class ProductsService {
     let variantAttributes = null;
     let variationTheme = null;
 
+    if (variantOf) {
+      const parentExists = await this.productRepo.findOne({ where: { sku: variantOf } });
+      if (!parentExists) {
+        this.logger.log(`Parent product ${variantOf} not found in DB. Fetching from ERPNext...`);
+        try {
+          const fetchResult = await this.erpnextService.fetchProducts({ sku: variantOf });
+          if (fetchResult.success && fetchResult.data?.items && fetchResult.data.items.length > 0) {
+            const parentDoc = fetchResult.data.items[0].rawPayload;
+            await this.processWebhookPayload(parentDoc);
+            this.logger.log(`Successfully fetched and processed parent product ${variantOf}`);
+          } else {
+            this.logger.warn(`Could not fetch parent product ${variantOf} from ERPNext`);
+          }
+        } catch (error: any) {
+          this.logger.error(`Error fetching parent product ${variantOf}: ${error.message}`);
+        }
+      }
+    }
+
     if (doc.attributes && Array.isArray(doc.attributes) && doc.attributes.length > 0) {
       variantAttributes = doc.attributes.map((attr: any) => ({
         name: attr.attribute,

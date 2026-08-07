@@ -1729,3 +1729,979 @@
 {"context":"AmazonProductTypesProcessor","level":"info","message":"Executing background job: Fetch Amazon Product Types","timestamp":"2026-08-06T15:08:06.223Z"}
 {"context":{"params":{"marketplaceIds":"A21TJRUUN4KGV"}},"level":"debug","message":"→ GET https://sellingpartnerapi-eu.amazon.com/definitions/2020-09-01/productTypes","timestamp":"2026-08-06T15:08:06.226Z"}
 {"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/definitions/2020-09-01/productTypes (885ms)","timestamp":"2026-08-06T15:08:07.111Z"}
+{"context":"NestFactory","level":"info","message":"Starting Nest application...","timestamp":"2026-08-06T15:09:16.307Z"}
+{"context":"InstanceLoader","level":"info","message":"DatabaseModule dependencies initialized","timestamp":"2026-08-06T15:09:16.314Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.315Z"}
+{"context":"InstanceLoader","level":"info","message":"AdminModule dependencies initialized","timestamp":"2026-08-06T15:09:16.316Z"}
+{"context":"InstanceLoader","level":"info","message":"PassportModule dependencies initialized","timestamp":"2026-08-06T15:09:16.317Z"}
+{"context":"InstanceLoader","level":"info","message":"ThrottlerModule dependencies initialized","timestamp":"2026-08-06T15:09:16.318Z"}
+{"context":"InstanceLoader","level":"info","message":"ConfigHostModule dependencies initialized","timestamp":"2026-08-06T15:09:16.319Z"}
+{"context":"InstanceLoader","level":"info","message":"WinstonModule dependencies initialized","timestamp":"2026-08-06T15:09:16.321Z"}
+{"context":"InstanceLoader","level":"info","message":"DiscoveryModule dependencies initialized","timestamp":"2026-08-06T15:09:16.322Z"}
+{"context":"InstanceLoader","level":"info","message":"ConfigModule dependencies initialized","timestamp":"2026-08-06T15:09:16.324Z"}
+{"context":"InstanceLoader","level":"info","message":"ConfigModule dependencies initialized","timestamp":"2026-08-06T15:09:16.325Z"}
+{"context":"InstanceLoader","level":"info","message":"ScheduleModule dependencies initialized","timestamp":"2026-08-06T15:09:16.326Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.327Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.328Z"}
+{"context":"InstanceLoader","level":"info","message":"JwtModule dependencies initialized","timestamp":"2026-08-06T15:09:16.328Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.329Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.330Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.330Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.331Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.331Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.332Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.332Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.333Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.333Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.334Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.335Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.336Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.337Z"}
+{"context":"InstanceLoader","level":"info","message":"BullModule dependencies initialized","timestamp":"2026-08-06T15:09:16.338Z"}
+{"context":"InstanceLoader","level":"info","message":"AuthModule dependencies initialized","timestamp":"2026-08-06T15:09:16.338Z"}
+{"context":"InstanceLoader","level":"info","message":"SchedulerModule dependencies initialized","timestamp":"2026-08-06T15:09:16.338Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmCoreModule dependencies initialized","timestamp":"2026-08-06T15:09:16.339Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.339Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.340Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.340Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.341Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.341Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.341Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.342Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.342Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.343Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.343Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.344Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.345Z"}
+{"context":"InstanceLoader","level":"info","message":"TypeOrmModule dependencies initialized","timestamp":"2026-08-06T15:09:16.345Z"}
+{"context":"InstanceLoader","level":"info","message":"SharedModule dependencies initialized","timestamp":"2026-08-06T15:09:16.346Z"}
+{"context":"InstanceLoader","level":"info","message":"UnitModule dependencies initialized","timestamp":"2026-08-06T15:09:16.346Z"}
+{"context":"InstanceLoader","level":"info","message":"CountryModule dependencies initialized","timestamp":"2026-08-06T15:09:16.346Z"}
+{"context":"InstanceLoader","level":"info","message":"AmazonModule dependencies initialized","timestamp":"2026-08-06T15:09:16.347Z"}
+{"context":"InstanceLoader","level":"info","message":"FlipkartModule dependencies initialized","timestamp":"2026-08-06T15:09:16.347Z"}
+{"context":"InstanceLoader","level":"info","message":"ERPNextModule dependencies initialized","timestamp":"2026-08-06T15:09:16.348Z"}
+{"context":"InstanceLoader","level":"info","message":"AppModule dependencies initialized","timestamp":"2026-08-06T15:09:16.349Z"}
+{"context":"InstanceLoader","level":"info","message":"LogsModule dependencies initialized","timestamp":"2026-08-06T15:09:16.350Z"}
+{"context":"InstanceLoader","level":"info","message":"OrdersModule dependencies initialized","timestamp":"2026-08-06T15:09:16.351Z"}
+{"context":"InstanceLoader","level":"info","message":"AdminModule dependencies initialized","timestamp":"2026-08-06T15:09:16.352Z"}
+{"context":"InstanceLoader","level":"info","message":"MappingModule dependencies initialized","timestamp":"2026-08-06T15:09:16.353Z"}
+{"context":"InstanceLoader","level":"info","message":"AmazonProductTypesModule dependencies initialized","timestamp":"2026-08-06T15:09:16.353Z"}
+{"context":"InstanceLoader","level":"info","message":"InventoryModule dependencies initialized","timestamp":"2026-08-06T15:09:16.354Z"}
+{"context":"InstanceLoader","level":"info","message":"PricingModule dependencies initialized","timestamp":"2026-08-06T15:09:16.354Z"}
+{"context":"InstanceLoader","level":"info","message":"ShipmentsModule dependencies initialized","timestamp":"2026-08-06T15:09:16.355Z"}
+{"context":"InstanceLoader","level":"info","message":"ProductsModule dependencies initialized","timestamp":"2026-08-06T15:09:16.355Z"}
+{"context":"InstanceLoader","level":"info","message":"QueueModule dependencies initialized","timestamp":"2026-08-06T15:09:16.355Z"}
+{"context":"RoutesResolver","level":"info","message":"AppController {/api/v1}:","timestamp":"2026-08-06T15:09:16.356Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/, GET} route","timestamp":"2026-08-06T15:09:16.356Z"}
+{"context":"RoutesResolver","level":"info","message":"HealthController {/api/v1/health}:","timestamp":"2026-08-06T15:09:16.357Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/health, GET} route","timestamp":"2026-08-06T15:09:16.357Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/health/detailed, GET} route","timestamp":"2026-08-06T15:09:16.358Z"}
+{"context":"RoutesResolver","level":"info","message":"OrdersController {/api/v1/orders}:","timestamp":"2026-08-06T15:09:16.358Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders/webhooks/amazon, POST} route","timestamp":"2026-08-06T15:09:16.359Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders/webhooks/flipkart, POST} route","timestamp":"2026-08-06T15:09:16.359Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders, GET} route","timestamp":"2026-08-06T15:09:16.360Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders/stats, GET} route","timestamp":"2026-08-06T15:09:16.360Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders/:id, GET} route","timestamp":"2026-08-06T15:09:16.360Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders/:id/sync, POST} route","timestamp":"2026-08-06T15:09:16.361Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders/fetch, POST} route","timestamp":"2026-08-06T15:09:16.361Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/orders/failed/list, GET} route","timestamp":"2026-08-06T15:09:16.361Z"}
+{"context":"RoutesResolver","level":"info","message":"ProductsController {/api/v1/products}:","timestamp":"2026-08-06T15:09:16.362Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products, GET} route","timestamp":"2026-08-06T15:09:16.362Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/stats, GET} route","timestamp":"2026-08-06T15:09:16.362Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/options/reference, GET} route","timestamp":"2026-08-06T15:09:16.363Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/options/schema, GET} route","timestamp":"2026-08-06T15:09:16.363Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/options/link/:doctype, GET} route","timestamp":"2026-08-06T15:09:16.364Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/:id/erpnext-data, GET} route","timestamp":"2026-08-06T15:09:16.365Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/:id, GET} route","timestamp":"2026-08-06T15:09:16.367Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/:id, PUT} route","timestamp":"2026-08-06T15:09:16.369Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/sync-amazon-to-erpnext, POST} route","timestamp":"2026-08-06T15:09:16.369Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/:id/sync-erpnext, POST} route","timestamp":"2026-08-06T15:09:16.370Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/:id/sync-amazon, POST} route","timestamp":"2026-08-06T15:09:16.370Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/:id, DELETE} route","timestamp":"2026-08-06T15:09:16.371Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/:id/status, PUT} route","timestamp":"2026-08-06T15:09:16.371Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/sync/erpnext, POST} route","timestamp":"2026-08-06T15:09:16.372Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/sync/marketplaces, POST} route","timestamp":"2026-08-06T15:09:16.372Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/sync/amazon-fetch, POST} route","timestamp":"2026-08-06T15:09:16.373Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/sync/amazon-fetch-single, POST} route","timestamp":"2026-08-06T15:09:16.373Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/products/sync/amazon-prices, POST} route","timestamp":"2026-08-06T15:09:16.374Z"}
+{"context":"RoutesResolver","level":"info","message":"ProductsWebhookController {/api/v1/webhooks}:","timestamp":"2026-08-06T15:09:16.374Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/webhooks/erpnext/product, POST} route","timestamp":"2026-08-06T15:09:16.374Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/webhooks/erpnext/fetch-from-amazon, POST} route","timestamp":"2026-08-06T15:09:16.375Z"}
+{"context":"RoutesResolver","level":"info","message":"InventoryController {/api/v1/inventory}:","timestamp":"2026-08-06T15:09:16.376Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/inventory, GET} route","timestamp":"2026-08-06T15:09:16.377Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/inventory/stats, GET} route","timestamp":"2026-08-06T15:09:16.377Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/inventory/history, GET} route","timestamp":"2026-08-06T15:09:16.378Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/inventory/:sku, GET} route","timestamp":"2026-08-06T15:09:16.378Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/inventory/sync, POST} route","timestamp":"2026-08-06T15:09:16.379Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/inventory/sync/direct, POST} route","timestamp":"2026-08-06T15:09:16.379Z"}
+{"context":"RoutesResolver","level":"info","message":"PricingController {/api/v1/pricing}:","timestamp":"2026-08-06T15:09:16.380Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/pricing, GET} route","timestamp":"2026-08-06T15:09:16.380Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/pricing/stats, GET} route","timestamp":"2026-08-06T15:09:16.380Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/pricing/sync, POST} route","timestamp":"2026-08-06T15:09:16.381Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/pricing/sync/direct, POST} route","timestamp":"2026-08-06T15:09:16.381Z"}
+{"context":"RoutesResolver","level":"info","message":"AuthController {/api/v1/auth}:","timestamp":"2026-08-06T15:09:16.382Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/auth/login, POST} route","timestamp":"2026-08-06T15:09:16.382Z"}
+{"context":"RoutesResolver","level":"info","message":"MappingController {/api/v1/mappings}:","timestamp":"2026-08-06T15:09:16.383Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings, GET} route","timestamp":"2026-08-06T15:09:16.384Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/fields/amazon/unique, GET} route","timestamp":"2026-08-06T15:09:16.384Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/fields/amazon, GET} route","timestamp":"2026-08-06T15:09:16.385Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/fields/erpnext, GET} route","timestamp":"2026-08-06T15:09:16.386Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/fields/erpnext/sync, POST} route","timestamp":"2026-08-06T15:09:16.387Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/fields/erpnext/:doctype/schema, GET} route","timestamp":"2026-08-06T15:09:16.387Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/fields/erpnext/:id, PUT} route","timestamp":"2026-08-06T15:09:16.388Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/bulk, POST} route","timestamp":"2026-08-06T15:09:16.388Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings, POST} route","timestamp":"2026-08-06T15:09:16.389Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/:id, PUT} route","timestamp":"2026-08-06T15:09:16.389Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/mappings/:id, DELETE} route","timestamp":"2026-08-06T15:09:16.390Z"}
+{"context":"RoutesResolver","level":"info","message":"AmazonProductTypesController {/api/v1/amazon-product-types}:","timestamp":"2026-08-06T15:09:16.391Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/amazon-product-types, GET} route","timestamp":"2026-08-06T15:09:16.392Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/amazon-product-types/sync, POST} route","timestamp":"2026-08-06T15:09:16.392Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/amazon-product-types/:name/fields, GET} route","timestamp":"2026-08-06T15:09:16.393Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/amazon-product-types/:name/fields/sync, POST} route","timestamp":"2026-08-06T15:09:16.394Z"}
+{"context":"RoutesResolver","level":"info","message":"ShipmentsController {/api/v1/shipments}:","timestamp":"2026-08-06T15:09:16.395Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/shipments, GET} route","timestamp":"2026-08-06T15:09:16.395Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/shipments/stats, GET} route","timestamp":"2026-08-06T15:09:16.395Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/shipments/:id, GET} route","timestamp":"2026-08-06T15:09:16.396Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/shipments/order/:orderId, GET} route","timestamp":"2026-08-06T15:09:16.396Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/shipments, POST} route","timestamp":"2026-08-06T15:09:16.397Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/shipments/:id/status, POST} route","timestamp":"2026-08-06T15:09:16.397Z"}
+{"context":"RoutesResolver","level":"info","message":"LogsController {/api/v1/logs}:","timestamp":"2026-08-06T15:09:16.398Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/stats, GET} route","timestamp":"2026-08-06T15:09:16.398Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/connectors, GET} route","timestamp":"2026-08-06T15:09:16.399Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/webhooks, GET} route","timestamp":"2026-08-06T15:09:16.400Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/webhooks, DELETE} route","timestamp":"2026-08-06T15:09:16.400Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/api, GET} route","timestamp":"2026-08-06T15:09:16.401Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/api, DELETE} route","timestamp":"2026-08-06T15:09:16.401Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/errors, GET} route","timestamp":"2026-08-06T15:09:16.402Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/errors/:id, GET} route","timestamp":"2026-08-06T15:09:16.402Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/errors, DELETE} route","timestamp":"2026-08-06T15:09:16.403Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/history, GET} route","timestamp":"2026-08-06T15:09:16.403Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/history, DELETE} route","timestamp":"2026-08-06T15:09:16.403Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/item-syncs, GET} route","timestamp":"2026-08-06T15:09:16.404Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/item-syncs, DELETE} route","timestamp":"2026-08-06T15:09:16.404Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/logs/errors/:id/resolve, POST} route","timestamp":"2026-08-06T15:09:16.405Z"}
+{"context":"RoutesResolver","level":"info","message":"UnitController {/api/v1/unit}:","timestamp":"2026-08-06T15:09:16.405Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/unit, GET} route","timestamp":"2026-08-06T15:09:16.408Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/unit/:id, GET} route","timestamp":"2026-08-06T15:09:16.409Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/unit, POST} route","timestamp":"2026-08-06T15:09:16.409Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/unit/:id, PUT} route","timestamp":"2026-08-06T15:09:16.410Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/unit/:id, DELETE} route","timestamp":"2026-08-06T15:09:16.411Z"}
+{"context":"RoutesResolver","level":"info","message":"CountryController {/api/v1/country}:","timestamp":"2026-08-06T15:09:16.411Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/country, GET} route","timestamp":"2026-08-06T15:09:16.412Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/country/:id, GET} route","timestamp":"2026-08-06T15:09:16.413Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/country, POST} route","timestamp":"2026-08-06T15:09:16.413Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/country/:id, PUT} route","timestamp":"2026-08-06T15:09:16.414Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/country/:id, DELETE} route","timestamp":"2026-08-06T15:09:16.414Z"}
+{"context":"RoutesResolver","level":"info","message":"QueueController {/api/v1/queue}:","timestamp":"2026-08-06T15:09:16.414Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/queue, GET} route","timestamp":"2026-08-06T15:09:16.415Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/queue/:id, GET} route","timestamp":"2026-08-06T15:09:16.415Z"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/v1/queue, DELETE} route","timestamp":"2026-08-06T15:09:16.416Z"}
+{"context":"QueueListenerService","level":"info","message":"Queue listeners initialized","timestamp":"2026-08-06T15:09:16.416Z"}
+{"context":"NestApplication","level":"info","message":"Nest application successfully started","timestamp":"2026-08-06T15:09:16.417Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T15:10:00.022Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=Wine+Storage+Cabinet [::1]","timestamp":"2026-08-06T15:10:51.836Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=Wine+Storage+Cabinet 200 (1385ms)","timestamp":"2026-08-06T15:10:53.221Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=Wine+Storage [::1]","timestamp":"2026-08-06T15:10:58.084Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=Wine+Storage 200 (290ms)","timestamp":"2026-08-06T15:10:58.374Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=Storage [::1]","timestamp":"2026-08-06T15:11:02.272Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=Storage 200 (287ms)","timestamp":"2026-08-06T15:11:02.559Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=Storage_ [::1]","timestamp":"2026-08-06T15:11:06.899Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=Storage_ 200 (292ms)","timestamp":"2026-08-06T15:11:07.191Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=Storage_Cabi [::1]","timestamp":"2026-08-06T15:11:12.208Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=Storage_Cabi 200 (285ms)","timestamp":"2026-08-06T15:11:12.493Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=wine_stoirage [::1]","timestamp":"2026-08-06T15:11:16.431Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=wine_stoirage 200 (286ms)","timestamp":"2026-08-06T15:11:16.717Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=wine_storage [::1]","timestamp":"2026-08-06T15:11:18.640Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=wine_storage 200 (281ms)","timestamp":"2026-08-06T15:11:18.921Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=storage_ [::1]","timestamp":"2026-08-06T15:11:22.912Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=storage_ 200 (291ms)","timestamp":"2026-08-06T15:11:23.203Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=CABINET [::1]","timestamp":"2026-08-06T15:11:47.858Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=CABINET 200 (298ms)","timestamp":"2026-08-06T15:11:48.156Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types/CABINET/fields?page=1&limit=50 [::1]","timestamp":"2026-08-06T15:12:14.734Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types/CABINET/fields?page=1&limit=50 200 (301ms)","timestamp":"2026-08-06T15:12:15.035Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types/CABINET/fields?page=1&limit=50 [::1]","timestamp":"2026-08-06T15:12:15.041Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types/CABINET/fields?page=1&limit=50 200 (273ms)","timestamp":"2026-08-06T15:12:15.314Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/amazon-product-types/CABINET/fields/sync [::1]","timestamp":"2026-08-06T15:12:21.284Z"}
+{"context":"AmazonProductTypesService","level":"info","message":"Queueing job to sync Amazon Product Fields for CABINET","timestamp":"2026-08-06T15:12:21.285Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/amazon-product-types/CABINET/fields/sync 201 (287ms)","timestamp":"2026-08-06T15:12:21.571Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types/CABINET/fields?page=1&limit=50 [::1]","timestamp":"2026-08-06T15:12:31.669Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types/CABINET/fields?page=1&limit=50 200 (1124ms)","timestamp":"2026-08-06T15:12:32.792Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:14.358Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:14:14.421Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (966ms)","timestamp":"2026-08-06T15:14:15.388Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:14:15.396Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (1052ms)","timestamp":"2026-08-06T15:14:15.410Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:15.419Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (155ms)","timestamp":"2026-08-06T15:14:15.551Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (330ms)","timestamp":"2026-08-06T15:14:15.749Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:15.755Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (305ms)","timestamp":"2026-08-06T15:14:16.060Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:16.749Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:14:16.770Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (325ms)","timestamp":"2026-08-06T15:14:17.074Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (316ms)","timestamp":"2026-08-06T15:14:17.086Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:17.098Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:14:17.108Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (297ms)","timestamp":"2026-08-06T15:14:17.395Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:17.418Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (328ms)","timestamp":"2026-08-06T15:14:17.436Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (291ms)","timestamp":"2026-08-06T15:14:17.709Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:14:18.586Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:18.667Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (305ms)","timestamp":"2026-08-06T15:14:18.972Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:18.988Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (452ms)","timestamp":"2026-08-06T15:14:19.038Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:14:19.052Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (314ms)","timestamp":"2026-08-06T15:14:19.302Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:19.310Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (289ms)","timestamp":"2026-08-06T15:14:19.341Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:14:19.539Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (310ms)","timestamp":"2026-08-06T15:14:19.620Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:19.626Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (317ms)","timestamp":"2026-08-06T15:14:19.856Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:14:19.869Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (312ms)","timestamp":"2026-08-06T15:14:19.938Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:19.950Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (157ms)","timestamp":"2026-08-06T15:14:20.025Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (333ms)","timestamp":"2026-08-06T15:14:20.283Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:14:20.291Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (306ms)","timestamp":"2026-08-06T15:14:20.597Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=she [::1]","timestamp":"2026-08-06T15:14:23.344Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=she 200 (179ms)","timestamp":"2026-08-06T15:14:23.522Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=shel [::1]","timestamp":"2026-08-06T15:14:25.086Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=shel 200 (158ms)","timestamp":"2026-08-06T15:14:25.244Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=shelf [::1]","timestamp":"2026-08-06T15:14:25.698Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=shelf 200 (157ms)","timestamp":"2026-08-06T15:14:25.855Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=SHELF&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:14:26.781Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=SHELF [::1]","timestamp":"2026-08-06T15:14:26.795Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=SHELF 200 (144ms)","timestamp":"2026-08-06T15:14:26.939Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=SHELF&marketplace=AMAZON 200 (773ms)","timestamp":"2026-08-06T15:14:27.554Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=cabin [::1]","timestamp":"2026-08-06T15:14:30.313Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=cabin 200 (157ms)","timestamp":"2026-08-06T15:14:30.471Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=cabinet [::1]","timestamp":"2026-08-06T15:14:31.648Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=cabinet 200 (158ms)","timestamp":"2026-08-06T15:14:31.806Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=CABINET&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:14:32.525Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=CABINET [::1]","timestamp":"2026-08-06T15:14:32.555Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=CABINET 200 (153ms)","timestamp":"2026-08-06T15:14:32.708Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=CABINET&marketplace=AMAZON 200 (770ms)","timestamp":"2026-08-06T15:14:33.295Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Brand/schema [::1]","timestamp":"2026-08-06T15:14:46.019Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Brand","timestamp":"2026-08-06T15:14:46.024Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Brand (985ms)","timestamp":"2026-08-06T15:14:47.009Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Brand/schema 200 (1000ms)","timestamp":"2026-08-06T15:14:47.019Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T15:14:50.668Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Brand/schema [::1]","timestamp":"2026-08-06T15:14:51.261Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Brand","timestamp":"2026-08-06T15:14:51.264Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Brand (282ms)","timestamp":"2026-08-06T15:14:51.545Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Brand/schema 200 (286ms)","timestamp":"2026-08-06T15:14:51.547Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T15:14:51.816Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T15:14:51.822Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6113 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T15:14:52.002Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Amazon%20Bullet%20Point/schema [::1]","timestamp":"2026-08-06T15:14:59.857Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Amazon%20Bullet%20Point","timestamp":"2026-08-06T15:14:59.861Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Fetching marketplace orders...","timestamp":"2026-08-06T15:15:00.017Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Order fetch jobs queued for Amazon and Flipkart","timestamp":"2026-08-06T15:15:00.186Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T15:15:00.461Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Amazon%20Bullet%20Point (684ms)","timestamp":"2026-08-06T15:15:00.545Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Amazon%20Bullet%20Point/schema 200 (689ms)","timestamp":"2026-08-06T15:15:00.546Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T15:15:01.355Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T15:15:01.356Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6115 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T15:15:01.502Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Amazon%20Bullet%20Point/schema [::1]","timestamp":"2026-08-06T15:15:09.515Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Amazon%20Bullet%20Point","timestamp":"2026-08-06T15:15:09.519Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Amazon%20Bullet%20Point (671ms)","timestamp":"2026-08-06T15:15:10.190Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Amazon%20Bullet%20Point/schema 200 (676ms)","timestamp":"2026-08-06T15:15:10.191Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Country/schema [::1]","timestamp":"2026-08-06T15:15:21.126Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Country","timestamp":"2026-08-06T15:15:21.128Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Country (682ms)","timestamp":"2026-08-06T15:15:21.810Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Country/schema 200 (687ms)","timestamp":"2026-08-06T15:15:21.813Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Country/schema [::1]","timestamp":"2026-08-06T15:15:33.219Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Country","timestamp":"2026-08-06T15:15:33.230Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Country (681ms)","timestamp":"2026-08-06T15:15:33.911Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Country/schema 200 (694ms)","timestamp":"2026-08-06T15:15:33.913Z"}
+{"context":"ProductsProcessor","level":"info","message":"Executing background job: Sync Products to AMAZON","timestamp":"2026-08-06T15:17:12.667Z"}
+{"context":"InventoryProcessor","level":"info","message":"Syncing inventory to FLIPKART marketplaces","timestamp":"2026-08-06T15:17:12.992Z"}
+{"context":{"params":{"item_code":"WW-WSC-CAB-BR-001","warehouse":"Stores - woodwolf"}},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance","timestamp":"2026-08-06T15:17:12.995Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 30 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:17:13.615Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 30 [pricing] -> WAITING","timestamp":"2026-08-06T15:17:13.677Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance (728ms)","timestamp":"2026-08-06T15:17:13.723Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 177 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:17:13.867Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 177 [inventory] -> WAITING","timestamp":"2026-08-06T15:17:13.877Z"}
+{"context":"AmazonConnector","level":"info","message":"Token expired or missing, re-authenticating...","timestamp":"2026-08-06T15:17:14.278Z"}
+{"context":{},"level":"debug","message":"→ POST https://api.amazon.com/auth/o2/token","timestamp":"2026-08-06T15:17:14.286Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 177 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:17:14.391Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 178 [inventory] -> WAITING","timestamp":"2026-08-06T15:17:14.463Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://api.amazon.com/auth/o2/token (775ms)","timestamp":"2026-08-06T15:17:15.061Z"}
+{"context":"AmazonConnector","level":"info","message":"Amazon LWA authentication successful","timestamp":"2026-08-06T15:17:15.064Z"}
+{"context":{"params":{"includedData":"summaries","marketplaceIds":"A21TJRUUN4KGV"}},"level":"debug","message":"→ GET https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001","timestamp":"2026-08-06T15:17:15.067Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 178 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:17:15.074Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001 (755ms)","timestamp":"2026-08-06T15:17:15.822Z"}
+{"context":"AmazonConnector","level":"debug","message":"PATCH Listings patches for WW-WSC-CAB-BR-001: [\n  {\n    \"op\": \"replace\",\n    \"path\": \"/attributes/item_name\",\n    \"value\": [\n      {\n        \"value\": \"Woodwolf® Natural Pine Wood Wine Storage Cabinet | Freestanding Wooden Wine Rack with Bottle Organizer for Home Bar\",\n        \"language_tag\": \"en_IN\"\n      }\n    ]\n  },\n  {\n    \"op\": \"replace\",\n    \"path\": \"/attributes/product_description\",\n    \"value\": [\n      {\n        \"value\": \"Woodwolf® Natural Pine Wood Wine Storage Cabinet is a stylish freestanding wooden wine rack designed to organize and display wine bottles. Crafted from reclaimed natural pine wood, it offers functional bottle storage with an elegant natural wood finish. Perfect for home bars and entertaining areas, this wine cabinet adds a decorative and practical storage solution to your space.\",\n        \"language_tag\": \"en_IN\"\n      }\n    ]\n  },\n  {\n    \"op\": \"replace\",\n    \"path\": \"/attributes/purchasable_offer\",\n    \"value\": [\n      {\n        \"currency\": \"INR\",\n        \"our_price\": [\n          {\n            \"schedule\": [\n              {\n                \"value_with_tax\": \"0.00\"\n              }\n            ]\n          }\n        ],\n        \"maximum_retail_price\": [\n          {\n            \"schedule\": [\n              {\n                \"value_with_tax\": \"0.00\"\n              }\n            ]\n          }\n        ]\n      }\n    ]\n  }\n]","timestamp":"2026-08-06T15:17:16.088Z"}
+{"context":{"params":{"issueLocale":"en_IN","marketplaceIds":"A21TJRUUN4KGV"}},"level":"debug","message":"→ PATCH https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001","timestamp":"2026-08-06T15:17:16.111Z"}
+{"context":"InventoryProcessor","level":"info","message":"Inventory synced to FLIPKART: 1/1 items","timestamp":"2026-08-06T15:17:16.261Z"}
+{"context":"InventoryProcessor","level":"debug","message":"Inventory job 178 completed","timestamp":"2026-08-06T15:17:16.414Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001 (749ms)","timestamp":"2026-08-06T15:17:16.860Z"}
+{"context":{"params":{"includedData":"summaries","marketplaceIds":"A21TJRUUN4KGV"}},"level":"debug","message":"→ GET https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001","timestamp":"2026-08-06T15:17:16.862Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 178 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:17:16.875Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001 (431ms)","timestamp":"2026-08-06T15:17:17.293Z"}
+{"context":"ProductsProcessor","level":"info","message":"Finished syncing products to AMAZON: 1 succeeded, 0 failed.","timestamp":"2026-08-06T15:17:17.490Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 30 [pricing] -> WAITING","timestamp":"2026-08-06T15:17:17.854Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 30 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:17:17.877Z"}
+{"context":"ProductsProcessor","level":"info","message":"Auto-queued inventory sync to AMAZON for 1 products","timestamp":"2026-08-06T15:17:18.581Z"}
+{"context":"ProductsProcessor","level":"debug","message":"Products job efe8a755-5ed3-4ebd-8b01-0b55d3071920 (sync-products) completed","timestamp":"2026-08-06T15:17:18.766Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 179 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:17:18.883Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 179 [inventory] -> WAITING","timestamp":"2026-08-06T15:17:19.016Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 179 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:17:19.570Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 30 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:17:32.877Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 30 [pricing] -> FAILED","timestamp":"2026-08-06T15:17:32.892Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 30 [pricing] -> WAITING","timestamp":"2026-08-06T15:17:32.934Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Dimensions/schema [::1]","timestamp":"2026-08-06T15:18:22.622Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Dimensions","timestamp":"2026-08-06T15:18:22.656Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Dimensions (682ms)","timestamp":"2026-08-06T15:18:23.338Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Dimensions/schema 200 (718ms)","timestamp":"2026-08-06T15:18:23.340Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Dimensions/schema [::1]","timestamp":"2026-08-06T15:18:28.381Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Dimensions","timestamp":"2026-08-06T15:18:28.384Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Dimensions (710ms)","timestamp":"2026-08-06T15:18:29.094Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Dimensions/schema 200 (714ms)","timestamp":"2026-08-06T15:18:29.095Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Dimensions/schema [::1]","timestamp":"2026-08-06T15:19:01.176Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Dimensions","timestamp":"2026-08-06T15:19:01.178Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Dimensions (667ms)","timestamp":"2026-08-06T15:19:01.844Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Dimensions/schema 200 (674ms)","timestamp":"2026-08-06T15:19:01.850Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Dimensions/schema [::1]","timestamp":"2026-08-06T15:19:07.831Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Dimensions","timestamp":"2026-08-06T15:19:07.833Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Dimensions (662ms)","timestamp":"2026-08-06T15:19:08.495Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Dimensions/schema 200 (666ms)","timestamp":"2026-08-06T15:19:08.496Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Measurement/schema [::1]","timestamp":"2026-08-06T15:19:50.326Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Measurement","timestamp":"2026-08-06T15:19:50.328Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Measurement (707ms)","timestamp":"2026-08-06T15:19:51.035Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Measurement/schema 200 (712ms)","timestamp":"2026-08-06T15:19:51.037Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Measurement/schema [::1]","timestamp":"2026-08-06T15:19:56.055Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Measurement","timestamp":"2026-08-06T15:19:56.087Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Measurement (646ms)","timestamp":"2026-08-06T15:19:56.733Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Measurement/schema 200 (680ms)","timestamp":"2026-08-06T15:19:56.735Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T15:20:00.017Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Measurement/schema [::1]","timestamp":"2026-08-06T15:20:12.080Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Measurement","timestamp":"2026-08-06T15:20:12.083Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Measurement (696ms)","timestamp":"2026-08-06T15:20:12.778Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Measurement/schema 200 (700ms)","timestamp":"2026-08-06T15:20:12.780Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Measurement/schema [::1]","timestamp":"2026-08-06T15:20:18.118Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Measurement","timestamp":"2026-08-06T15:20:18.120Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Measurement (680ms)","timestamp":"2026-08-06T15:20:18.801Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Measurement/schema 200 (684ms)","timestamp":"2026-08-06T15:20:18.802Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T15:20:23.210Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (1158ms)","timestamp":"2026-08-06T15:20:24.368Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:20:25.153Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:20:25.164Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (553ms)","timestamp":"2026-08-06T15:20:25.706Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:20:25.711Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (566ms)","timestamp":"2026-08-06T15:20:26.277Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:20:26.284Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (1689ms)","timestamp":"2026-08-06T15:20:26.853Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (574ms)","timestamp":"2026-08-06T15:20:26.858Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:20:26.874Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (951ms)","timestamp":"2026-08-06T15:20:27.825Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:20:37.565Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:20:37.577Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (566ms)","timestamp":"2026-08-06T15:20:38.143Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:20:38.148Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (563ms)","timestamp":"2026-08-06T15:20:38.711Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:20:38.717Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (1407ms)","timestamp":"2026-08-06T15:20:38.972Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:20:38.981Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (553ms)","timestamp":"2026-08-06T15:20:39.270Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=cabio [::1]","timestamp":"2026-08-06T15:20:40.279Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=cabio 200 (307ms)","timestamp":"2026-08-06T15:20:40.586Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (1909ms)","timestamp":"2026-08-06T15:20:40.890Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=cabi [::1]","timestamp":"2026-08-06T15:20:41.386Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=cabi 200 (285ms)","timestamp":"2026-08-06T15:20:41.671Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=CABINET&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:20:42.355Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=CABINET [::1]","timestamp":"2026-08-06T15:20:42.365Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=CABINET 200 (293ms)","timestamp":"2026-08-06T15:20:42.658Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=CABINET&marketplace=AMAZON 200 (4666ms)","timestamp":"2026-08-06T15:20:47.021Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Room%20Type%20Item/schema [::1]","timestamp":"2026-08-06T15:23:51.322Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Room%20Type%20Item","timestamp":"2026-08-06T15:23:51.324Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Room%20Type%20Item (678ms)","timestamp":"2026-08-06T15:23:52.002Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Room%20Type%20Item/schema 200 (681ms)","timestamp":"2026-08-06T15:23:52.003Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/IncludedComponents%20Item/schema [::1]","timestamp":"2026-08-06T15:24:25.405Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/IncludedComponents%20Item","timestamp":"2026-08-06T15:24:25.406Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/IncludedComponents%20Item (791ms)","timestamp":"2026-08-06T15:24:26.197Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/IncludedComponents%20Item/schema 200 (793ms)","timestamp":"2026-08-06T15:24:26.198Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Recommended%20Uses%20For%20Product%20Item/schema [::1]","timestamp":"2026-08-06T15:25:36.264Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Recommended%20Uses%20For%20Product%20Item","timestamp":"2026-08-06T15:25:36.265Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Recommended%20Uses%20For%20Product%20Item (708ms)","timestamp":"2026-08-06T15:25:36.973Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Recommended%20Uses%20For%20Product%20Item/schema 200 (710ms)","timestamp":"2026-08-06T15:25:36.974Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Specific%20Uses%20for%20Product%20Item/schema [::1]","timestamp":"2026-08-06T15:26:03.767Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Specific%20Uses%20for%20Product%20Item","timestamp":"2026-08-06T15:26:03.769Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Specific%20Uses%20for%20Product%20Item (703ms)","timestamp":"2026-08-06T15:26:04.472Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Specific%20Uses%20for%20Product%20Item/schema 200 (706ms)","timestamp":"2026-08-06T15:26:04.473Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Material%20Item/schema [::1]","timestamp":"2026-08-06T15:26:19.349Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Material%20Item","timestamp":"2026-08-06T15:26:19.351Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Material%20Item (693ms)","timestamp":"2026-08-06T15:26:20.044Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Material%20Item/schema 200 (696ms)","timestamp":"2026-08-06T15:26:20.045Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Special%20feature%20Item/schema [::1]","timestamp":"2026-08-06T15:26:38.693Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Special%20feature%20Item","timestamp":"2026-08-06T15:26:38.695Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Special%20feature%20Item (682ms)","timestamp":"2026-08-06T15:26:39.377Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Special%20feature%20Item/schema 200 (685ms)","timestamp":"2026-08-06T15:26:39.378Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T15:27:42.532Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (2632ms)","timestamp":"2026-08-06T15:27:45.164Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:27:45.718Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:27:45.751Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (578ms)","timestamp":"2026-08-06T15:27:46.296Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:27:46.301Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (557ms)","timestamp":"2026-08-06T15:27:46.858Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:27:46.864Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (1642ms)","timestamp":"2026-08-06T15:27:47.393Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:27:47.403Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (557ms)","timestamp":"2026-08-06T15:27:47.422Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (281ms)","timestamp":"2026-08-06T15:27:47.684Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:27:52.321Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20 200 (1956ms)","timestamp":"2026-08-06T15:27:54.277Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:27:54.295Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20 200 (832ms)","timestamp":"2026-08-06T15:27:55.127Z"}
+{"context":"PricingProcessor","level":"info","message":"Syncing prices to AMAZON marketplaces","timestamp":"2026-08-06T15:28:35.226Z"}
+{"context":"ProductsProcessor","level":"info","message":"Executing background job: Sync Products to FLIPKART","timestamp":"2026-08-06T15:28:35.241Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 31 [pricing] -> WAITING","timestamp":"2026-08-06T15:28:35.851Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 180 [inventory] -> WAITING","timestamp":"2026-08-06T15:28:36.163Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 180 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:28:36.167Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 180 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:28:36.170Z"}
+{"context":"PricingProcessor","level":"warn","message":"No price data found in ERPNext or local DB for SKUs: WW-WSC-CAB-BR-001","timestamp":"2026-08-06T15:28:36.187Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 31 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:28:36.695Z"}
+{"context":"ProductsProcessor","level":"info","message":"Finished syncing products to FLIPKART: 1 succeeded, 0 failed.","timestamp":"2026-08-06T15:28:36.875Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 181 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:28:36.943Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 181 [inventory] -> WAITING","timestamp":"2026-08-06T15:28:37.028Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 31 [pricing] -> COMPLETED","timestamp":"2026-08-06T15:28:37.119Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 181 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:28:37.306Z"}
+{"context":"ProductsProcessor","level":"info","message":"Auto-queued inventory sync to FLIPKART for 1 products","timestamp":"2026-08-06T15:28:37.773Z"}
+{"context":"InventoryProcessor","level":"info","message":"Syncing inventory to FLIPKART marketplaces","timestamp":"2026-08-06T15:28:37.922Z"}
+{"context":{"params":{"item_code":"WW-WSC-CAB-BR-001","warehouse":"Stores - woodwolf"}},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance","timestamp":"2026-08-06T15:28:37.924Z"}
+{"context":"ProductsProcessor","level":"debug","message":"Products job 2f296157-e7f6-4a20-baad-f17645a099b2 (sync-products) completed","timestamp":"2026-08-06T15:28:37.938Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 182 [inventory] -> WAITING","timestamp":"2026-08-06T15:28:38.090Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 182 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:28:38.359Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance (703ms)","timestamp":"2026-08-06T15:28:38.627Z"}
+{"context":"InventoryProcessor","level":"info","message":"Inventory synced to FLIPKART: 1/1 items","timestamp":"2026-08-06T15:28:40.503Z"}
+{"context":"InventoryProcessor","level":"debug","message":"Inventory job 182 completed","timestamp":"2026-08-06T15:28:40.654Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 182 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:28:41.093Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:28:44.071Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20 200 (1111ms)","timestamp":"2026-08-06T15:28:45.182Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:28:48.263Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (750ms)","timestamp":"2026-08-06T15:28:49.012Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:28:49.020Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (385ms)","timestamp":"2026-08-06T15:28:49.406Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/webhooks?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:29:25.165Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/webhooks?page=1&pageSize=20 200 (2490ms)","timestamp":"2026-08-06T15:29:27.655Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/webhooks?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:29:27.663Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/webhooks?page=1&pageSize=20 200 (824ms)","timestamp":"2026-08-06T15:29:28.487Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:29:33.273Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (1218ms)","timestamp":"2026-08-06T15:29:34.491Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:29:34.500Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (874ms)","timestamp":"2026-08-06T15:29:35.374Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T15:29:50.657Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T15:29:52.366Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T15:29:52.368Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6117 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T15:29:52.502Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=2&pageSize=20 [::1]","timestamp":"2026-08-06T15:29:54.611Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=2&pageSize=20 200 (1165ms)","timestamp":"2026-08-06T15:29:55.776Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Fetching marketplace orders...","timestamp":"2026-08-06T15:30:00.008Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T15:30:00.014Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: sync-inventory is disabled","timestamp":"2026-08-06T15:30:00.022Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: sync-prices is disabled","timestamp":"2026-08-06T15:30:00.028Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Order fetch jobs queued for Amazon and Flipkart","timestamp":"2026-08-06T15:30:00.146Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T15:30:00.412Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T15:30:02.018Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T15:30:02.019Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6119 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T15:30:02.169Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=3&pageSize=20 [::1]","timestamp":"2026-08-06T15:30:06.055Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=3&pageSize=20 200 (1724ms)","timestamp":"2026-08-06T15:30:07.779Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=2&pageSize=20 [::1]","timestamp":"2026-08-06T15:30:36.288Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=2&pageSize=20 200 (1215ms)","timestamp":"2026-08-06T15:30:37.503Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:31:09.845Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (1211ms)","timestamp":"2026-08-06T15:31:11.057Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:32:07.117Z"}
+{"context":"ProductsProcessor","level":"info","message":"Executing background job: Sync Products to FLIPKART","timestamp":"2026-08-06T15:32:07.417Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 32 [pricing] -> WAITING","timestamp":"2026-08-06T15:32:07.999Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 32 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:32:08.080Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (1248ms)","timestamp":"2026-08-06T15:32:08.365Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 183 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:32:08.378Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 183 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:32:08.406Z"}
+{"context":"InventoryProcessor","level":"info","message":"Syncing inventory to AMAZON marketplaces","timestamp":"2026-08-06T15:32:08.870Z"}
+{"context":{"params":{"item_code":"WW-WSC-CAB-BR-001","warehouse":"Stores - woodwolf"}},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance","timestamp":"2026-08-06T15:32:08.871Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 183 [inventory] -> WAITING","timestamp":"2026-08-06T15:32:08.897Z"}
+{"context":"ProductsProcessor","level":"info","message":"Finished syncing products to FLIPKART: 1 succeeded, 0 failed.","timestamp":"2026-08-06T15:32:08.931Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 184 [inventory] -> WAITING","timestamp":"2026-08-06T15:32:09.041Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 184 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:32:09.313Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance (688ms)","timestamp":"2026-08-06T15:32:09.559Z"}
+{"context":"ProductsProcessor","level":"info","message":"Auto-queued inventory sync to FLIPKART for 1 products","timestamp":"2026-08-06T15:32:09.771Z"}
+{"context":"ProductsProcessor","level":"debug","message":"Products job 74ddbaad-7119-4419-bf30-7a5b26e5e2b7 (sync-products) completed","timestamp":"2026-08-06T15:32:09.937Z"}
+{"context":{"params":{"issueLocale":"en_IN","marketplaceIds":"A21TJRUUN4KGV"}},"level":"debug","message":"→ PATCH https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001","timestamp":"2026-08-06T15:32:10.044Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 185 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:32:10.110Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 185 [inventory] -> WAITING","timestamp":"2026-08-06T15:32:10.207Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 185 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:32:10.313Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-001 (1057ms)","timestamp":"2026-08-06T15:32:11.101Z"}
+{"context":"AmazonConnector","level":"debug","message":"Amazon PATCH response for WW-WSC-CAB-BR-001: {\"sku\":\"WW-WSC-CAB-BR-001\",\"status\":\"ACCEPTED\",\"submissionId\":\"334589204d454422a3620e212912842c\",\"issues\":[]}","timestamp":"2026-08-06T15:32:11.106Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 32 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:32:12.464Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 32 [pricing] -> WAITING","timestamp":"2026-08-06T15:32:12.568Z"}
+{"context":"InventoryProcessor","level":"info","message":"Inventory synced to AMAZON: 1/1 items","timestamp":"2026-08-06T15:32:12.577Z"}
+{"context":"InventoryProcessor","level":"debug","message":"Inventory job 184 completed","timestamp":"2026-08-06T15:32:12.740Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 184 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:32:13.205Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:32:22.523Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (663ms)","timestamp":"2026-08-06T15:32:23.186Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 32 [pricing] -> FAILED","timestamp":"2026-08-06T15:32:27.543Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 32 [pricing] -> WAITING","timestamp":"2026-08-06T15:32:27.544Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 32 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:32:27.666Z"}
+{"context":"ProductsProcessor","level":"info","message":"Executing background job: Sync Products to FLIPKART","timestamp":"2026-08-06T15:33:20.535Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 33 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:33:21.209Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 186 [inventory] -> WAITING","timestamp":"2026-08-06T15:33:21.255Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 33 [pricing] -> WAITING","timestamp":"2026-08-06T15:33:21.694Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 186 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:33:21.893Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 186 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:33:22.034Z"}
+{"context":"ProductsProcessor","level":"info","message":"Finished syncing products to FLIPKART: 1 succeeded, 0 failed.","timestamp":"2026-08-06T15:33:22.169Z"}
+{"context":"InventoryProcessor","level":"info","message":"Syncing inventory to AMAZON marketplaces","timestamp":"2026-08-06T15:33:22.349Z"}
+{"context":{"params":{"item_code":"WW-WSC-CAB-BR-002","warehouse":"Stores - woodwolf"}},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance","timestamp":"2026-08-06T15:33:22.352Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 187 [inventory] -> WAITING","timestamp":"2026-08-06T15:33:22.645Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 187 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:33:22.771Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance (658ms)","timestamp":"2026-08-06T15:33:23.010Z"}
+{"context":"ProductsProcessor","level":"info","message":"Auto-queued inventory sync to FLIPKART for 1 products","timestamp":"2026-08-06T15:33:23.094Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:33:23.162Z"}
+{"context":"ProductsProcessor","level":"debug","message":"Products job 31b2ce69-7673-46de-862f-7cebd13426f7 (sync-products) completed","timestamp":"2026-08-06T15:33:23.237Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 188 [inventory] -> ACTIVE","timestamp":"2026-08-06T15:33:23.402Z"}
+{"context":{"params":{"issueLocale":"en_IN","marketplaceIds":"A21TJRUUN4KGV"}},"level":"debug","message":"→ PATCH https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-002","timestamp":"2026-08-06T15:33:23.433Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 188 [inventory] -> WAITING","timestamp":"2026-08-06T15:33:23.520Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 188 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:33:23.562Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (909ms)","timestamp":"2026-08-06T15:33:24.071Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-WSC-CAB-BR-002 (694ms)","timestamp":"2026-08-06T15:33:24.127Z"}
+{"context":"AmazonConnector","level":"debug","message":"Amazon PATCH response for WW-WSC-CAB-BR-002: {\"sku\":\"WW-WSC-CAB-BR-002\",\"status\":\"ACCEPTED\",\"submissionId\":\"5f7b6d3eb89145609c412b9833fbca15\",\"issues\":[]}","timestamp":"2026-08-06T15:33:24.130Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 33 [pricing] -> WAITING","timestamp":"2026-08-06T15:33:25.440Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 33 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:33:25.564Z"}
+{"context":"InventoryProcessor","level":"info","message":"Inventory synced to AMAZON: 1/1 items","timestamp":"2026-08-06T15:33:26.643Z"}
+{"context":"InventoryProcessor","level":"debug","message":"Inventory job 187 completed","timestamp":"2026-08-06T15:33:26.793Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 187 [inventory] -> COMPLETED","timestamp":"2026-08-06T15:33:27.344Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 33 [pricing] -> FAILED","timestamp":"2026-08-06T15:33:40.471Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 33 [pricing] -> WAITING","timestamp":"2026-08-06T15:33:40.578Z"}
+{"context":"QueueListenerService","level":"debug","message":"Job record saved: 33 [pricing] -> ACTIVE","timestamp":"2026-08-06T15:33:40.590Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:34:05.773Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (1127ms)","timestamp":"2026-08-06T15:34:06.900Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:35:59.429Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20 200 (1599ms)","timestamp":"2026-08-06T15:36:01.028Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T15:36:01.052Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20 200 (485ms)","timestamp":"2026-08-06T15:36:01.537Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20&sku=WW-WSC-CAB-BR-002-N [::1]","timestamp":"2026-08-06T15:36:05.765Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20&sku=WW-WSC-CAB-BR-002-N 200 (192ms)","timestamp":"2026-08-06T15:36:05.957Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T15:40:00.010Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T15:44:50.711Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T15:44:52.399Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T15:44:52.407Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6121 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T15:44:52.564Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Fetching marketplace orders...","timestamp":"2026-08-06T15:45:00.013Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Order fetch jobs queued for Amazon and Flipkart","timestamp":"2026-08-06T15:45:00.175Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T15:45:00.468Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T15:45:01.369Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T15:45:01.370Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6123 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T15:45:01.513Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T15:50:00.020Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search= [::1]","timestamp":"2026-08-06T15:54:55.303Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search= 200 (1705ms)","timestamp":"2026-08-06T15:54:57.008Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search= [::1]","timestamp":"2026-08-06T15:54:57.027Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search= 200 (583ms)","timestamp":"2026-08-06T15:54:57.610Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=20&search=bottle [::1]","timestamp":"2026-08-06T15:55:04.021Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=20&search=bottle 200 (339ms)","timestamp":"2026-08-06T15:55:04.360Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types/BOTTLE_RACK/fields?page=1&limit=50 [::1]","timestamp":"2026-08-06T15:55:09.712Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types/BOTTLE_RACK/fields?page=1&limit=50 200 (339ms)","timestamp":"2026-08-06T15:55:10.052Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types/BOTTLE_RACK/fields?page=1&limit=50 [::1]","timestamp":"2026-08-06T15:55:10.057Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types/BOTTLE_RACK/fields?page=1&limit=50 200 (290ms)","timestamp":"2026-08-06T15:55:10.347Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/amazon-product-types/BOTTLE_RACK/fields/sync [::1]","timestamp":"2026-08-06T15:55:10.696Z"}
+{"context":"AmazonProductTypesService","level":"info","message":"Queueing job to sync Amazon Product Fields for BOTTLE_RACK","timestamp":"2026-08-06T15:55:10.703Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/amazon-product-types/BOTTLE_RACK/fields/sync 201 (617ms)","timestamp":"2026-08-06T15:55:11.313Z"}
+{"context":"AmazonProductTypesProcessor","level":"info","message":"Executing background job: Fetch Amazon Product Fields for BOTTLE_RACK","timestamp":"2026-08-06T15:55:11.477Z"}
+{"context":{"params":{"marketplaceIds":"A21TJRUUN4KGV","requirements":"LISTING"}},"level":"debug","message":"→ GET https://sellingpartnerapi-eu.amazon.com/definitions/2020-09-01/productTypes/BOTTLE_RACK","timestamp":"2026-08-06T15:55:11.519Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/definitions/2020-09-01/productTypes/BOTTLE_RACK (2620ms)","timestamp":"2026-08-06T15:55:14.139Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:15.698Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:55:15.703Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (925ms)","timestamp":"2026-08-06T15:55:16.629Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:55:16.644Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (173ms)","timestamp":"2026-08-06T15:55:16.817Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (1644ms)","timestamp":"2026-08-06T15:55:17.342Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:17.350Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (540ms)","timestamp":"2026-08-06T15:55:17.890Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:17.895Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (545ms)","timestamp":"2026-08-06T15:55:18.440Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:21.987Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:55:22.013Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (320ms)","timestamp":"2026-08-06T15:55:22.338Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (550ms)","timestamp":"2026-08-06T15:55:22.537Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:22.546Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (552ms)","timestamp":"2026-08-06T15:55:23.098Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:24.650Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:55:24.677Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (451ms)","timestamp":"2026-08-06T15:55:25.128Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:55:25.145Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (568ms)","timestamp":"2026-08-06T15:55:25.217Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:25.224Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (166ms)","timestamp":"2026-08-06T15:55:25.311Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (545ms)","timestamp":"2026-08-06T15:55:25.769Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:25.774Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (550ms)","timestamp":"2026-08-06T15:55:26.324Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=s [::1]","timestamp":"2026-08-06T15:55:26.657Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=s 200 (551ms)","timestamp":"2026-08-06T15:55:27.208Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=shelf [::1]","timestamp":"2026-08-06T15:55:28.455Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=shelf 200 (280ms)","timestamp":"2026-08-06T15:55:28.735Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=SHELF&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:55:29.644Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=SHELF [::1]","timestamp":"2026-08-06T15:55:29.678Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=SHELF 200 (174ms)","timestamp":"2026-08-06T15:55:29.852Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=SHELF&marketplace=AMAZON 200 (1392ms)","timestamp":"2026-08-06T15:55:31.036Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:55:31.666Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:31.688Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (302ms)","timestamp":"2026-08-06T15:55:31.968Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:55:31.979Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (315ms)","timestamp":"2026-08-06T15:55:32.003Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:32.009Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (301ms)","timestamp":"2026-08-06T15:55:32.280Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (299ms)","timestamp":"2026-08-06T15:55:32.308Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:55:32.316Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (310ms)","timestamp":"2026-08-06T15:55:32.626Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=BOTTLE_RACK [::1]","timestamp":"2026-08-06T15:55:33.370Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=BOTTLE_RACK 200 (156ms)","timestamp":"2026-08-06T15:55:33.526Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:55:34.191Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T15:55:34.210Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (285ms)","timestamp":"2026-08-06T15:55:34.495Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (340ms)","timestamp":"2026-08-06T15:55:34.531Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Brand/schema [::1]","timestamp":"2026-08-06T15:55:48.088Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Brand","timestamp":"2026-08-06T15:55:48.090Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Brand (753ms)","timestamp":"2026-08-06T15:55:48.843Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Brand/schema 200 (765ms)","timestamp":"2026-08-06T15:55:48.853Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Brand/schema [::1]","timestamp":"2026-08-06T15:55:53.283Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Brand","timestamp":"2026-08-06T15:55:53.285Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Brand (242ms)","timestamp":"2026-08-06T15:55:53.528Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Brand/schema 200 (246ms)","timestamp":"2026-08-06T15:55:53.529Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T15:56:29.395Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (1187ms)","timestamp":"2026-08-06T15:56:30.582Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:56:30.803Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:56:30.818Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (293ms)","timestamp":"2026-08-06T15:56:31.096Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:56:31.103Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (284ms)","timestamp":"2026-08-06T15:56:31.387Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:56:31.393Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (285ms)","timestamp":"2026-08-06T15:56:31.678Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (894ms)","timestamp":"2026-08-06T15:56:31.712Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:56:31.721Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (166ms)","timestamp":"2026-08-06T15:56:31.886Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:56:32.647Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:56:32.685Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (332ms)","timestamp":"2026-08-06T15:56:32.979Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:56:32.986Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (424ms)","timestamp":"2026-08-06T15:56:33.109Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:56:33.117Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (293ms)","timestamp":"2026-08-06T15:56:33.279Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:56:33.285Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (295ms)","timestamp":"2026-08-06T15:56:33.412Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (299ms)","timestamp":"2026-08-06T15:56:33.584Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle [::1]","timestamp":"2026-08-06T15:56:35.586Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle 200 (157ms)","timestamp":"2026-08-06T15:56:35.743Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:56:37.740Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T15:56:37.762Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (145ms)","timestamp":"2026-08-06T15:56:37.907Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (584ms)","timestamp":"2026-08-06T15:56:38.324Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Amazon%20Bullet%20Point/schema [::1]","timestamp":"2026-08-06T15:56:47.682Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Amazon%20Bullet%20Point","timestamp":"2026-08-06T15:56:47.684Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Amazon%20Bullet%20Point (653ms)","timestamp":"2026-08-06T15:56:48.337Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Amazon%20Bullet%20Point/schema 200 (657ms)","timestamp":"2026-08-06T15:56:48.339Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Country/schema [::1]","timestamp":"2026-08-06T15:56:58.142Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Country","timestamp":"2026-08-06T15:56:58.144Z"}
+{"context":"AmazonProductTypesProcessor","level":"info","message":"Successfully synced 120 fields for product type BOTTLE_RACK","timestamp":"2026-08-06T15:56:58.535Z"}
+{"context":"AmazonProductTypesProcessor","level":"debug","message":"Job 10 (fetch-amazon-product-fields) completed successfully.","timestamp":"2026-08-06T15:56:58.693Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Country (683ms)","timestamp":"2026-08-06T15:56:58.827Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Country/schema 200 (686ms)","timestamp":"2026-08-06T15:56:58.828Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T15:57:18.662Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (1415ms)","timestamp":"2026-08-06T15:57:20.077Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:20.339Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:57:20.351Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (557ms)","timestamp":"2026-08-06T15:57:20.896Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:20.903Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (856ms)","timestamp":"2026-08-06T15:57:21.207Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:57:21.214Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (144ms)","timestamp":"2026-08-06T15:57:21.358Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (570ms)","timestamp":"2026-08-06T15:57:21.473Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:21.479Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (574ms)","timestamp":"2026-08-06T15:57:22.053Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:22.438Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:57:22.454Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (426ms)","timestamp":"2026-08-06T15:57:22.879Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:57:22.947Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (583ms)","timestamp":"2026-08-06T15:57:23.021Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:23.053Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (308ms)","timestamp":"2026-08-06T15:57:23.254Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (574ms)","timestamp":"2026-08-06T15:57:23.627Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:23.635Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (561ms)","timestamp":"2026-08-06T15:57:24.196Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle [::1]","timestamp":"2026-08-06T15:57:25.326Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle 200 (285ms)","timestamp":"2026-08-06T15:57:25.611Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:57:26.917Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T15:57:26.930Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (152ms)","timestamp":"2026-08-06T15:57:27.081Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (3369ms)","timestamp":"2026-08-06T15:57:30.286Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T15:57:44.266Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (1448ms)","timestamp":"2026-08-06T15:57:45.714Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:45.960Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:57:45.989Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (286ms)","timestamp":"2026-08-06T15:57:46.275Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:57:46.283Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (149ms)","timestamp":"2026-08-06T15:57:46.432Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (583ms)","timestamp":"2026-08-06T15:57:46.543Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:46.548Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (564ms)","timestamp":"2026-08-06T15:57:47.112Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:47.117Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (561ms)","timestamp":"2026-08-06T15:57:47.678Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:57:55.528Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:55.545Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (282ms)","timestamp":"2026-08-06T15:57:55.827Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:55.834Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (286ms)","timestamp":"2026-08-06T15:57:56.120Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:57:56.125Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (282ms)","timestamp":"2026-08-06T15:57:56.407Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (1124ms)","timestamp":"2026-08-06T15:57:56.652Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:57:56.660Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (832ms)","timestamp":"2026-08-06T15:57:57.492Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=boi [::1]","timestamp":"2026-08-06T15:57:57.673Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=boi 200 (283ms)","timestamp":"2026-08-06T15:57:57.956Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=boitt [::1]","timestamp":"2026-08-06T15:57:58.524Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=boitt 200 (280ms)","timestamp":"2026-08-06T15:57:58.804Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=boi [::1]","timestamp":"2026-08-06T15:58:00.192Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=boi 200 (281ms)","timestamp":"2026-08-06T15:58:00.473Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle [::1]","timestamp":"2026-08-06T15:58:01.497Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle 200 (287ms)","timestamp":"2026-08-06T15:58:01.784Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:58:04.233Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T15:58:04.246Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (156ms)","timestamp":"2026-08-06T15:58:04.402Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (1663ms)","timestamp":"2026-08-06T15:58:05.896Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Material%20Item/schema [::1]","timestamp":"2026-08-06T15:58:24.775Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Material%20Item","timestamp":"2026-08-06T15:58:24.777Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Material%20Item (730ms)","timestamp":"2026-08-06T15:58:25.507Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Material%20Item/schema 200 (733ms)","timestamp":"2026-08-06T15:58:25.509Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Material%20Item/schema [::1]","timestamp":"2026-08-06T15:58:30.206Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Material%20Item","timestamp":"2026-08-06T15:58:30.209Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Material%20Item (264ms)","timestamp":"2026-08-06T15:58:30.473Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Material%20Item/schema 200 (276ms)","timestamp":"2026-08-06T15:58:30.482Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Measurement/schema [::1]","timestamp":"2026-08-06T15:58:56.968Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Measurement","timestamp":"2026-08-06T15:58:56.977Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Measurement (680ms)","timestamp":"2026-08-06T15:58:57.657Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Measurement/schema 200 (691ms)","timestamp":"2026-08-06T15:58:57.659Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Measurement/schema [::1]","timestamp":"2026-08-06T15:59:17.499Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Measurement","timestamp":"2026-08-06T15:59:17.501Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Measurement (639ms)","timestamp":"2026-08-06T15:59:18.140Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Measurement/schema 200 (643ms)","timestamp":"2026-08-06T15:59:18.142Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T15:59:22.326Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (1419ms)","timestamp":"2026-08-06T15:59:23.746Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:59:24.085Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:59:24.106Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (573ms)","timestamp":"2026-08-06T15:59:24.657Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:59:24.666Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (832ms)","timestamp":"2026-08-06T15:59:24.938Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T15:59:24.944Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (144ms)","timestamp":"2026-08-06T15:59:25.088Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (563ms)","timestamp":"2026-08-06T15:59:25.229Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:59:25.234Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (556ms)","timestamp":"2026-08-06T15:59:25.790Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:59:25.975Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:59:25.998Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (412ms)","timestamp":"2026-08-06T15:59:26.410Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T15:59:26.417Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (569ms)","timestamp":"2026-08-06T15:59:26.544Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:59:26.549Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (280ms)","timestamp":"2026-08-06T15:59:26.697Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (564ms)","timestamp":"2026-08-06T15:59:27.113Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T15:59:27.119Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (569ms)","timestamp":"2026-08-06T15:59:27.688Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=b [::1]","timestamp":"2026-08-06T15:59:29.917Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=b 200 (579ms)","timestamp":"2026-08-06T15:59:30.496Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bot [::1]","timestamp":"2026-08-06T15:59:30.835Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bot 200 (293ms)","timestamp":"2026-08-06T15:59:31.128Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle [::1]","timestamp":"2026-08-06T15:59:32.353Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle 200 (290ms)","timestamp":"2026-08-06T15:59:32.643Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle%2F [::1]","timestamp":"2026-08-06T15:59:32.923Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle%2F 200 (281ms)","timestamp":"2026-08-06T15:59:33.204Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle [::1]","timestamp":"2026-08-06T15:59:33.801Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle 200 (286ms)","timestamp":"2026-08-06T15:59:34.087Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle_ [::1]","timestamp":"2026-08-06T15:59:34.557Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle_ 200 (289ms)","timestamp":"2026-08-06T15:59:34.846Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle_rac [::1]","timestamp":"2026-08-06T15:59:35.555Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle_rac 200 (284ms)","timestamp":"2026-08-06T15:59:35.839Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T15:59:36.661Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T15:59:36.671Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (146ms)","timestamp":"2026-08-06T15:59:36.817Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (1386ms)","timestamp":"2026-08-06T15:59:38.047Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T15:59:50.647Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T15:59:52.333Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T15:59:52.334Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6125 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T15:59:52.531Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: sync-inventory is disabled","timestamp":"2026-08-06T16:00:00.007Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Fetching marketplace orders...","timestamp":"2026-08-06T16:00:00.015Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T16:00:00.024Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Order fetch jobs queued for Amazon and Flipkart","timestamp":"2026-08-06T16:00:00.164Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T16:00:00.436Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T16:00:02.214Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T16:00:02.214Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6127 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T16:00:02.350Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Dimensions/schema [::1]","timestamp":"2026-08-06T16:00:17.976Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Dimensions","timestamp":"2026-08-06T16:00:17.980Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Dimensions (696ms)","timestamp":"2026-08-06T16:00:18.676Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Dimensions/schema 200 (702ms)","timestamp":"2026-08-06T16:00:18.678Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Dimensions/schema [::1]","timestamp":"2026-08-06T16:00:25.015Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Dimensions","timestamp":"2026-08-06T16:00:25.018Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Dimensions (665ms)","timestamp":"2026-08-06T16:00:25.684Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Dimensions/schema 200 (670ms)","timestamp":"2026-08-06T16:00:25.685Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext/Dimensions/schema [::1]","timestamp":"2026-08-06T16:01:20.249Z"}
+{"context":{},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/resource/DocType/Dimensions","timestamp":"2026-08-06T16:01:20.278Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/resource/DocType/Dimensions (722ms)","timestamp":"2026-08-06T16:01:21.000Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext/Dimensions/schema 200 (753ms)","timestamp":"2026-08-06T16:01:21.002Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T16:01:52.765Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (2535ms)","timestamp":"2026-08-06T16:01:55.300Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:01:56.368Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:01:56.417Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (590ms)","timestamp":"2026-08-06T16:01:56.958Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:01:56.968Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (907ms)","timestamp":"2026-08-06T16:01:57.324Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:01:57.336Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (166ms)","timestamp":"2026-08-06T16:01:57.501Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (577ms)","timestamp":"2026-08-06T16:01:57.544Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:01:57.564Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (548ms)","timestamp":"2026-08-06T16:01:58.112Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T16:03:22.175Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:03:22.184Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (947ms)","timestamp":"2026-08-06T16:03:23.131Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:03:23.138Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (1155ms)","timestamp":"2026-08-06T16:03:23.330Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T16:03:23.338Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (373ms)","timestamp":"2026-08-06T16:03:23.511Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:03:23.517Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (321ms)","timestamp":"2026-08-06T16:03:23.659Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (296ms)","timestamp":"2026-08-06T16:03:23.813Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottl [::1]","timestamp":"2026-08-06T16:03:26.538Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottl 200 (157ms)","timestamp":"2026-08-06T16:03:26.695Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle [::1]","timestamp":"2026-08-06T16:03:27.122Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle 200 (159ms)","timestamp":"2026-08-06T16:03:27.281Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T16:03:28.539Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T16:03:28.556Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (172ms)","timestamp":"2026-08-06T16:03:28.728Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (591ms)","timestamp":"2026-08-06T16:03:29.131Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T16:04:49.898Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (1485ms)","timestamp":"2026-08-06T16:04:51.383Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:04:51.879Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:04:51.887Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (319ms)","timestamp":"2026-08-06T16:04:52.198Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:04:52.219Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (315ms)","timestamp":"2026-08-06T16:04:52.534Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:04:52.540Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (318ms)","timestamp":"2026-08-06T16:04:52.858Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (1034ms)","timestamp":"2026-08-06T16:04:52.921Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:04:52.929Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (142ms)","timestamp":"2026-08-06T16:04:53.071Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T16:05:05.276Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:05:05.296Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (321ms)","timestamp":"2026-08-06T16:05:05.617Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:05:05.623Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (436ms)","timestamp":"2026-08-06T16:05:05.712Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T16:05:05.719Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (143ms)","timestamp":"2026-08-06T16:05:05.862Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (341ms)","timestamp":"2026-08-06T16:05:05.964Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:05:05.969Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (317ms)","timestamp":"2026-08-06T16:05:06.286Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottl [::1]","timestamp":"2026-08-06T16:05:08.019Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottl 200 (217ms)","timestamp":"2026-08-06T16:05:08.236Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T16:05:09.735Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T16:05:09.780Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (208ms)","timestamp":"2026-08-06T16:05:09.989Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (742ms)","timestamp":"2026-08-06T16:05:10.477Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T16:10:00.116Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T16:10:07.084Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (1552ms)","timestamp":"2026-08-06T16:10:08.636Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:09.608Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:10:09.628Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (300ms)","timestamp":"2026-08-06T16:10:09.907Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:09.915Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (278ms)","timestamp":"2026-08-06T16:10:10.193Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:10.199Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (294ms)","timestamp":"2026-08-06T16:10:10.493Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (1053ms)","timestamp":"2026-08-06T16:10:10.681Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:10:10.691Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (162ms)","timestamp":"2026-08-06T16:10:10.853Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:13.023Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T16:10:13.040Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (302ms)","timestamp":"2026-08-06T16:10:13.325Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:13.334Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (433ms)","timestamp":"2026-08-06T16:10:13.473Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/erpnext [::1]","timestamp":"2026-08-06T16:10:13.483Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (318ms)","timestamp":"2026-08-06T16:10:13.652Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:13.659Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/erpnext 200 (297ms)","timestamp":"2026-08-06T16:10:13.779Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (299ms)","timestamp":"2026-08-06T16:10:13.958Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle [::1]","timestamp":"2026-08-06T16:10:16.962Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search=bottle 200 (158ms)","timestamp":"2026-08-06T16:10:17.120Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON [::1]","timestamp":"2026-08-06T16:10:18.930Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK [::1]","timestamp":"2026-08-06T16:10:18.951Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings?marketplace=AMAZON&productType=BOTTLE_RACK 200 (149ms)","timestamp":"2026-08-06T16:10:19.100Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings/fields/amazon?productType=BOTTLE_RACK&marketplace=AMAZON 200 (602ms)","timestamp":"2026-08-06T16:10:19.532Z"}
+{"context":"HTTP","level":"info","message":"→ POST /api/v1/mappings/bulk [::1]","timestamp":"2026-08-06T16:10:37.377Z"}
+{"context":"HTTP","level":"info","message":"← POST /api/v1/mappings/bulk 201 (403ms)","timestamp":"2026-08-06T16:10:37.780Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:38.274Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:10:38.312Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (330ms)","timestamp":"2026-08-06T16:10:38.603Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:38.628Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (428ms)","timestamp":"2026-08-06T16:10:38.740Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/mappings [::1]","timestamp":"2026-08-06T16:10:38.755Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/mappings 200 (153ms)","timestamp":"2026-08-06T16:10:38.908Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (325ms)","timestamp":"2026-08-06T16:10:38.954Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/amazon-product-types?page=1&limit=50&search= [::1]","timestamp":"2026-08-06T16:10:38.971Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/amazon-product-types?page=1&limit=50&search= 200 (314ms)","timestamp":"2026-08-06T16:10:39.285Z"}
+{"context":"ProductsProcessor","level":"info","message":"Executing background job: Sync Products to FLIPKART","timestamp":"2026-08-06T16:10:48.773Z"}
+{"context":"PricingProcessor","level":"info","message":"Syncing prices to AMAZON marketplaces","timestamp":"2026-08-06T16:10:48.819Z"}
+{"context":"PricingProcessor","level":"warn","message":"No price data found in ERPNext or local DB for SKUs: WW-BGH-WBR-002","timestamp":"2026-08-06T16:10:49.149Z"}
+{"context":"ProductsProcessor","level":"info","message":"Finished syncing products to FLIPKART: 1 succeeded, 0 failed.","timestamp":"2026-08-06T16:10:49.877Z"}
+{"context":"ProductsProcessor","level":"info","message":"Auto-queued inventory sync to FLIPKART for 1 products","timestamp":"2026-08-06T16:10:50.798Z"}
+{"context":"ProductsProcessor","level":"debug","message":"Products job 0119d3e6-1547-40d3-a1a3-f8461035e43b (sync-products) completed","timestamp":"2026-08-06T16:10:50.940Z"}
+{"context":"InventoryProcessor","level":"info","message":"Syncing inventory to FLIPKART marketplaces","timestamp":"2026-08-06T16:10:50.943Z"}
+{"context":{"params":{"item_code":"WW-BGH-WBR-002","warehouse":"Stores - woodwolf"}},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance","timestamp":"2026-08-06T16:10:50.961Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance (787ms)","timestamp":"2026-08-06T16:10:51.747Z"}
+{"context":"InventoryProcessor","level":"info","message":"Inventory synced to FLIPKART: 1/1 items","timestamp":"2026-08-06T16:10:53.622Z"}
+{"context":"InventoryProcessor","level":"debug","message":"Inventory job 190 completed","timestamp":"2026-08-06T16:10:53.848Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T16:11:12.126Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20 200 (1029ms)","timestamp":"2026-08-06T16:11:13.155Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T16:11:13.180Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20 200 (505ms)","timestamp":"2026-08-06T16:11:13.685Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20&sku=WW-BGH-WBR-002 [::1]","timestamp":"2026-08-06T16:11:15.433Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20&sku=WW-BGH-WBR-002 200 (178ms)","timestamp":"2026-08-06T16:11:15.611Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T16:11:37.268Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (693ms)","timestamp":"2026-08-06T16:11:37.960Z"}
+{"context":"ProductsProcessor","level":"info","message":"Executing background job: Sync Products to FLIPKART","timestamp":"2026-08-06T16:12:01.406Z"}
+{"context":"InventoryProcessor","level":"info","message":"Syncing inventory to AMAZON marketplaces","timestamp":"2026-08-06T16:12:01.512Z"}
+{"context":{"params":{"item_code":"WW-BGH-WBR-002","warehouse":"Stores - woodwolf"}},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance","timestamp":"2026-08-06T16:12:01.515Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T16:12:01.691Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance (713ms)","timestamp":"2026-08-06T16:12:02.228Z"}
+{"context":"ProductsProcessor","level":"info","message":"Finished syncing products to FLIPKART: 1 succeeded, 0 failed.","timestamp":"2026-08-06T16:12:02.394Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (1375ms)","timestamp":"2026-08-06T16:12:03.066Z"}
+{"context":{"params":{"issueLocale":"en_IN","marketplaceIds":"A21TJRUUN4KGV"}},"level":"debug","message":"→ PATCH https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-BGH-WBR-002","timestamp":"2026-08-06T16:12:03.308Z"}
+{"context":"ProductsProcessor","level":"info","message":"Auto-queued inventory sync to FLIPKART for 1 products","timestamp":"2026-08-06T16:12:03.319Z"}
+{"context":"ProductsProcessor","level":"debug","message":"Products job 84caae32-26af-40af-8700-99d85224fa0c (sync-products) completed","timestamp":"2026-08-06T16:12:03.463Z"}
+{"context":"InventoryProcessor","level":"info","message":"Syncing inventory to FLIPKART marketplaces","timestamp":"2026-08-06T16:12:03.466Z"}
+{"context":{"params":{"item_code":"WW-BGH-WBR-002","warehouse":"Stores - woodwolf"}},"level":"debug","message":"→ GET https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance","timestamp":"2026-08-06T16:12:03.468Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://woodwolf.t3elements.com/api/method/erpnext.stock.utils.get_stock_balance (231ms)","timestamp":"2026-08-06T16:12:03.700Z"}
+{"context":"HttpClientService","level":"debug","message":"← 200 https://sellingpartnerapi-eu.amazon.com/listings/2021-08-01/items/A1CFKR1P3UFLY6/WW-BGH-WBR-002 (698ms)","timestamp":"2026-08-06T16:12:04.006Z"}
+{"context":"AmazonConnector","level":"debug","message":"Amazon PATCH response for WW-BGH-WBR-002: {\"sku\":\"WW-BGH-WBR-002\",\"status\":\"ACCEPTED\",\"submissionId\":\"202e0d7d934c4686a37078101382ad61\",\"issues\":[]}","timestamp":"2026-08-06T16:12:04.007Z"}
+{"context":"InventoryProcessor","level":"info","message":"Inventory synced to AMAZON: 1/1 items","timestamp":"2026-08-06T16:12:05.327Z"}
+{"context":"InventoryProcessor","level":"debug","message":"Inventory job 191 completed","timestamp":"2026-08-06T16:12:05.486Z"}
+{"context":"InventoryProcessor","level":"info","message":"Inventory synced to FLIPKART: 1/1 items","timestamp":"2026-08-06T16:12:05.499Z"}
+{"context":"InventoryProcessor","level":"debug","message":"Inventory job 193 completed","timestamp":"2026-08-06T16:12:05.653Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T16:13:08.197Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (1376ms)","timestamp":"2026-08-06T16:13:09.573Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/products?page=1&pageSize=20&sku=WW-BGH-WBR-002 [::1]","timestamp":"2026-08-06T16:14:10.773Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/products?page=1&pageSize=20&sku=WW-BGH-WBR-002 200 (876ms)","timestamp":"2026-08-06T16:14:11.649Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T16:14:50.710Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T16:14:52.448Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T16:14:52.449Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6129 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T16:14:52.651Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Fetching marketplace orders...","timestamp":"2026-08-06T16:15:00.002Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: Order fetch jobs queued for Amazon and Flipkart","timestamp":"2026-08-06T16:15:00.148Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetching orders from FLIPKART","timestamp":"2026-08-06T16:15:00.419Z"}
+{"context":"OrdersProcessor","level":"info","message":"No existing Flipkart orders found. Fetching orders from the last year.","timestamp":"2026-08-06T16:15:01.255Z"}
+{"context":"OrdersProcessor","level":"info","message":"Fetched 0 orders from FLIPKART (page 1)","timestamp":"2026-08-06T16:15:01.256Z"}
+{"context":"OrdersProcessor","level":"debug","message":"Job 6131 (fetch-marketplace-orders) completed","timestamp":"2026-08-06T16:15:01.405Z"}
+{"context":"HTTP","level":"info","message":"→ GET /api/v1/logs/api?page=1&pageSize=20 [::1]","timestamp":"2026-08-06T16:15:45.045Z"}
+{"context":"HTTP","level":"info","message":"← GET /api/v1/logs/api?page=1&pageSize=20 200 (1223ms)","timestamp":"2026-08-06T16:15:46.267Z"}
+{"context":"SchedulerService","level":"info","message":"CRON: retry-failed is disabled","timestamp":"2026-08-06T16:20:00.003Z"}

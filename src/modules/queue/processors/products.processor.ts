@@ -201,8 +201,7 @@ export class ProductsProcessor {
         thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
         flipkartSku: product.flipkartSku,
         name: product.name,
-        description: product.description,
-        category: product.category,
+        description: product.description ? product.description.replace(/<[^>]*>?/gm, '') : product.description,
         brand: product.brand,
         mrp: product.mrp,
         sellingPrice: product.sellingPrice,
@@ -293,7 +292,7 @@ export class ProductsProcessor {
             thumbnailUrl: product.thumbnailUrl || (product.images && product.images.length > 0 ? product.images[0] : null),
             flipkartSku: product.flipkartSku,
             name: product.name,
-            description: product.description,
+            description: product.description ? product.description.replace(/<[^>]*>?/gm, '') : product.description,
             category: product.category,
             brand: product.brand,
             mrp: product.mrp,
@@ -330,29 +329,29 @@ export class ProductsProcessor {
           if (result.success) {
             successCount++;
             if (mp === MarketplaceSource.AMAZON) {
-              const updateData: any = { 
-                isAmazonListed: true, 
+              const updateData: any = {
+                isAmazonListed: true,
                 amazonSync: true,
                 amazonLastSync: new Date(),
-                lastSyncedAt: new Date() 
+                lastSyncedAt: new Date()
               };
               if (result.meta && result.meta.asin) {
                 updateData.amazonAsin = result.meta.asin;
               }
               await this.productRepo.update(product.id, updateData);
             } else if (mp === MarketplaceSource.FLIPKART) {
-              await this.productRepo.update(product.id, { 
-                isFlipkartListed: true, 
+              await this.productRepo.update(product.id, {
+                isFlipkartListed: true,
                 flipkartSync: true,
                 flipkartLastSync: new Date(),
-                lastSyncedAt: new Date() 
+                lastSyncedAt: new Date()
               });
             }
           } else {
             failureCount++;
             const errorMsg = result.error || 'Unknown error from marketplace connector';
             this.logger.error(`Failed to push product ${product.sku} to ${mp}: ${errorMsg}`);
-            
+
             if (mp === MarketplaceSource.AMAZON) {
               await this.productRepo.update(product.id, { amazonSync: false, amazonLastSync: new Date(), lastSyncedAt: new Date() });
             } else if (mp === MarketplaceSource.FLIPKART) {
@@ -370,7 +369,7 @@ export class ProductsProcessor {
         } catch (error: any) {
           failureCount++;
           this.logger.error(`Error syncing product ${product.sku} to ${mp}: ${error.message}`);
-          
+
           if (mp === MarketplaceSource.AMAZON) {
             await this.productRepo.update(product.id, { amazonSync: false, amazonLastSync: new Date(), lastSyncedAt: new Date() });
           } else if (mp === MarketplaceSource.FLIPKART) {
