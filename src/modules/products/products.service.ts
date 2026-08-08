@@ -1227,8 +1227,12 @@ export class ProductsService {
         await this.erpnextService.deleteItem(erpnextItemCode);
         this.logger.log(`Deleted item ${erpnextItemCode} from ERPNext`);
       } catch (err: any) {
-        this.logger.error(`Failed to delete item ${erpnextItemCode} from ERPNext (it may not exist or has linked documents): ${err.message}`);
-        throw new Error(`Cannot delete from ERPNext: ${err.message}`);
+        if (err.message && err.message.includes('404')) {
+          this.logger.warn(`Item ${erpnextItemCode} already deleted or not found in ERPNext. Proceeding to delete locally.`);
+        } else {
+          this.logger.error(`Failed to delete item ${erpnextItemCode} from ERPNext (it may not exist or has linked documents): ${err.message}`);
+          throw new Error(`Cannot delete from ERPNext: ${err.message}`);
+        }
       }
     }
 

@@ -290,7 +290,7 @@ export class AmazonConnector extends BaseConnector {
 
       const normalized: NormalizedProduct = {
         amazonAsin: item.asin || summary.asin,
-        sku: getAmzStr(item.attributes?.part_number) || sku,
+        sku: sku,
         name: summary.itemName || '',
         brand: summary.brandName || '',
         category: getAmzStr(item.attributes?.product_category) || '',
@@ -957,10 +957,6 @@ export class AmazonConnector extends BaseConnector {
 
     // Overwrite with our core product fields
     payload.attributes.item_name = [{ value: product.name, language_tag: 'en_IN' }];
-    // payload.attributes.supplier_declared_has_product_identifier_exemption = [{
-    //   value: 'true',
-    //   marketplace_id: this.marketplaceId
-    // }];
 
     if (!product.isParent && product.variantAttributes && product.variantAttributes.length > 0) {
       // Find variant mappings for this product type
@@ -1007,6 +1003,7 @@ export class AmazonConnector extends BaseConnector {
           relationship_type: 'variation',
           variation_theme: { name: finalVariationTheme }
         }];
+        payload.attributes.variation_theme = [{ name: finalVariationTheme }];
         payload.attributes.condition_type = [{
           value: 'new_new',
           marketplace_id: this.marketplaceId
@@ -1020,6 +1017,7 @@ export class AmazonConnector extends BaseConnector {
         relationship_type: 'variation',
         variation_theme: { name: product.variationTheme || 'COLOR' }
       }];
+      payload.attributes.variation_theme = [{ name: product.variationTheme || 'COLOR' }];
       payload.attributes.condition_type = [{
         value: 'new_new',
         marketplace_id: this.marketplaceId
