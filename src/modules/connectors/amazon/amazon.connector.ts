@@ -607,6 +607,28 @@ export class AmazonConnector extends BaseConnector {
         }
       }
 
+      // Add variant mappings so changed attributes get patched
+      const varMappings = await this.variantMappingRepo.find({ where: { marketplace: ILike(MarketplaceSource.AMAZON) } });
+      for (const mapping of varMappings) {
+        const key = mapping.erpnextAttribute; // e.g. "grid size"
+        if (!keyMap[key]) {
+          keyMap[key] = [];
+        }
+        
+        let amzKey = mapping.amazonVariationTheme.toLowerCase();
+        if (amzKey.includes('/')) {
+          amzKey = key.toLowerCase().replace(/ /g, '_');
+        }
+        
+        keyMap[key].push(amzKey);
+
+        // Also map generic 'attributes' key in case ERPNext webhook sends 'attributes' as the changed child table
+        if (!keyMap['attributes']) {
+          keyMap['attributes'] = [];
+        }
+        keyMap['attributes'].push(amzKey);
+      }
+
       const patchedPaths = new Set<string>();
 
       this.logger.log(`[PATCH DEBUG] changedKeys received: ${JSON.stringify(changedKeys)}`);
@@ -635,6 +657,20 @@ export class AmazonConnector extends BaseConnector {
           }
         } else {
           this.logger.warn(`[PATCH DEBUG] No keyMap entry for changed key '${key}' - this field won't be patched`);
+        }
+      }
+
+      // Always include foundational structural fields if they exist in the generated attributes
+      const foundationalFields = ['parentage_level', 'child_parent_sku_relationship', 'variation_theme'];
+      for (const f of foundationalFields) {
+        const path = `/attributes/${f}`;
+        if (attributes[f] !== undefined && !patchedPaths.has(path)) {
+          patches.push({
+            op: 'replace',
+            path: path,
+            value: attributes[f]
+          });
+          patchedPaths.add(path);
         }
       }
 
@@ -987,43 +1023,58 @@ export class AmazonConnector extends BaseConnector {
         }
 
         if (!payload.attributes[amzAttrKey]) {
-          payload.attributes[amzAttrKey] = [{ value: attr.value, language_tag: 'en_IN' }];
+          payload.attributes[amzAttrKey] = [{ value: attr.value, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
         }
       }
 
       if (product.variantOf) {
-        const uniqueThemes = [...new Set(mappedThemes)];
-        const finalVariationTheme = uniqueThemes.length > 0
-          ? uniqueThemes.join('-')
-          : (product.variationTheme || 'COLOR');
+        const splitMapped = mappedThemes.flatMap(t => t.split(/[-\/]/));
+        const uniqueThemes = [...new Set(splitMapped)];
+        const finalVariationThemeString = uniqueThemes.length > 0
+          ? uniqueThemes.join('/')
+          : (product.variationTheme || 'COLOR').replace(/-/g, '/');
+
+        const themesArray = uniqueThemes.length > 0
+          ? uniqueThemes.map(t => ({ name: t }))
+          : (product.variationTheme || 'COLOR').split(/[-\/]/).map(t => ({ name: t }));
 
         payload.attributes.parentage_level = [{ value: 'child' }];
         payload.attributes.child_parent_sku_relationship = [{
+          child_relationship_type: 'variation',
           parent_sku: product.variantOf,
-          relationship_type: 'variation',
-          variation_theme: { name: finalVariationTheme }
-        }];
-        payload.attributes.variation_theme = [{ name: finalVariationTheme }];
-        payload.attributes.condition_type = [{
-          value: 'new_new',
           marketplace_id: this.marketplaceId
         }];
+        payload.attributes.variation_theme = [{
+          name: finalVariationThemeString,
+          marketplace_id: this.marketplaceId
+        }];
+
       }
     } else if (!product.isParent && product.variantOf) {
       // Fallback if no variant attributes but it is a child
+      const fallbackThemeRaw = product.variationTheme || 'COLOR';
+      const fallbackThemeString = fallbackThemeRaw.replace(/-/g, '/');
+      const fallbackThemesArray = fallbackThemeRaw.split(/[-\/]/).map(t => ({ name: t }));
+
       payload.attributes.parentage_level = [{ value: 'child' }];
       payload.attributes.child_parent_sku_relationship = [{
+        child_relationship_type: 'variation',
         parent_sku: product.variantOf,
-        relationship_type: 'variation',
-        variation_theme: { name: product.variationTheme || 'COLOR' }
+        marketplace_id: this.marketplaceId
       }];
-      payload.attributes.variation_theme = [{ name: product.variationTheme || 'COLOR' }];
+      payload.attributes.variation_theme = [{
+        name: fallbackThemeString,
+        marketplace_id: this.marketplaceId
+      }];
       payload.attributes.condition_type = [{
         value: 'new_new',
         marketplace_id: this.marketplaceId
       }];
     }
-
+    payload.attributes.condition_type = [{
+      value: 'new_new',
+      marketplace_id: this.marketplaceId
+    }];
     if (product.description) {
       const plainTextDescription = product.description
         .replace(/<br\s*[\/]?>/gi, '\n') // Replace <br> with newlines
@@ -1136,6 +1187,10 @@ export class AmazonConnector extends BaseConnector {
 
     if (product.isParent) {
       payload.attributes.parentage_level = [{ value: 'parent' }];
+      payload.attributes.child_parent_sku_relationship = [{
+        child_relationship_type: 'variation',
+        marketplace_id: this.marketplaceId
+      }];
 
       const attrs = product.erpnextRawPayload?.attributes;
       if (Array.isArray(attrs) && attrs.length > 0) {
@@ -1154,12 +1209,27 @@ export class AmazonConnector extends BaseConnector {
             } else {
               mappedThemes.push(attr.attribute);
             }
+
+            // Dynamically populate parent payload attributes if they have a value in ERPNext
+            if (attr.attribute_value) {
+              let amzAttrKey = attr.attribute.toLowerCase().replace(/ /g, '_');
+              if (mapping && mapping.amazonVariationTheme && !mapping.amazonVariationTheme.includes('/')) {
+                amzAttrKey = mapping.amazonVariationTheme.toLowerCase();
+              }
+              if (!payload.attributes[amzAttrKey]) {
+                payload.attributes[amzAttrKey] = [{ value: attr.attribute_value, language_tag: 'en_IN', marketplace_id: this.marketplaceId }];
+              }
+            }
           }
         }
 
-        const themeName = mappedThemes.join('-');
-        if (themeName) {
-          payload.attributes.variation_theme = [{ name: themeName }];
+        const splitMapped = mappedThemes.flatMap(t => t.split(/[-\/]/));
+        const uniqueThemes = [...new Set(splitMapped)];
+        if (uniqueThemes.length > 0) {
+          payload.attributes.variation_theme = [{ 
+            name: uniqueThemes.join('/'),
+            marketplace_id: this.marketplaceId 
+          }];
         }
       }
     }
@@ -1281,7 +1351,9 @@ export class AmazonConnector extends BaseConnector {
 
 
               if (finalVal !== undefined && finalVal !== null && !(Array.isArray(finalVal) && finalVal.length === 0)) {
-                payload.attributes[key] = finalVal;
+                if (!payload.attributes[key]) {
+                  payload.attributes[key] = finalVal;
+                }
               }
             }
           } catch (e) {
@@ -1325,10 +1397,14 @@ export class AmazonConnector extends BaseConnector {
               return { value: v.toString(), language_tag: 'en_IN' };
             });
             if (mappedArray.length > 0) {
-              payload.attributes[field] = mappedArray;
+              if (!payload.attributes[field]) {
+                payload.attributes[field] = mappedArray;
+              }
             }
           } else {
-            payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
+            if (!payload.attributes[field]) {
+              payload.attributes[field] = [{ value: val.toString(), language_tag: 'en_IN' }];
+            }
           }
         }
       }
@@ -1382,9 +1458,19 @@ export class AmazonConnector extends BaseConnector {
       delete payload.attributes.sku;
     }
 
+    // Sanitize variation_theme to ALWAYS use slashes instead of hyphens
+    if (payload.attributes.variation_theme && Array.isArray(payload.attributes.variation_theme)) {
+      payload.attributes.variation_theme = payload.attributes.variation_theme.map((t: any) => {
+        if (t && typeof t.name === 'string') {
+          return { ...t, name: t.name.replace(/-/g, '/') };
+        }
+        return t;
+      });
+    }
+
     // Ensure variation attributes are NEVER sent for parent products
     if (product.isParent) {
-      delete payload.attributes.child_parent_sku_relationship;
+      // NOTE: We used to delete child_parent_sku_relationship here, but it IS required for parent products now.
       if (product.variantAttributes && product.variantAttributes.length > 0) {
         for (const attr of product.variantAttributes) {
           delete payload.attributes[attr.name.toLowerCase()];
