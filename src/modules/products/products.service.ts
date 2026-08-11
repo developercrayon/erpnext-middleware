@@ -1362,10 +1362,10 @@ export class ProductsService {
    * 2. Upserts into local products table
    * 3. Optionally pushes to marketplace(s)
    */
-  async triggerSync(source?: MarketplaceSource, skus?: string[]): Promise<string> {
+  async triggerSync(source?: MarketplaceSource, skus?: string[], skipInventorySync?: boolean): Promise<string> {
     const job = await this.productsQueue.add(
       JOB_NAMES.SYNC_PRODUCTS,
-      { source, skus },
+      { source, skus, skipInventorySync },
       { ...QUEUE_DEFAULT_OPTIONS, jobId: uuidv4() },
     );
 

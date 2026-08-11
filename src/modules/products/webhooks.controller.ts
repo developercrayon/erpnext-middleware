@@ -78,14 +78,15 @@ export class ProductsWebhookController {
     if (processedData.customAmazon) {
       this.logger.log(`Queueing Amazon syncs for ${itemCode}`);
       
-      const syncJobId = await this.productsService.triggerSync(MarketplaceSource.AMAZON, [itemCode]);
+      const syncJobId = await this.productsService.triggerSync(MarketplaceSource.AMAZON, [itemCode], true);
       queuedJobs.push({ type: 'Amazon Full Sync', jobId: syncJobId });
       
       const priceJobId = await this.pricingService.triggerSync(MarketplaceSource.AMAZON, [itemCode]);
       queuedJobs.push({ type: 'Amazon Price Sync', jobId: priceJobId });
       
-      const inventoryJobId = await this.inventoryService.triggerSync(MarketplaceSource.AMAZON, [itemCode]);
-      queuedJobs.push({ type: 'Amazon Inventory Sync', jobId: inventoryJobId });
+      // Removed direct inventory sync from product webhook
+      // const inventoryJobId = await this.inventoryService.triggerSync(MarketplaceSource.AMAZON, [itemCode]);
+      // queuedJobs.push({ type: 'Amazon Inventory Sync', jobId: inventoryJobId });
     }
 
     // Trigger Flipkart syncs if enabled

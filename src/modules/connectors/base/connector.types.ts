@@ -124,6 +124,7 @@ export interface NormalizedInventory {
   availableQty: number;
   reservedQty?: number;
   marketplaceQty?: number;
+  isParent?: boolean;
   rawPayload?: Record<string, any>;
 }
 

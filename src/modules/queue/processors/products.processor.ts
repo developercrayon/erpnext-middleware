@@ -128,9 +128,9 @@ export class ProductsProcessor {
           await this.pricingQueue.add(JOB_NAMES.SYNC_PRICES_TO_MARKETPLACE, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, { ...QUEUE_DEFAULT_OPTIONS, delay: 5000 });
           this.logger.log(`Auto-queued Amazon price sync for ${skuFilter}`);
 
-          // 4. Amazon inventory update
-          await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, { ...QUEUE_DEFAULT_OPTIONS, delay: 10000 });
-          this.logger.log(`Auto-queued Amazon inventory sync for ${skuFilter}`);
+          // Removed direct inventory sync from product fetch webhook
+          // await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, { ...QUEUE_DEFAULT_OPTIONS, delay: 10000 });
+          // this.logger.log(`Auto-queued Amazon inventory sync for ${skuFilter}`);
 
           // 5. Fetch from Amazon
           await this.productsQueue.add('fetch-amazon-product-single', { sku: skuFilter }, { ...QUEUE_DEFAULT_OPTIONS, delay: 15000 });
@@ -224,7 +224,7 @@ export class ProductsProcessor {
 
   @Process(JOB_NAMES.SYNC_PRODUCTS)
   async syncProducts(job: Job): Promise<void> {
-    const { source, skus } = job.data;
+    const { source, skus, skipInventorySync } = job.data;
     this.logger.log(`Executing background job: Sync Products to ${source || 'all marketplaces'}`);
 
     const query = this.productRepo.createQueryBuilder('product');
@@ -381,14 +381,7 @@ export class ProductsProcessor {
       syncHistory.durationMs = syncHistory.completedAt.getTime() - syncHistory.startedAt.getTime();
       await this.syncHistoryRepo.save(syncHistory);
 
-      if (successCount > 0) {
-        const successSkus = products.map(p => p.sku);
-        await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, {
-          source: mp,
-          skus: successSkus
-        });
-        this.logger.log(`Auto-queued inventory sync to ${mp} for ${successCount} products`);
-      }
+      // Automatic inventory sync has been completely disabled here as requested.
 
     }
   }

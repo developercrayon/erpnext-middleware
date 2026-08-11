@@ -8,8 +8,10 @@ import { Country } from '../../../database/entities/country.entity';
 import { AmazonConnector } from './amazon.connector';
 import { AmazonVariantMapping } from '../../../database/entities/amazon-variant-mapping.entity';
 
+import { Product } from '../../../database/entities/product.entity';
+
 @Module({
-  imports: [SharedModule, TypeOrmModule.forFeature([FieldMapping, ErpnextProductField, Unit, Country, AmazonVariantMapping])],
+  imports: [SharedModule, TypeOrmModule.forFeature([FieldMapping, ErpnextProductField, Unit, Country, AmazonVariantMapping, Product])],
   providers: [AmazonConnector],
   exports: [AmazonConnector],
 })

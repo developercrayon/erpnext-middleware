@@ -355,7 +355,7 @@ export class AdminModule {
                         const { record } = context;
                         const sku = record.param('sku');
                         try {
-                          const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, [sku]);
+                          const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, [sku], true);
                           return {
                             record: record.toJSON(),
                             notice: {
@@ -427,7 +427,7 @@ export class AdminModule {
                         }
 
                         try {
-                          const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, skus);
+                          const jobId = await productsService.triggerSync(MarketplaceSource.AMAZON, skus, true);
                           return {
                             records: context.records || [],
                             notice: {
@@ -563,7 +563,7 @@ export class AdminModule {
                         try {
                           let msg = '';
                           if (amazonSkus.length > 0) {
-                            const jobIdAmz = await productsService.triggerSync(MarketplaceSource.AMAZON, amazonSkus);
+                            const jobIdAmz = await productsService.triggerSync(MarketplaceSource.AMAZON, amazonSkus, true);
                             msg += `Amazon: ${amazonSkus.length} products (Job: ${jobIdAmz}). `;
                           }
                           if (flipkartSkus.length > 0) {

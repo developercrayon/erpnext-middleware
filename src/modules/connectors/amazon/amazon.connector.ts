@@ -9,6 +9,7 @@ import { ErpnextProductField } from '../../../database/entities/erpnext-product-
 import { Unit } from '../../../database/entities/unit.entity';
 import { Country } from '../../../database/entities/country.entity';
 import { AmazonVariantMapping } from '../../../database/entities/amazon-variant-mapping.entity';
+import { Product } from '../../../database/entities/product.entity';
 import { BaseConnector } from '../base/base-connector.abstract';
 import {
   ConnectorResult,
@@ -47,6 +48,8 @@ export class AmazonConnector extends BaseConnector {
     private readonly countryRepo: Repository<Country>,
     @InjectRepository(AmazonVariantMapping)
     private readonly variantMappingRepo: Repository<AmazonVariantMapping>,
+    @InjectRepository(Product)
+    private readonly productRepo: Repository<Product>,
   ) {
     super('AmazonConnector');
     this.clientId = config.get<string>('amazon.clientId');
@@ -271,7 +274,7 @@ export class AmazonConnector extends BaseConnector {
           headers: this.spApiHeaders,
           params: {
             marketplaceIds: this.marketplaceId,
-            includedData: 'attributes,summaries,issues,offers,fulfillmentAvailability',
+            includedData: 'attributes,issues,relationships,summaries',
           }
         }
       );
@@ -1206,8 +1209,6 @@ export class AmazonConnector extends BaseConnector {
             });
             if (mapping && mapping.amazonVariationTheme) {
               mappedThemes.push(mapping.amazonVariationTheme);
-            } else {
-              mappedThemes.push(attr.attribute);
             }
 
             // Dynamically populate parent payload attributes if they have a value in ERPNext
@@ -1597,7 +1598,7 @@ export class AmazonConnector extends BaseConnector {
         `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
         {
           headers: this.spApiHeaders,
-          params: { marketplaceIds: this.marketplaceId, includedData: 'summaries' },
+          params: { marketplaceIds: this.marketplaceId, includedData: 'summaries,issues' },
         }
       );
 
@@ -1660,6 +1661,18 @@ export class AmazonConnector extends BaseConnector {
       for (const batch of batches) {
         for (const item of batch) {
           try {
+            let isParent = item.isParent;
+            if (isParent === undefined) {
+              const product = await this.productRepo.findOne({ where: { sku: item.sku } });
+              isParent = product?.isParent || false;
+            }
+
+            if (isParent) {
+              this.logger.debug(`Skipping inventory update for parent item ${item.sku}`);
+              result.success++;
+              continue;
+            }
+
             const res = await this.http.patch(
               `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(item.sku)}`,
               {
@@ -1890,7 +1903,7 @@ export class AmazonConnector extends BaseConnector {
           headers: this.spApiHeaders,
           params: {
             marketplaceIds: this.marketplaceId,
-            includedData: 'attributes'
+            includedData: 'attributes,issues'
           },
         }
       );
