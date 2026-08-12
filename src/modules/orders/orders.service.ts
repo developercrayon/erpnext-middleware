@@ -12,6 +12,7 @@ import { OrderQueryDto } from './dto/order.dto';
 import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
 import { generateCorrelationId } from '../../utils/crypto.util';
 import { Product } from '../../database/entities/product.entity';
+import { AmazonConnector } from '../connectors/amazon/amazon.connector';
 
 @Injectable()
 export class OrdersService {
@@ -32,6 +33,7 @@ export class OrdersService {
     private readonly productRepo: Repository<Product>,
     @InjectQueue(QUEUE_NAMES.ORDERS)
     private readonly ordersQueue: Queue,
+    private readonly amazonConnector: AmazonConnector,
   ) { }
 
   // ─── Webhook Ingestion ────────────────────────────────────────────────────
@@ -394,6 +396,26 @@ export class OrdersService {
 
     this.logger.log(`Manual order fetch queued for ${source}: jobId=${job.id}`);
     return String(job.id);
+  }
+
+  async fetchSingleFromAmazonAndStore(orderId: string): Promise<any> {
+    const result = await this.amazonConnector.fetchSingleOrder(orderId);
+    if (!result.success || !result.data) {
+      throw new Error(`Failed to fetch order ${orderId} from Amazon: ${result.error || 'No data'}`);
+    }
+
+    const fetchedOrder = result.data;
+    
+    // Find existing order in DB
+    const order = await this.orderRepo.findOne({ where: { marketplaceOrderId: orderId } });
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found in database to update.`);
+    }
+
+    order.rawPayload = fetchedOrder;
+    await this.orderRepo.save(order);
+
+    return order;
   }
 
   async getStats(): Promise<Record<string, number>> {

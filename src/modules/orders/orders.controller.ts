@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -137,5 +138,18 @@ export class OrdersController {
   @ApiOperation({ summary: 'List all failed orders pending retry' })
   async getFailedOrders() {
     return this.ordersService.getFailedOrders();
+  }
+
+  @Post('sync/amazon-fetch-single-order')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Fetch a single order from Amazon and update its raw payload' })
+  async fetchSingleOrder(@Body('orderId') orderId: string) {
+    if (!orderId) {
+      throw new BadRequestException('orderId is required');
+    }
+    const order = await this.ordersService.fetchSingleFromAmazonAndStore(orderId);
+    return { success: true, message: `Order ${orderId} fetched and updated`, order };
   }
 }

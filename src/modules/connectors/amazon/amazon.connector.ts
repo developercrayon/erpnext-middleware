@@ -163,6 +163,41 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
+  // ─── Fetch Single Order ───────────────────────────────────────────────────
+
+  async fetchSingleOrder(orderId: string): Promise<ConnectorResult<any>> {
+    try {
+      await this.ensureAuthenticated();
+
+      const includedDataArray = [
+        'BUYER',
+        'RECIPIENT',
+        'PROCEEDS',
+        'EXPENSE',
+        'PROMOTION',
+        'CANCELLATION',
+        'FULFILLMENT',
+        'PACKAGES',
+        'TAX',
+        'PAYMENT',
+        'FULFILLMENT_ORDERS',
+      ];
+
+      // Build query string manually as a comma-separated string for includedData
+      const queryStr = `includedData=${includedDataArray.join(',')}`;
+
+      const response = await this.withRetry(() =>
+        this.http.get(`${this.endpoint}/orders/2026-01-01/orders/${orderId}?${queryStr}`, {
+          headers: this.spApiHeaders,
+        }),
+      );
+
+      return this.success(response.data?.payload || response.data);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
   // ─── Fetch Product Types ───────────────────────────────────────────────────────
 
   async fetchProductTypes(): Promise<ConnectorResult<string[]>> {
