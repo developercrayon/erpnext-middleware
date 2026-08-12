@@ -277,6 +277,13 @@ export class ProductsService {
       sample: savedProducts.slice(0, 5)
     };
   }
+  async validateAmazonListing(sku: string): Promise<any> {
+    const result = await this.amazonConnector.validateListing(sku);
+    if (!result.success) {
+      throw new Error(`Failed to validate SKU ${sku} on Amazon: ${result.error}`);
+    }
+    return result.data;
+  }
 
   async fetchSingleFromAmazonAndStore(sku: string): Promise<any> {
     const result = await this.amazonConnector.fetchProductBySku(sku);

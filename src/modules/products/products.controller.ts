@@ -180,6 +180,21 @@ export class ProductsController {
     }
   }
 
+  @Post('sync/amazon-validate-single')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Validate a single product listing on Amazon by SKU' })
+  async validateAmazonListing(@Body('sku') sku: string) {
+    if (!sku) {
+      throw new BadRequestException('SKU is required to validate a product on Amazon');
+    }
+    try {
+      const result = await this.productsService.validateAmazonListing(sku);
+      return { success: true, message: `Product ${sku} validated on Amazon`, data: result };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || `Failed to validate product ${sku} on Amazon`);
+    }
+  }
+
   @Post('sync/amazon-prices')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Queue job to fetch all product prices from Amazon, save to JSON, and update DB' })

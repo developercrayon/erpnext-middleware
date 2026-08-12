@@ -269,7 +269,7 @@ export class AmazonConnector extends BaseConnector {
       await this.ensureAuthenticated();
 
       const response = await this.http.get(
-        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${sku}`,
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
         {
           headers: this.spApiHeaders,
           params: {
@@ -1911,6 +1911,49 @@ export class AmazonConnector extends BaseConnector {
     } catch (error: any) {
       this.logger.error(`Failed to fetch pricing for ${sku}: ${error.message}`);
       return { success: false, error: error.message };
+    }
+  }
+
+  // ─── Validate Listing ─────────────────────────────────────────────────────
+  
+  async validateListing(sku: string): Promise<ConnectorResult<any>> {
+    try {
+      await this.ensureAuthenticated();
+      const product = await this.productRepo.findOne({ where: { sku } });
+      if (!product) {
+        return this.failure(`Product ${sku} not found locally`);
+      }
+
+      let productType = product.amazonProductType || product.erpnextRawPayload?.amazonProductType || 'PRODUCT';
+      let requirements = productType !== 'PRODUCT' ? 'LISTING' : 'LISTING_OFFER_ONLY';
+      
+      const putAttributes = await this.generatePayloadAttributes(product as any, productType, false, requirements);
+      
+      const payload: any = {
+        productType,
+        requirements,
+        attributes: putAttributes,
+      };
+
+      const response = await this.http.put(
+        `${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${encodeURIComponent(sku)}`,
+        payload,
+        {
+          headers: this.spApiHeaders,
+          params: { 
+            marketplaceIds: this.marketplaceId, 
+            mode: 'VALIDATION_PREVIEW',
+            issueLocale: 'en_IN' 
+          },
+        }
+      );
+
+      return this.success({ issues: response.data?.issues || [] });
+    } catch (error: any) {
+      if (error.response?.data?.issues) {
+         return this.success({ issues: error.response.data.issues });
+      }
+      return this.failure(error);
     }
   }
 
