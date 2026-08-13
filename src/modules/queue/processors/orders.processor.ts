@@ -11,6 +11,7 @@ import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector'
 import { MarketplaceSource } from '../../../database/entities/order.entity';
 import { QueueJob, QueueJobStatus } from '../../../database/entities/operational.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
+import { OrderFieldMappingService } from '../../order-field-mapping/order-field-mapping.service';
 
 @Processor(QUEUE_NAMES.ORDERS)
 export class OrdersProcessor {
@@ -25,6 +26,7 @@ export class OrdersProcessor {
     private readonly queueJobRepo: Repository<QueueJob>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
+    private readonly orderFieldMappingService: OrderFieldMappingService,
   ) {}
 
   // ─── Webhook Order Processing ─────────────────────────────────────────────
@@ -123,29 +125,11 @@ export class OrdersProcessor {
     await this.ordersService.markInProgress(orderId);
 
     try {
-      // Build normalized order from saved entity for ERPNext sync
-      const normalizedOrder = {
-        marketplaceOrderId: order.marketplaceOrderId,
-        source: order.source,
-        customerName: order.customerName,
-        customerEmail: order.customerEmail,
-        customerPhone: order.customerPhone,
-        shippingAddress: order.shippingAddress as any,
-        items: order.items.map((i) => ({
-          sku: i.sku,
-          productName: i.productName,
-          quantity: i.quantity,
-          unitPrice: Number(i.unitPrice),
-          total: Number(i.total),
-        })),
-        subtotal: Number(order.subtotal),
-        total: Number(order.total),
-        currency: order.currency,
-        orderDate: order.marketplaceOrderDate || order.createdAt,
-        promisedDeliveryDate: order.promisedDeliveryDate,
-      };
-
-      const erpnextSoId = await this.erpnextService.syncOrderToERPNext(normalizedOrder);
+      const mappings = await this.orderFieldMappingService.findAll(order.source);
+      
+      // Pass full order and dynamic mappings
+      const erpnextSoId = await this.erpnextService.syncOrderToERPNext(order, mappings);
+      
       await this.ordersService.markSynced(orderId, erpnextSoId);
       this.logger.log(`Order ${orderId} synced to ERPNext: SO ${erpnextSoId}`);
     } catch (error) {

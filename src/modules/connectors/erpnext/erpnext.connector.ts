@@ -358,6 +358,106 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async getOrderFields(): Promise<ConnectorResult<any[]>> {
+    try {
+      const baseUrl = this.baseUrl.replace(/\/$/, '');
+      const customFieldsRes = await this.http.get(`${baseUrl}/api/resource/Custom Field`, {
+        headers: this.authHeaders,
+        params: {
+          filters: JSON.stringify([['dt', '=', 'Sales Order']]),
+          fields: JSON.stringify(['fieldname', 'label', 'fieldtype', 'options', 'fetch_from', 'default']),
+          limit_page_length: 500,
+        },
+      });
+
+      const docTypeRes = await this.http.get(`${baseUrl}/api/resource/DocType/Sales Order`, {
+        headers: this.authHeaders,
+      });
+
+      const customFieldsItemRes = await this.http.get(`${baseUrl}/api/resource/Custom Field`, {
+        headers: this.authHeaders,
+        params: {
+          filters: JSON.stringify([['dt', '=', 'Sales Order Item']]),
+          fields: JSON.stringify(['fieldname', 'label', 'fieldtype', 'options', 'fetch_from', 'default']),
+          limit_page_length: 500,
+        },
+      });
+
+      const docTypeItemRes = await this.http.get(`${baseUrl}/api/resource/DocType/Sales Order Item`, {
+        headers: this.authHeaders,
+      });
+
+      const stdFieldsRaw = docTypeRes.data?.data?.fields || [];
+      const customFieldsRaw = customFieldsRes.data?.data || [];
+      const itemStdFieldsRaw = docTypeItemRes.data?.data?.fields || [];
+      const itemCustomFieldsRaw = customFieldsItemRes.data?.data || [];
+
+      const mapField = (f: any, doctype: string) => ({
+        fieldname: f.fieldname,
+        label: f.label,
+        fieldtype: f.fieldtype,
+        options: f.options,
+        fetch_from: f.fetch_from,
+        default_value: f.default,
+        doctype,
+      });
+
+      const stdFields = stdFieldsRaw.map((f: any) => mapField(f, 'Sales Order'));
+      const customFields = customFieldsRaw.map((f: any) => mapField(f, 'Sales Order'));
+      const itemStdFields = itemStdFieldsRaw.map((f: any) => mapField(f, 'Sales Order Item'));
+      const itemCustomFields = itemCustomFieldsRaw.map((f: any) => mapField(f, 'Sales Order Item'));
+
+      return this.success([...stdFields, ...customFields, ...itemStdFields, ...itemCustomFields]);
+    } catch (error) {
+      this.logger.error(`Failed to fetch Sales Order fields: ${error.message}`);
+      return this.failure(error);
+    }
+  }
+
+  async getCustomerFields(): Promise<ConnectorResult<any[]>> {
+    try {
+      const baseUrl = this.baseUrl.replace(/\/$/, '');
+      const customFieldsRes = await this.http.get(`${baseUrl}/api/resource/Custom Field`, {
+        headers: this.authHeaders,
+        params: {
+          filters: JSON.stringify([['dt', '=', 'Customer']]),
+          fields: JSON.stringify(['fieldname', 'label', 'fieldtype', 'options', 'fetch_from', 'default']),
+          limit_page_length: 500,
+        },
+      });
+
+      const docTypeRes = await this.http.get(`${baseUrl}/api/resource/DocType/Customer`, {
+        headers: this.authHeaders,
+      });
+
+      const stdFieldsRaw = docTypeRes.data?.data?.fields || [];
+      const customFieldsRaw = customFieldsRes.data?.data || [];
+
+      const stdFields = stdFieldsRaw.map((f: any) => ({
+        fieldname: f.fieldname,
+        label: f.label,
+        fieldtype: f.fieldtype,
+        options: f.options,
+        fetch_from: f.fetch_from,
+        default_value: f.default,
+      }));
+
+      const customFields = customFieldsRaw.map((f: any) => ({
+        fieldname: f.fieldname,
+        label: f.label,
+        fieldtype: f.fieldtype,
+        options: f.options,
+        fetch_from: f.fetch_from,
+        default_value: f.default,
+      }));
+
+      return this.success([...stdFields, ...customFields]);
+    } catch (error) {
+      this.logger.error(`Failed to fetch Customer fields: ${error.message}`);
+      return this.failure(error);
+    }
+  }
+
 
 
   // ─── Inventory ────────────────────────────────────────────────────────────
@@ -389,8 +489,9 @@ export class ERPNextConnector extends BaseConnector {
 
   // ─── ERPNext-Specific Methods ────────────────────────────────────────────
 
-  async createSalesOrder(data: CreateSalesOrderDto): Promise<ConnectorResult<any>> {
+  async createSalesOrder(data: any): Promise<ConnectorResult<any>> {
     try {
+      this.logger.log(`Sending Sales Order Payload: ${JSON.stringify(data, null, 2)}`);
       const response = await this.withRetry(() =>
         this.http.post(`${this.baseUrl}/api/resource/Sales Order`, data, {
           headers: this.authHeaders,
@@ -491,14 +592,21 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
-  async getOrCreateCustomer(data: CreateCustomerDto): Promise<ConnectorResult<any>> {
+  async getOrCreateCustomer(data: any): Promise<ConnectorResult<any>> {
     try {
-      // Try to find existing customer by email
-      if (data.email) {
+      // Try to find existing customer by email_id or customer_name
+      const filters = [];
+      if (data.email_id) {
+        filters.push(['email_id', '=', data.email_id]);
+      } else if (data.customer_name) {
+        filters.push(['customer_name', '=', data.customer_name]);
+      }
+
+      if (filters.length > 0) {
         const existing = await this.http.get(`${this.baseUrl}/api/resource/Customer`, {
           headers: this.authHeaders,
           params: {
-            filters: JSON.stringify([['email_id', '=', data.email]]),
+            filters: JSON.stringify(filters),
             fields: JSON.stringify(['name', 'customer_name']),
           },
         });
@@ -507,18 +615,24 @@ export class ERPNextConnector extends BaseConnector {
         }
       }
 
-      // Create new customer
+      // Create new customer using dynamic payload
       const response = await this.http.post(
         `${this.baseUrl}/api/resource/Customer`,
-        {
-          customer_name: data.name,
-          customer_type: 'Individual',
-          customer_group: 'Individual',
-          email_id: data.email,
-          mobile_no: data.phone,
-          territory: data.territory || 'India',
-        },
+        data,
         { headers: this.authHeaders },
+      );
+      return this.success(response.data?.data);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async createAddress(data: any): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.post(
+        `${this.baseUrl}/api/resource/Address`,
+        data,
+        { headers: this.authHeaders }
       );
       return this.success(response.data?.data);
     } catch (error) {
@@ -923,7 +1037,6 @@ export interface CreateSalesOrderDto {
   }>;
   taxes?: any[];
   custom_marketplace_order_id?: string;
-  custom_marketplace_source?: string;
   [key: string]: any;
 }
 

@@ -6,9 +6,12 @@ import { Product } from '../../database/entities/product.entity';
 import { MarketplaceSource } from '../../database/entities/order.entity';
 import { AmazonProductField } from '../../database/entities/amazon-product-field.entity';
 import { ErpnextProductField } from '../../database/entities/erpnext-product-field.entity';
+import { ErpnextOrderField } from '../../database/entities/erpnext-order-field.entity';
+import { ErpnextCustomerField } from '../../database/entities/erpnext-customer-field.entity';
 import { CreateMappingDto, UpdateMappingDto } from './dto/mapping.dto';
-
 import { ERPNextConnector } from '../connectors/erpnext/erpnext.connector';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class MappingService {
@@ -23,6 +26,10 @@ export class MappingService {
     private readonly amazonProductFieldRepo: Repository<AmazonProductField>,
     @InjectRepository(ErpnextProductField)
     private readonly erpnextProductFieldRepo: Repository<ErpnextProductField>,
+    @InjectRepository(ErpnextOrderField)
+    private readonly erpnextOrderFieldRepo: Repository<ErpnextOrderField>,
+    @InjectRepository(ErpnextCustomerField)
+    private readonly erpnextCustomerFieldRepo: Repository<ErpnextCustomerField>,
     private readonly erpnextConnector: ERPNextConnector,
   ) { }
 
@@ -193,6 +200,84 @@ export class MappingService {
     return { message: 'ERPNext fields synced successfully', count: entitiesToUpsert.length };
   }
 
+  async syncErpnextOrderFields(): Promise<{ message: string; count: number }> {
+    const result = await this.erpnextConnector.getOrderFields();
+    if (!result.success || !result.data) {
+      throw new Error(`Failed to fetch ERPNext Sales Order fields: ${result.error || 'Unknown error'}`);
+    }
+
+    const entitiesToUpsert: any[] = [];
+    for (const f of result.data) {
+      if (!f.fieldname || ['Column Break', 'Section Break', 'Tab Break', 'HTML', 'Heading', 'Fold'].includes(f.fieldtype)) continue;
+      entitiesToUpsert.push({
+        name: f.fieldname,
+        label: f.label || this.formatLabel(f.fieldname),
+        fieldtype: f.fieldtype,
+        options: f.options ? String(f.options) : null,
+        fetchFrom: f.fetch_from || null,
+        defaultValue: f.default_value ? String(f.default_value) : null,
+        isCustom: f.fieldname.startsWith('custom_'),
+        doctype: f.doctype || 'Sales Order',
+      });
+    }
+
+    if (entitiesToUpsert.length > 0) {
+      const chunkSize = 30;
+      for (let i = 0; i < entitiesToUpsert.length; i += chunkSize) {
+        const chunk = entitiesToUpsert.slice(i, i + chunkSize);
+        await this.erpnextOrderFieldRepo.upsert(chunk, ['name', 'doctype']);
+      }
+      
+      const incomingKeys = entitiesToUpsert.map(e => `${e.name}_${e.doctype}`);
+      const existing = await this.erpnextOrderFieldRepo.find();
+      const toDelete = existing.filter(e => !incomingKeys.includes(`${e.name}_${e.doctype}`));
+      if (toDelete.length > 0) {
+        await this.erpnextOrderFieldRepo.remove(toDelete);
+      }
+    }
+
+    return { message: 'ERPNext Sales Order fields synced successfully', count: entitiesToUpsert.length };
+  }
+
+  async syncErpnextCustomerFields(): Promise<{ message: string; count: number }> {
+    const result = await this.erpnextConnector.getCustomerFields();
+    if (!result.success || !result.data) {
+      throw new Error(`Failed to fetch ERPNext Customer fields: ${result.error || 'Unknown error'}`);
+    }
+
+    const entitiesToUpsert: any[] = [];
+    for (const f of result.data) {
+      if (!f.fieldname || ['Column Break', 'Section Break', 'Tab Break', 'HTML', 'Heading', 'Fold'].includes(f.fieldtype)) continue;
+      entitiesToUpsert.push({
+        name: f.fieldname,
+        label: f.label || this.formatLabel(f.fieldname),
+        fieldtype: f.fieldtype,
+        options: f.options ? String(f.options) : null,
+        fetchFrom: f.fetch_from || null,
+        defaultValue: f.default_value ? String(f.default_value) : null,
+        isCustom: f.fieldname.startsWith('custom_'),
+        doctype: f.doctype || 'Customer',
+      });
+    }
+
+    if (entitiesToUpsert.length > 0) {
+      const chunkSize = 30;
+      for (let i = 0; i < entitiesToUpsert.length; i += chunkSize) {
+        const chunk = entitiesToUpsert.slice(i, i + chunkSize);
+        await this.erpnextCustomerFieldRepo.upsert(chunk, ['name', 'doctype']);
+      }
+
+      const incomingKeys = entitiesToUpsert.map(e => `${e.name}_${e.doctype}`);
+      const existing = await this.erpnextCustomerFieldRepo.find();
+      const toDelete = existing.filter(e => !incomingKeys.includes(`${e.name}_${e.doctype}`));
+      if (toDelete.length > 0) {
+        await this.erpnextCustomerFieldRepo.remove(toDelete);
+      }
+    }
+
+    return { message: 'ERPNext Customer fields synced successfully', count: entitiesToUpsert.length };
+  }
+
   async getErpnextDocTypeSchema(doctype: string) {
     try {
       const result = await this.erpnextConnector.getDocTypeFields(doctype);
@@ -257,8 +342,81 @@ export class MappingService {
     }));
   }
 
+  async getErpnextOrderFields() {
+    const fields = await this.erpnextOrderFieldRepo.find({ order: { label: 'ASC' } });
+    return fields.map(f => ({
+      label: `${f.label} (${f.doctype})`,
+      value: f.name,
+      fieldtype: f.fieldtype,
+      options: f.options,
+    }));
+  }
+
+  async getErpnextCustomerFields() {
+    const fields = await this.erpnextCustomerFieldRepo.find({ order: { label: 'ASC' } });
+    return fields.map(f => ({
+      label: f.doctype ? `${f.label} (${f.doctype})` : f.label,
+      value: f.name,
+      fieldtype: f.fieldtype,
+      options: f.options,
+    }));
+  }
+
+  getAmazonOrderMarkers(): { label: string; value: string; fullPath: string }[] {
+    try {
+      const filePath = path.join(process.cwd(), 'Amazon-order.json');
+      if (!fs.existsSync(filePath)) {
+        this.logger.warn('Amazon-order.json not found in project root');
+        return [];
+      }
+      
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      const json = JSON.parse(fileContent);
+
+      const flatten = (obj: any, prefix = ''): { key: string; isArray: boolean }[] => {
+        let result: { key: string; isArray: boolean }[] = [];
+        for (const key in obj) {
+          if (!obj.hasOwnProperty(key)) continue;
+          
+          const value = obj[key];
+          let currentKey = prefix ? `${prefix}.${key}` : key;
+          
+          if (Array.isArray(value)) {
+            if (value.length > 0 && typeof value[0] === 'object' && value[0] !== null) {
+               const arrayPrefix = `${currentKey}[*]`;
+               result = result.concat(flatten(value[0], arrayPrefix));
+            } else {
+               result.push({ key: currentKey, isArray: true });
+            }
+          } else if (typeof value === 'object' && value !== null) {
+            result = result.concat(flatten(value, currentKey));
+          } else {
+            result.push({ key: currentKey, isArray: false });
+          }
+        }
+        return result;
+      };
+
+      const flattened = flatten(json);
+      
+      return flattened.map(f => {
+         const parts = f.key.replace(/\[\*\]/g, '').split('.');
+         const lastPart = parts[parts.length - 1];
+         const fullPathLabel = parts.map(p => this.formatLabel(p)).join(' > ');
+         
+         return {
+           label: this.formatLabel(lastPart),
+           fullPath: fullPathLabel,
+           value: `{{${f.key}}}`
+         };
+      });
+    } catch (error) {
+      this.logger.error(`Failed to parse Amazon-order.json: ${error.message}`);
+      return [];
+    }
+  }
+
   private formatLabel(key: string): string {
-    // Converts snake_case or camelCase to Title Case
     const result = key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ');
     return result.charAt(0).toUpperCase() + result.slice(1).trim();
   }

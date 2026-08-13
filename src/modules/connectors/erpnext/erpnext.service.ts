@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ERPNextConnector, CreateSalesOrderDto, CreateCustomerDto } from './erpnext.connector';
-import { NormalizedOrder } from '../base/connector.types';
-import { MarketplaceSource } from '../../../database/entities/order.entity';
+import { ERPNextConnector } from './erpnext.connector';
+import { Order, MarketplaceSource } from '../../../database/entities/order.entity';
+import { OrderFieldMapping } from '../../../database/entities/order-field-mapping.entity';
+import { evaluateTemplate } from '../../../common/utils/template.util';
 
 /**
  * ERPNextService wraps the ERPNextConnector to provide
@@ -14,54 +15,117 @@ export class ERPNextService {
   constructor(
     private readonly connector: ERPNextConnector,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   /**
    * Creates a full Sales Order in ERPNext from a normalized marketplace order.
    * Also creates or fetches the customer record.
    */
-  async syncOrderToERPNext(order: NormalizedOrder): Promise<string> {
-    const company = this.config.get<string>('erpnext.company');
-    const defaultWarehouse = this.config.get<string>('erpnext.defaultWarehouse');
+  async syncOrderToERPNext(order: Order, mappings: OrderFieldMapping[]): Promise<string> {
+    const company = this.config.get<string>('erpnext.company') || 'Woodwolf Studio (O) Pvt. Ltd';
+    const raw = order.rawPayload || {};
+
+    const customerMappings = mappings.filter(m => m.fieldGroup === 'Customer');
+    const orderMappings = mappings.filter(m => m.fieldGroup === 'Order');
+    const productMappings = mappings.filter(m => m.fieldGroup === 'Product');
+
+    // ─── 1. Evaluate Customer Payload ───
+    const customerPayload: any = {
+      disabled: 0,
+      doctype: 'Customer',
+      naming_series: 'CUST-.YYYY.-'
+    };
+    for (const m of customerMappings) {
+      const mField = order.source === MarketplaceSource.AMAZON ? m.amazonField : m.flipkartField;
+      if (mField) {
+        customerPayload[m.erpnextField] = evaluateTemplate(mField, raw);
+      }
+    }
 
     // Ensure customer exists
-    const customerResult = await this.connector.getOrCreateCustomer({
-      name: order.customerName,
-      email: order.customerEmail,
-      phone: order.customerPhone,
-    });
-
+    const customerResult = await this.connector.getOrCreateCustomer(customerPayload);
     if (!customerResult.success) {
       throw new Error(`Failed to sync customer: ${customerResult.error}`);
     }
+    const customerName = customerResult.data?.name || customerPayload.customer_name || `Customer-${order.marketplaceOrderId}`;
 
-    const customerName = customerResult.data?.name || order.customerName;
+    // ─── 2. Evaluate Address Payload ───
+    const addr = raw.recipient?.deliveryAddress || {};
+    // Extract first and last name if possible
+    const nameParts = (addr.name || '').split(' ');
+    const firstName = nameParts[0] || `Amazon-${order.marketplaceOrderId}`;
+    const lastName = nameParts.slice(1).join(' ') || '';
 
-    // Build Sales Order payload
-    const orderDate = order.orderDate
-      ? new Date(order.orderDate).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
-
-    const soPayload: CreateSalesOrderDto = {
-      customer: customerName,
-      company,
-      order_type: 'Sales',
-      transaction_date: orderDate,
-      delivery_date: order.promisedDeliveryDate
-        ? new Date(order.promisedDeliveryDate).toISOString().split('T')[0]
-        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      items: order.items.map((item) => ({
-        item_code: item.sku,
-        item_name: item.productName,
-        qty: item.quantity,
-        rate: item.unitPrice,
-        warehouse: defaultWarehouse,
-        discount_percentage: item.discount ? (item.discount / item.unitPrice) * 100 : 0,
-      })),
-      custom_marketplace_order_id: order.marketplaceOrderId,
-      custom_marketplace_source: order.source,
+    const addressPayload = {
+      doctype: 'Address',
+      address_title: addr.name || `Amazon-${order.marketplaceOrderId}`,
+      address_line1: addr.addressLine1 || `Amazon-${order.marketplaceOrderId}`,
+      address_line2: addr.addressLine2 || '',
+      city: addr.city || `Amazon-${order.marketplaceOrderId}`,
+      first_name: firstName,
+      last_name: lastName,
+      state: addr.stateOrRegion || '',
+      country: addr.countryCode === 'GB' ? 'United Kingdom' : (addr.countryCode === 'IN' ? 'India' : (addr.countryCode || 'India')),
+      pincode: addr.postalCode || '',
+      phone: addr.phone || '',
+      is_billing: 1,
+      is_shipping: 1,
+      links: [
+        {
+          link_doctype: 'Customer',
+          link_name: customerName
+        }
+      ]
     };
 
+    // We don't strictly fail the order if address creation fails (might already exist)
+    const addressResult = await this.connector.createAddress(addressPayload);
+    const addressName = addressResult.success ? addressResult.data?.name : undefined;
+
+    // ─── 3. Evaluate Sales Order Payload ───
+    const soPayload: any = {
+      company,
+      naming_series: 'AMZ-ORD-.{custom_marketplace_order_id}.-',
+      custom_marketplace_order_id: order.marketplaceOrderId,
+      order_type: 'Sales',
+      doctype: 'Sales Order',
+      currency: 'INR',
+      selling_price_list: 'Standard Selling',
+      customer: customerName,
+      customer_name: customerName,
+    };
+
+    if (addressName) {
+      soPayload.customer_address = addressName;
+      soPayload.shipping_address_name = addressName;
+      soPayload.customer_primary_address = addressName;
+    }
+
+    for (const m of orderMappings) {
+      const mField = order.source === MarketplaceSource.AMAZON ? m.amazonField : m.flipkartField;
+      if (mField) {
+        soPayload[m.erpnextField] = evaluateTemplate(mField, raw);
+      }
+    }
+
+    // ─── 4. Evaluate Items Payload ───
+    soPayload.items = [];
+    const itemsRaw = raw.orderItems || raw.items || [{}]; // fallback to 1 empty item if missing
+    for (let i = 0; i < itemsRaw.length; i++) {
+      const itemPayload: any = {
+        parenttype: 'Sales Order',
+        doctype: 'Sales Order Item'
+      };
+      for (const m of productMappings) {
+        const mField = order.source === MarketplaceSource.AMAZON ? m.amazonField : m.flipkartField;
+        if (mField) {
+          itemPayload[m.erpnextField] = evaluateTemplate(mField, raw, i);
+        }
+      }
+      soPayload.items.push(itemPayload);
+    }
+
+    // Submit Sales Order
     const result = await this.connector.createSalesOrder(soPayload);
     if (!result.success) {
       throw new Error(`Failed to create Sales Order: ${result.error}`);

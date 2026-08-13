@@ -15,6 +15,7 @@ import { ProductsModule } from '../products/products.module';
 import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
 import { AmazonModule } from '../connectors/amazon/amazon.module';
 import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
+import { OrderFieldMappingModule } from '../order-field-mapping/order-field-mapping.module';
 import { QueueJob, SyncHistory, ItemSyncLog } from '../../database/entities/operational.entity';
 import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
@@ -69,6 +70,7 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
     ERPNextModule,
     AmazonModule,
     FlipkartModule,
+    OrderFieldMappingModule,
   ],
   controllers: [QueueController],
   providers: [

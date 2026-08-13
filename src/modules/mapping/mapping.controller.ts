@@ -27,6 +27,12 @@ export class MappingController {
     return this.mappingService.getUniqueAmazonFields();
   }
 
+  @Get('fields/amazon-order-markers')
+  @ApiOperation({ summary: 'Get Amazon order field markers from JSON schema' })
+  async getAmazonOrderMarkers() {
+    return this.mappingService.getAmazonOrderMarkers();
+  }
+
   @Get('fields/amazon')
   @ApiOperation({ summary: 'Get available Amazon fields' })
   async getAmazonFields(@Query('productType') productType?: string) {
@@ -51,6 +57,30 @@ export class MappingController {
   @ApiOperation({ summary: 'Sync available ERPNext fields from ERPNext' })
   async syncErpnextFields() {
     return this.mappingService.syncErpnextFields();
+  }
+
+  @Post('fields/erpnext/order/sync')
+  @ApiOperation({ summary: 'Sync available ERPNext Sales Order fields' })
+  async syncErpnextOrderFields() {
+    return this.mappingService.syncErpnextOrderFields();
+  }
+
+  @Get('fields/erpnext/order')
+  @ApiOperation({ summary: 'Get available ERPNext Sales Order fields' })
+  async getErpnextOrderFields() {
+    return this.mappingService.getErpnextOrderFields();
+  }
+
+  @Post('fields/erpnext/customer/sync')
+  @ApiOperation({ summary: 'Sync available ERPNext Customer fields' })
+  async syncErpnextCustomerFields() {
+    return this.mappingService.syncErpnextCustomerFields();
+  }
+
+  @Get('fields/erpnext/customer')
+  @ApiOperation({ summary: 'Get available ERPNext Customer fields' })
+  async getErpnextCustomerFields() {
+    return this.mappingService.getErpnextCustomerFields();
   }
 
   @Get('fields/erpnext/:doctype/schema')
