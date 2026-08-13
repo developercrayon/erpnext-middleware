@@ -23,7 +23,11 @@ export class ERPNextService {
    */
   async syncOrderToERPNext(order: Order, mappings: OrderFieldMapping[]): Promise<string> {
     const company = this.config.get<string>('erpnext.company') || 'Woodwolf Studio (O) Pvt. Ltd';
-    const raw = order.rawPayload || {};
+    let raw = order.rawPayload || {};
+    // Unwrap the payload if it is nested inside an "order" key
+    if (raw.order && !raw.orderItems) {
+      raw = raw.order;
+    }
 
     const customerMappings = mappings.filter(m => m.fieldGroup === 'Customer');
     const orderMappings = mappings.filter(m => m.fieldGroup === 'Order');
@@ -64,24 +68,49 @@ export class ERPNextService {
     const customerName = customerResult.data?.name || customerPayload.customer_name || `Customer-${order.marketplaceOrderId}`;
 
     // ─── 2. Evaluate Address Payload ───
-    const addr = raw.recipient?.deliveryAddress || {};
+    const addr = raw.recipient?.deliveryAddress || raw.ShippingAddress || {};
+    
+    // Support both camelCase (V2) and PascalCase (SP-API)
+    const addrName = addr.name || addr.Name || '';
+    const addressLine1 = addr.addressLine1 || addr.AddressLine1 || '';
+    const addressLine2 = addr.addressLine2 || addr.AddressLine2 || '';
+    const city = addr.city || addr.City || '';
+    const state = addr.stateOrRegion || addr.StateOrRegion || '';
+    const postalCode = addr.postalCode || addr.PostalCode || '';
+    const countryCode = (addr.countryCode || addr.CountryCode || '').toUpperCase();
+    const phone = addr.phone || addr.Phone || '';
+
+    // ERPNext expects full country names
+    const countryMap: Record<string, string> = {
+      'IN': 'India',
+      'GB': 'United Kingdom',
+      'UK': 'United Kingdom',
+      'US': 'United States',
+      'AE': 'United Arab Emirates',
+      'SA': 'Saudi Arabia',
+      'AU': 'Australia',
+      'CA': 'Canada',
+      'SG': 'Singapore',
+    };
+    const countryName = countryMap[countryCode] || countryCode || 'India';
+
     // Extract first and last name if possible
-    const nameParts = (addr.name || '').split(' ');
+    const nameParts = addrName.split(' ');
     const firstName = nameParts[0] || `Amazon-${order.marketplaceOrderId}`;
     const lastName = nameParts.slice(1).join(' ') || '';
 
     const addressPayload = {
       doctype: 'Address',
-      address_title: addr.name || `Amazon-${order.marketplaceOrderId}`,
-      address_line1: addr.addressLine1 || `Amazon-${order.marketplaceOrderId}`,
-      address_line2: addr.addressLine2 || '',
-      city: addr.city || `Amazon-${order.marketplaceOrderId}`,
+      address_title: addrName || `Amazon-${order.marketplaceOrderId}`,
+      address_line1: addressLine1 || `Amazon-${order.marketplaceOrderId}`,
+      address_line2: addressLine2 || '',
+      city: city || `Amazon-${order.marketplaceOrderId}`,
       first_name: firstName,
       last_name: lastName,
-      state: addr.stateOrRegion || '',
-      country: addr.countryCode === 'GB' ? 'United Kingdom' : (addr.countryCode === 'IN' ? 'India' : (addr.countryCode || 'India')),
-      pincode: addr.postalCode || '',
-      phone: addr.phone || '',
+      state: state,
+      country: countryName,
+      pincode: postalCode,
+      phone: phone,
       is_billing: 1,
       is_shipping: 1,
       links: [
