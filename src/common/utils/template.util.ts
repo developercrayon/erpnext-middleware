@@ -11,7 +11,7 @@ export function evaluateTemplate(template: string, data: any, arrayIndex?: numbe
     return template;
   }
 
-  let path = match[1];
+  let path = match[1].trim();
 
   // If we are evaluating for an array item, substitute [*] with the provided index
   if (arrayIndex !== undefined) {
