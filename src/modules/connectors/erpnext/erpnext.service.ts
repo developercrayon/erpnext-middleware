@@ -42,6 +42,20 @@ export class ERPNextService {
       }
     }
 
+    // Apply mandatory defaults if they were not mapped or are empty
+    if (!customerPayload.customer_name) {
+      customerPayload.customer_name = order.customerName || `Customer-${order.marketplaceOrderId}`;
+    }
+    if (!customerPayload.customer_type) {
+      customerPayload.customer_type = 'Individual';
+    }
+    if (!customerPayload.customer_group) {
+      customerPayload.customer_group = 'Individual';
+    }
+    if (!customerPayload.territory) {
+      customerPayload.territory = 'India';
+    }
+
     // Ensure customer exists
     const customerResult = await this.connector.getOrCreateCustomer(customerPayload);
     if (!customerResult.success) {
