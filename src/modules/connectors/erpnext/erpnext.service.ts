@@ -4,6 +4,7 @@ import { ERPNextConnector } from './erpnext.connector';
 import { Order, MarketplaceSource } from '../../../database/entities/order.entity';
 import { OrderFieldMapping } from '../../../database/entities/order-field-mapping.entity';
 import { evaluateTemplate } from '../../../common/utils/template.util';
+import * as path from 'path';
 
 /**
  * ERPNextService wraps the ERPNextConnector to provide
@@ -75,7 +76,21 @@ export class ERPNextService {
     const addressLine1 = addr.addressLine1 || addr.AddressLine1 || '';
     const addressLine2 = addr.addressLine2 || addr.AddressLine2 || '';
     const city = addr.city || addr.City || '';
-    const state = addr.stateOrRegion || addr.StateOrRegion || '';
+    
+    let state = addr.stateOrRegion || addr.StateOrRegion || '';
+    if (state) {
+      try {
+        const stateJsonPath = path.resolve(process.cwd(), 'state.json');
+        const supportedStates = require(stateJsonPath);
+        const matchedState = supportedStates.find((s: string) => s.toLowerCase() === state.toLowerCase());
+        if (matchedState) {
+          state = matchedState;
+        }
+      } catch (e) {
+        console.warn('Could not load or parse state.json', e);
+      }
+    }
+    
     const postalCode = addr.postalCode || addr.PostalCode || '';
     const countryCode = (addr.countryCode || addr.CountryCode || '').toUpperCase();
     const phone = addr.phone || addr.Phone || '';
