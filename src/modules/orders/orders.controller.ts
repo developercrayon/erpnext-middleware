@@ -118,8 +118,8 @@ export class OrdersController {
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Manually trigger order sync to ERPNext' })
   async syncOrder(@Param('id', ParseUUIDPipe) id: string) {
-    const jobId = await this.ordersService.requeueOrder(id);
-    return { message: 'Order queued for sync', jobId };
+    const result = await this.ordersService.requeueOrder(id);
+    return result;
   }
 
   @Post('fetch')

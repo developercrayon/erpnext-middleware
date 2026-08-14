@@ -13,6 +13,7 @@ import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
 import { generateCorrelationId } from '../../utils/crypto.util';
 import { Product } from '../../database/entities/product.entity';
 import { AmazonConnector } from '../connectors/amazon/amazon.connector';
+import { ERPNextConnector } from '../connectors/erpnext/erpnext.connector';
 
 @Injectable()
 export class OrdersService {
@@ -34,6 +35,7 @@ export class OrdersService {
     @InjectQueue(QUEUE_NAMES.ORDERS)
     private readonly ordersQueue: Queue,
     private readonly amazonConnector: AmazonConnector,
+    private readonly erpNextConnector: ERPNextConnector,
   ) { }
 
   // ─── Webhook Ingestion ────────────────────────────────────────────────────
@@ -349,8 +351,20 @@ export class OrdersService {
     });
   }
 
-  async requeueOrder(orderId: string): Promise<string> {
+  async requeueOrder(orderId: string): Promise<any> {
     const order = await this.findById(orderId);
+    
+    // Check if it already exists in ERPNext
+    const existingOrderResult = await this.erpNextConnector.getSalesOrderByMarketplaceId(order.marketplaceOrderId);
+    if (existingOrderResult.success && existingOrderResult.data) {
+      await this.markSynced(order.id, existingOrderResult.data.name);
+      return { 
+        status: 'already_synced', 
+        message: 'Already synced into ERPNext', 
+        erpnextSalesOrderId: existingOrderResult.data.name 
+      };
+    }
+
     const job = await this.ordersQueue.add(
       'sync-order-to-erpnext',
       { orderId: order.id, source: order.source },
@@ -371,7 +385,11 @@ export class OrdersService {
     }
 
     await this.markInProgress(order.id);
-    return String(job.id);
+    return { 
+      status: 'queued', 
+      message: 'Added into queue & proceed for sync next', 
+      jobId: String(job.id) 
+    };
   }
 
   async triggerFetchOrders(source: MarketplaceSource, fromDate?: Date): Promise<string> {
