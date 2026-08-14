@@ -163,30 +163,34 @@ export class OrdersService {
           let shipDate = 'N/A';
 
           if (normalized.source === 'AMAZON') {
-            deliveryDate = raw.LatestDeliveryDate ? new Date(raw.LatestDeliveryDate).toLocaleDateString() : (normalized.promisedDeliveryDate ? new Date(normalized.promisedDeliveryDate).toLocaleDateString() : 'N/A');
+            const rawDeliveryDate = raw.fulfillment?.deliverByWindow?.latestDateTime || raw.LatestDeliveryDate;
+            deliveryDate = rawDeliveryDate ? new Date(rawDeliveryDate).toLocaleDateString() : (normalized.promisedDeliveryDate ? new Date(normalized.promisedDeliveryDate).toLocaleDateString() : 'N/A');
             shipDate = raw.LatestShipDate ? new Date(raw.LatestShipDate).toLocaleDateString() : 'N/A';
           } else {
             deliveryDate = normalized.promisedDeliveryDate ? new Date(normalized.promisedDeliveryDate).toLocaleDateString() : 'N/A';
             shipDate = 'N/A';
           }
 
-          const rawAddr = raw.ShippingAddress || {};
+          const rawAddr = raw.ShippingAddress || raw.recipient?.deliveryAddress || {};
           const addr: any = normalized.shippingAddress || {};
           const custAddressParts = [
-            rawAddr.AddressLine1 || addr?.line1,
-            rawAddr.City || addr?.city,
-            rawAddr.StateOrRegion || addr?.state,
-            rawAddr.PostalCode || addr?.pincode
+            rawAddr.addressLine1 || rawAddr.AddressLine1 || addr?.line1,
+            rawAddr.addressLine2 || rawAddr.AddressLine2 || addr?.line2,
+            rawAddr.city || rawAddr.City || addr?.city,
+            rawAddr.stateOrRegion || rawAddr.StateOrRegion || addr?.state,
+            rawAddr.districtOrCounty,
+            rawAddr.postalCode || rawAddr.PostalCode || addr?.pincode,
+            rawAddr.phone || rawAddr.Phone
           ].filter(Boolean);
           const custAddress = custAddressParts.length > 0 ? custAddressParts.join(', ') : 'N/A';
 
-          const customerName = rawAddr.Name || normalized.customerName || raw.BuyerInfo?.BuyerName || 'Amazon Buyer';
+          const customerName = raw.buyer?.buyerName || rawAddr.Name || normalized.customerName || raw.BuyerInfo?.BuyerName || 'Amazon Buyer';
 
-          let orderTotalAmount = raw.OrderTotal?.Amount;
+          let orderTotalAmount = raw.proceeds?.grandTotal?.amount ?? raw.OrderTotal?.Amount;
           if (orderTotalAmount === undefined || orderTotalAmount === null) {
             orderTotalAmount = normalized.total || 0;
           }
-          const orderTotalCurrency = raw.OrderTotal?.CurrencyCode || normalized.currency || 'INR';
+          const orderTotalCurrency = raw.proceeds?.grandTotal?.currencyCode || raw.OrderTotal?.CurrencyCode || normalized.currency || 'INR';
           const orderTotal = `${orderTotalAmount} ${orderTotalCurrency}`;
 
           const purchaseDate = raw.PurchaseDate ? new Date(raw.PurchaseDate).toLocaleString() : (normalized.orderDate ? new Date(normalized.orderDate).toLocaleString() : 'N/A');
@@ -195,11 +199,11 @@ export class OrdersService {
           const embeds = [];
           for (const item of (normalized.items || [])) {
             const rawItem = item.rawPayload || {};
-            let itemPriceAmount = rawItem.ItemPrice?.Amount;
+            let itemPriceAmount = rawItem.product?.price?.unitPrice?.amount ?? rawItem.product?.price?.untiPrice?.amount ?? rawItem.ItemPrice?.Amount;
             if (itemPriceAmount === undefined || itemPriceAmount === null) {
               itemPriceAmount = (!isNaN(item.unitPrice) && isFinite(item.unitPrice)) ? item.unitPrice : 0;
             }
-            const itemPriceCurrency = rawItem.ItemPrice?.CurrencyCode || orderTotalCurrency;
+            const itemPriceCurrency = rawItem.product?.price?.unitPrice?.currencyCode || rawItem.product?.price?.untiPrice?.currencyCode || rawItem.ItemPrice?.CurrencyCode || orderTotalCurrency;
 
             productsString += `> **Product Name :** ${item.productName}\n> **Product SKU :** ${item.sku}\n> **Quantity :** ${item.quantity}\n> **Item Price :** ${itemPriceAmount} ${itemPriceCurrency}\n\n`;
 

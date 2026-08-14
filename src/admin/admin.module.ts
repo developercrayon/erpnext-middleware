@@ -170,12 +170,12 @@ export class AdminModule {
                         const { record } = context;
                         const orderId = record.param('id');
                         try {
-                          await ordersService.requeueOrder(orderId);
+                          const result = await ordersService.requeueOrder(orderId);
                           return {
                             record: record.toJSON(),
                             notice: {
-                              message: `Order ${record.param('marketplaceOrderId')} successfully queued for ERPNext sync.`,
-                              type: 'success',
+                              message: result.message || `Order ${record.param('marketplaceOrderId')} successfully queued for ERPNext sync.`,
+                              type: result.status === 'already_synced' ? 'success' : 'success',
                             },
                           };
                         } catch (err) {

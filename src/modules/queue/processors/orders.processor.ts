@@ -96,7 +96,21 @@ export class OrdersProcessor {
       this.logger.log(`Fetched ${orders.length} orders from ${source} (page ${++page})`);
 
       for (const normalizedOrder of orders) {
-        const order = await this.ordersService.upsertOrder(normalizedOrder);
+        let finalOrder = normalizedOrder;
+        
+        if (source === MarketplaceSource.AMAZON) {
+          try {
+            // Fetch detailed order payload so Discord and ERPNext get the full data
+            const detailedResult = await connector.fetchSingleOrder(normalizedOrder.marketplaceOrderId);
+            if (detailedResult.success && detailedResult.data) {
+              finalOrder = await connector.normalizeOrder(detailedResult.data);
+            }
+          } catch (e: any) {
+            this.logger.error(`Failed to fetch detailed order for Amazon order ${normalizedOrder.marketplaceOrderId}: ${e.message}`);
+          }
+        }
+
+        const order = await this.ordersService.upsertOrder(finalOrder);
         // Queue individual sync to ERPNext
         await this.ordersService.requeueOrder(order.id);
       }
