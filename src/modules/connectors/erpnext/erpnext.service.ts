@@ -23,6 +23,12 @@ export class ERPNextService {
    * Also creates or fetches the customer record.
    */
   async syncOrderToERPNext(order: Order, mappings: OrderFieldMapping[]): Promise<string> {
+    const existingOrderResult = await this.connector.getSalesOrderByMarketplaceId(order.marketplaceOrderId);
+    if (existingOrderResult.success && existingOrderResult.data) {
+      console.log(`order already sync: ${order.marketplaceOrderId} -> ${existingOrderResult.data.name}`);
+      return existingOrderResult.data.name;
+    }
+
     const company = this.config.get<string>('erpnext.company') || 'Woodwolf Studio (O) Pvt. Ltd';
     let raw = order.rawPayload || {};
     // Unwrap the payload if it is nested inside an "order" key

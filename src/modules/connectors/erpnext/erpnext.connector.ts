@@ -519,6 +519,30 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async getSalesOrderByMarketplaceId(marketplaceOrderId: string): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.post(
+        `${this.baseUrl}/api/method/frappe.client.get_list`,
+        {
+          doctype: 'Sales Order',
+          filters: [
+            ['custom_marketplace_order_id', '=', marketplaceOrderId]
+          ],
+          fields: ['name', 'custom_marketplace_order_id']
+        },
+        { headers: this.authHeaders }
+      );
+      
+      const orders = response.data?.message || [];
+      if (orders.length > 0) {
+        return this.success(orders[0]); // Returns the first matching order
+      }
+      return this.success(null); // No order found
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
   async cancelSalesOrder(orderId: string): Promise<ConnectorResult<boolean>> {
     try {
       await this.http.post(
