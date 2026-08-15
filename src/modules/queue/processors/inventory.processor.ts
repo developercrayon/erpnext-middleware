@@ -10,7 +10,6 @@ import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector'
 import { Inventory } from '../../../database/entities/inventory.entity';
 import { MarketplaceSource } from '../../../database/entities/order.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
-import { Product } from '../../../database/entities/product.entity';
 import { SyncHistory, SyncResourceType, ItemSyncLog } from '../../../database/entities/operational.entity';
 
 @Processor(QUEUE_NAMES.INVENTORY)
@@ -27,8 +26,6 @@ export class InventoryProcessor {
     private readonly itemSyncLogRepo: Repository<ItemSyncLog>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
     @InjectRepository(SyncHistory)
     private readonly syncHistoryRepo: Repository<SyncHistory>,
   ) {}
@@ -45,14 +42,12 @@ export class InventoryProcessor {
     
     // If no specific SKUs provided, fetch all SKUs that are synced to any marketplace
     if (targetSkus.length === 0) {
-      const products = await this.productRepo.find({
-        where: [
-          { customAmazon: true, isParent: false },
-          { customFlipkart: true, isParent: false }
-        ],
-        select: ['sku']
-      });
-      targetSkus = products.map(p => p.sku);
+      const result = await this.erpnextService['connector'].fetchProducts({ pageSize: 1000 });
+      if (result.success && result.data?.items) {
+        targetSkus = result.data.items
+          .filter(p => !p.isParent && (p.customAmazon || p.customFlipkart))
+          .map(p => p.sku);
+      }
     }
 
     if (targetSkus.length === 0) {
@@ -140,17 +135,6 @@ export class InventoryProcessor {
               details: { warehouse: item.warehouse, qtyAfter: item.availableQty }
             });
           }
-          
-          // Also update Product.availableQty so it's visible in the Product UI
-          // Only for successful ones
-          for (const item of inventoryItems) {
-            if (!errorsMap.has(item.sku)) {
-              await this.productRepo.update(
-                { sku: item.sku },
-                { availableQty: item.availableQty }
-              );
-            }
-          }
         } else {
           // If the batch completely failed, record it
           for (const item of inventoryItems) {
@@ -204,14 +188,12 @@ export class InventoryProcessor {
     let targetSkus = skus || [];
     
     if (targetSkus.length === 0) {
-      const products = await this.productRepo.find({
-        where: [
-          { customAmazon: true, isParent: false },
-          { customFlipkart: true, isParent: false }
-        ],
-        select: ['sku']
-      });
-      targetSkus = products.map(p => p.sku);
+      const result = await this.erpnextService['connector'].fetchProducts({ pageSize: 1000 });
+      if (result.success && result.data?.items) {
+        targetSkus = result.data.items
+          .filter(p => !p.isParent && (p.customAmazon || p.customFlipkart))
+          .map(p => p.sku);
+      }
     }
 
     if (targetSkus.length === 0) {
@@ -224,11 +206,6 @@ export class InventoryProcessor {
     if (!Object.keys(inventoryMap).length) {
       this.logger.warn('No inventory data found in ERPNext');
       return;
-    }
-
-    // Update Product availableQty
-    for (const [sku, qty] of Object.entries(inventoryMap)) {
-      await this.productRepo.update({ sku }, { availableQty: qty });
     }
 
     this.logger.log(`Successfully fetched and updated local inventory for ${Object.keys(inventoryMap).length} items`);
@@ -248,6 +225,6 @@ export class InventoryProcessor {
       message: error.message,
       stackTrace: error.stack,
       payload: job.data,
-    });
+    } as any);
   }
 }

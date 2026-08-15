@@ -78,6 +78,7 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+
   async fetchItemAttributes(): Promise<ConnectorResult<any>> {
     try {
       const response = await this.http.get(
@@ -141,165 +142,59 @@ export class ERPNextConnector extends BaseConnector {
     params?: FetchProductsParams,
   ): Promise<ConnectorResult<PaginatedResult<NormalizedProduct>>> {
     try {
-      // Trim trailing slash to avoid double-slash in URL construction
       const baseUrl = this.baseUrl.replace(/\/$/, '');
 
-      const filters: any[] = [];
-      if (params?.sku) {
-        filters.push(['item_code', '=', params.sku]);
+      const queryParams: any = {
+        limit_start: params?.limit_start || 0,
+        limit_page_length: params?.pageSize || 500,
+      };
+
+      if (params?.search) {
+        queryParams.search = params.search;
       }
 
-      // ── Step 1: Fetch item list with ONLY guaranteed standard fields ──────
-      // Using custom fields in the list query causes ERPNext DataError (HTTP 500)
-      // if the field doesn't exist. All custom fields are read per-item below.
+      const queryString = new URLSearchParams(queryParams).toString();
+      const endpointUrl = `${baseUrl}/api/method/paginateditem?${queryString}`;
+
       let listResponse: any;
       try {
-        listResponse = await this.http.get(`${baseUrl}/api/resource/Item`, {
+        listResponse = await this.http.get(endpointUrl, {
           headers: this.authHeaders,
-          params: {
-            fields: JSON.stringify([
-              // Standard fields
-              'name', 'item_code', 'item_name', 'description',
-              'item_group', 'brand', 'gst_hsn_code',
-              'weight_per_unit', 'weight_uom', 'stock_uom',
-              'has_variants', 'variant_of',
-              'standard_rate', 'valuation_rate',
-              'image', 'country_of_origin',
-              // Confirmed valid custom fields (verified against live ERPNext)
-              // ❌ custom_amazon_asin  — NOT valid in list query (read from full item fetch)
-              // ❌ custom_material     — does not exist in this ERPNext
-              'custom_amazon',
-              'custom_flipkart',
-              'custom_mrp',
-              'custom_amazon_price',
-              'custom_flipkart_price',
-              'default_item_manufacturer',
-            ]),
-            filters: JSON.stringify(filters),
-            limit_page_length: params?.pageSize || 500,
-          },
         });
       } catch (httpErr: any) {
         const status = httpErr?.status || 'unknown';
         const body = httpErr?.data || httpErr?.response?.data;
         const bodyStr = body ? JSON.stringify(body) : httpErr.message;
-        this.logger.error(`ERPNext Item list failed — HTTP ${status}: ${bodyStr}`);
-        throw new Error(`HTTP ${status} from ERPNext /api/resource/Item — ${bodyStr}`);
+        this.logger.error(`ERPNext paginateditem failed — HTTP ${status}: ${bodyStr}`);
+        throw new Error(`HTTP ${status} from ERPNext /api/method/paginateditem — ${bodyStr}`);
       }
 
-      const itemsData: any[] = listResponse.data?.data || [];
-      this.logger.log(`ERPNext returned ${itemsData.length} items for sync`);
+      const responseData = listResponse.data?.message || listResponse.data?.data || listResponse.data;
+      const itemsData: any[] = responseData?.items || [];
+      const totalItems = responseData?.pagination?.total_items || responseData?.total_items || itemsData.length;
 
-      // ── Step 2: Enrich each item with barcodes and attributes ──
-      const items: NormalizedProduct[] = await Promise.all(itemsData.map(async (listItem: any) => {
-        // Custom fields are now in the list response directly ✅
+      this.logger.log(`ERPNext returned ${itemsData.length} items out of ${totalItems} for sync`);
+
+      const items: any[] = itemsData.map((listItem: any) => {
         const customAmazon = listItem.custom_amazon === 1 || listItem.custom_amazon === true;
         const customFlipkart = listItem.custom_flipkart === 1 || listItem.custom_flipkart === true;
         const customMrp = listItem.custom_mrp || 0;
-        const customAmazonPrice = listItem.custom_amazon_price || undefined;
-        const customFlipkartPrice = listItem.custom_flipkart_price || undefined;
-        const customAmazonProductType = listItem.custom_amazon_product_type || undefined;
-
-        // These require the full item doc (not available as list fields)
-        let upc = '';
-        let amazonAsin = '';
-        let variantAttributes: { name: string; value: string }[] = [];
-        let variationTheme: string | undefined;
-
-        let full: any = null;
-
-        try {
-          // Full item fetch — returns entire document, gets barcodes/attributes/amazon_asin
-          const fullRes = await this.http.get(
-            `${baseUrl}/api/resource/Item/${encodeURIComponent(listItem.item_code)}`,
-            { headers: this.authHeaders },
-          );
-          full = fullRes.data?.data;
-
-          // If this is a variant, inherit any missing custom fields from the parent template
-          if (full && listItem.variant_of) {
-            try {
-              const parentRes = await this.http.get(
-                `${baseUrl}/api/resource/Item/${encodeURIComponent(listItem.variant_of)}`,
-                { headers: this.authHeaders },
-              );
-              const parentFull = parentRes.data?.data;
-              if (parentFull) {
-                for (const key of Object.keys(parentFull)) {
-                  // Fall back to parent if variant field is missing or completely empty
-                  if (full[key] === undefined || full[key] === null || full[key] === '') {
-                    full[key] = parentFull[key];
-                  }
-                }
-              }
-            } catch (e) {
-              this.logger.warn(`Could not fetch parent template ${listItem.variant_of} for variant ${listItem.item_code}`);
-            }
-          }
-
-          if (full) {
-            // Amazon ASIN (custom_amazon_asin not valid in list query but exists in full doc)
-            amazonAsin = full.custom_amazon_asin || '';
-
-            // UPC from barcodes child table
-            if (full.barcodes?.length > 0) {
-              const upcEntry = full.barcodes.find((b: any) => b.barcode_type === 'UPC');
-              upc = upcEntry ? upcEntry.barcode : full.barcodes[0].barcode;
-            }
-
-            // Variant attributes
-            if (full.attributes?.length > 0) {
-              variantAttributes = full.attributes.map((a: any) => ({
-                name: a.attribute,
-                value: a.attribute_value,
-              }));
-              const hasColor = variantAttributes.some(a =>
-                a.name.toLowerCase() === 'colour' || a.name.toLowerCase() === 'color',
-              );
-              const hasSize = variantAttributes.some(a => a.name.toLowerCase() === 'size');
-              if (hasColor && hasSize) variationTheme = 'COLOR_SIZE';
-              else if (hasColor) variationTheme = 'COLOR';
-              else if (hasSize) variationTheme = 'SIZE';
-            }
-          }
-
-          // Removed image fetching logic
-
-        } catch (e: any) {
-          this.logger.warn(`Could not fully fetch item ${listItem.item_code}: ${e.message}`);
-        }
 
         return {
+          ...listItem, // Add payload data directly to the frontend
           sku: listItem.item_code,
           name: listItem.item_name,
-          description: listItem.description,
-          category: listItem.item_group,
-          brand: listItem.brand,
           mrp: customMrp || listItem.standard_rate || 0,
           sellingPrice: listItem.standard_rate || 0,
-          hsnCode: listItem.gst_hsn_code,
-          weight: listItem.weight_per_unit,
           customAmazon,
           customFlipkart,
-          customAmazonPrice,
-          customFlipkartPrice,
-          amazonProductType: full?.custom_amazon_product_type || customAmazonProductType,
-          upc,
-          amazonAsin,
-          valuationRate: listItem.valuation_rate || 0,
-          isParent: listItem.has_variants === 1,
-          variantOf: listItem.variant_of || undefined,
-          variationTheme,
-          variantAttributes: variantAttributes.length > 0 ? variantAttributes : undefined,
-          attributes: { ...listItem, ...(full || {}) },
-          rawPayload: full ? { ...listItem, ...full } : listItem,
+          rawPayload: listItem,
         };
-
-      }));
+      });
 
       return this.success({
         items,
-        total: items.length,
+        total: totalItems,
         page: 1,
         pageSize: params?.pageSize || 500,
         hasMore: false,
@@ -715,6 +610,8 @@ export class ERPNextConnector extends BaseConnector {
       return this.failure(errMsg);
     }
   }
+
+
 
   async getReferenceData(): Promise<ConnectorResult<any>> {
     try {

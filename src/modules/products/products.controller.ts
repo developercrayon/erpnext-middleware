@@ -8,14 +8,11 @@ import {
   Body,
   Query,
   UseGuards,
-  HttpCode,
-  HttpStatus,
-  ParseUUIDPipe,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { ProductsService } from './products.service';
+import { ProductsService, ProductStatus } from './products.service';
 import { ProductQueryDto, SyncProductsDto, UpdateProductDto } from './dto/product.dto';
 
 @ApiTags('Products')
@@ -57,20 +54,33 @@ export class ProductsController {
 
   @Get(':id/erpnext-data')
   @ApiOperation({ summary: 'Get full product data from ERPNext' })
-  async getFullItem(@Param('id', ParseUUIDPipe) id: string) {
+  async getFullItem(@Param('id') id: string) {
     return this.productsService.getFullItem(id);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get product by ID' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiOperation({ summary: 'Get product by SKU/ID' })
+  async findOne(@Param('id') id: string) {
     return this.productsService.findById(id);
+  }
+
+  @Post('create-sync')
+  @ApiOperation({ summary: 'Create a new product directly in ERPNext' })
+  async createProduct(@Body() dto: any) {
+    try {
+      const product = await this.productsService.createProduct(dto);
+      return { success: true, message: 'Product created successfully', data: product };
+    } catch (error: any) {
+      throw new BadRequestException(
+        error.message || 'Failed to create product'
+      );
+    }
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update product details' })
   async updateProduct(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() dto: UpdateProductDto
   ) {
     try {
@@ -83,123 +93,51 @@ export class ProductsController {
     }
   }
 
-  @Post('sync-amazon-to-erpnext')
-  @ApiOperation({ summary: 'Bulk push all unsynced Amazon products to ERPNext' })
-  async bulkSyncAmazonToERPNext() {
-    try {
-      const result = await this.productsService.bulkSyncAmazonToERPNext();
-      return { success: true, message: 'Bulk sync completed', data: result };
-    } catch (error: any) {
-      throw new BadRequestException(error.message || 'Failed to bulk sync Amazon products to ERPNext');
-    }
-  }
-
-  @Post(':id/sync-erpnext')
-  @ApiOperation({ summary: 'Push a middleware product to ERPNext to create a new Item' })
-  async pushToERPNext(@Param('id', ParseUUIDPipe) id: string) {
-    try {
-      const product = await this.productsService.pushToERPNext(id);
-      return { success: true, message: 'Product created in ERPNext', data: product };
-    } catch (error: any) {
-      throw new BadRequestException(error.message || 'Failed to push product to ERPNext');
-    }
-  }
-
   @Post(':id/sync-amazon')
-  @ApiOperation({ summary: 'Directly sync a single product to Amazon SP-API and return full response with issues' })
-  async syncToAmazon(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiOperation({ summary: 'Queue single product sync to Amazon' })
+  async syncToAmazon(@Param('id') id: string) {
     try {
-      const result = await this.productsService.syncSingleProductToAmazon(id);
-      return {
-        success: result.success,
-        message: result.success ? 'Product synced to Amazon successfully' : 'Amazon sync returned issues',
-        data: result,
-      };
+      // In this new architecture, ID is the SKU.
+      const jobId = await this.productsService.triggerSync(undefined, [id], true);
+      return { success: true, message: `Product queued for sync (Job ID: ${jobId})` };
     } catch (error: any) {
-      throw new BadRequestException(error.message || 'Failed to sync product to Amazon');
+      throw new BadRequestException(error.message || 'Failed to trigger Amazon sync');
     }
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete product by ID' })
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiOperation({ summary: 'Delete a product' })
+  async remove(@Param('id') id: string) {
     try {
-      await this.productsService.delete(id);
-      return { success: true, message: 'Product deleted successfully' };
+      await this.productsService.remove(id);
+      return { success: true, message: 'Product deleted from ERPNext successfully' };
     } catch (error: any) {
       throw new BadRequestException(error.message || 'Failed to delete product');
     }
   }
 
   @Put(':id/status')
-  @ApiOperation({ summary: 'Update product status (ACTIVE/INACTIVE)' })
+  @ApiOperation({ summary: 'Toggle product active/inactive status' })
   async updateStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body('status') status: any
+    @Param('id') id: string,
+    @Body('disabled') disabled: number
   ) {
-    const product = await this.productsService.updateStatus(id, status);
-    return { success: true, message: 'Status updated successfully', data: product };
+    try {
+      await this.productsService.updateStatus(id, disabled);
+      return { success: true, message: `Product marked as ${disabled === 1 ? 'disabled' : 'enabled'}` };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to update status');
+    }
   }
 
-  @Post('sync/erpnext')
-  @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOperation({ summary: 'Trigger a full or single fetch of products from ERPNext' })
-  async syncFromERPNext(@Body('sku') sku?: string) {
-    const jobId = await this.productsService.triggerFetchFromERPNext(sku);
-    return { message: 'ERPNext fetch job queued', jobId };
-  }
-
-  @Post('sync/marketplaces')
-  @HttpCode(HttpStatus.ACCEPTED)
+  @Post('sync')
   @ApiOperation({ summary: 'Trigger product sync to marketplaces' })
   async syncToMarketplaces(@Body() dto: SyncProductsDto) {
-    const jobId = await this.productsService.triggerSync(dto.source, dto.skus);
-    return { message: 'Marketplace sync job queued', jobId };
-  }
-
-  @Post('sync/amazon-fetch')
-  @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOperation({ summary: 'Queue job to fetch products from Amazon, save to JSON, and store in DB' })
-  async fetchFromAmazon() {
-    const jobId = await this.productsService.triggerAmazonFetch();
-    return { message: 'Amazon fetch job queued', jobId };
-  }
-
-  @Post('sync/amazon-fetch-single')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Fetch a single product from Amazon by SKU and store in DB' })
-  async fetchSingleFromAmazon(@Body('sku') sku: string) {
-    if (!sku) {
-      throw new BadRequestException('SKU is required to fetch a single product from Amazon');
-    }
     try {
-      const result = await this.productsService.fetchSingleFromAmazonAndStore(sku);
-      return { success: true, message: `Product ${sku} fetched from Amazon successfully`, data: result };
+      const jobId = await this.productsService.triggerSync(dto.source, dto.skus);
+      return { success: true, message: 'Sync job queued successfully', jobId };
     } catch (error: any) {
-      throw new BadRequestException(error.message || `Failed to fetch product ${sku} from Amazon`);
+      throw new BadRequestException(error.message || 'Failed to trigger sync');
     }
-  }
-
-  @Post('sync/amazon-validate-single')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Validate a single product listing on Amazon by SKU' })
-  async validateAmazonListing(@Body('sku') sku: string) {
-    if (!sku) {
-      throw new BadRequestException('SKU is required to validate a product on Amazon');
-    }
-    try {
-      const result = await this.productsService.validateAmazonListing(sku);
-      return { success: true, message: `Product ${sku} validated on Amazon`, data: result };
-    } catch (error: any) {
-      throw new BadRequestException(error.message || `Failed to validate product ${sku} on Amazon`);
-    }
-  }
-
-  @Post('sync/amazon-prices')
-  @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOperation({ summary: 'Queue job to fetch all product prices from Amazon, save to JSON, and update DB' })
-  async fetchAmazonPrices() {
-    const jobId = await this.productsService.triggerAmazonPricesFetch();
-    return { message: 'Amazon prices fetch job queued', jobId };
   }
 }

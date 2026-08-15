@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, Not, In } from 'typeorm';
 import { FieldMapping } from '../../database/entities/mapping.entity';
-import { Product } from '../../database/entities/product.entity';
+
 import { MarketplaceSource } from '../../database/entities/order.entity';
 import { AmazonProductField } from '../../database/entities/amazon-product-field.entity';
 import { ErpnextProductField } from '../../database/entities/erpnext-product-field.entity';
@@ -20,8 +20,6 @@ export class MappingService {
   constructor(
     @InjectRepository(FieldMapping)
     private readonly mappingRepo: Repository<FieldMapping>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
     @InjectRepository(AmazonProductField)
     private readonly amazonProductFieldRepo: Repository<AmazonProductField>,
     @InjectRepository(ErpnextProductField)

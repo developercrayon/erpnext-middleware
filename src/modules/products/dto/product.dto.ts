@@ -10,8 +10,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProductStatus } from '../../../database/entities/product.entity';
-import { MarketplaceSource } from '../../../database/entities/order.entity';
+import { ProductStatus } from '../products.service';import { MarketplaceSource } from '../../../database/entities/order.entity';
 
 export class ProductQueryDto {
   @ApiPropertyOptional({ enum: ProductStatus })
@@ -38,6 +37,11 @@ export class ProductQueryDto {
   @IsOptional()
   @IsString()
   brand?: string;
+
+  @ApiPropertyOptional({ description: 'Search query' })
+  @IsOptional()
+  @IsString()
+  search?: string;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()

@@ -9,7 +9,7 @@ import { ErpnextProductField } from '../../../database/entities/erpnext-product-
 import { Unit } from '../../../database/entities/unit.entity';
 import { Country } from '../../../database/entities/country.entity';
 import { AmazonVariantMapping } from '../../../database/entities/amazon-variant-mapping.entity';
-import { Product } from '../../../database/entities/product.entity';
+
 import { BaseConnector } from '../base/base-connector.abstract';
 import {
   ConnectorResult,
@@ -48,8 +48,6 @@ export class AmazonConnector extends BaseConnector {
     private readonly countryRepo: Repository<Country>,
     @InjectRepository(AmazonVariantMapping)
     private readonly variantMappingRepo: Repository<AmazonVariantMapping>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
   ) {
     super('AmazonConnector');
     this.clientId = config.get<string>('amazon.clientId');
@@ -1696,11 +1694,7 @@ export class AmazonConnector extends BaseConnector {
       for (const batch of batches) {
         for (const item of batch) {
           try {
-            let isParent = item.isParent;
-            if (isParent === undefined) {
-              const product = await this.productRepo.findOne({ where: { sku: item.sku } });
-              isParent = product?.isParent || false;
-            }
+            const isParent = item.isParent || false;
 
             if (isParent) {
               this.logger.debug(`Skipping inventory update for parent item ${item.sku}`);
@@ -1951,13 +1945,13 @@ export class AmazonConnector extends BaseConnector {
 
   // ─── Validate Listing ─────────────────────────────────────────────────────
   
-  async validateListing(sku: string): Promise<ConnectorResult<any>> {
+  async validateListing(product: any): Promise<ConnectorResult<any>> {
     try {
       await this.ensureAuthenticated();
-      const product = await this.productRepo.findOne({ where: { sku } });
       if (!product) {
-        return this.failure(`Product ${sku} not found locally`);
+        return this.failure(`Product not provided`);
       }
+      const sku = product.sku;
 
       let productType = product.amazonProductType || product.erpnextRawPayload?.amazonProductType || 'PRODUCT';
       let requirements = productType !== 'PRODUCT' ? 'LISTING' : 'LISTING_OFFER_ONLY';

@@ -1,15 +1,14 @@
-import { Processor, Process, OnQueueFailed, OnQueueCompleted } from '@nestjs/bull';
+import { Processor, Process } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { QUEUE_NAMES, JOB_NAMES, QUEUE_DEFAULT_OPTIONS } from '../queue.constants';
+import { QUEUE_NAMES, JOB_NAMES } from '../queue.constants';
 import { ERPNextService } from '../../connectors/erpnext/erpnext.service';
 import { AmazonConnector } from '../../connectors/amazon/amazon.connector';
 import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector';
-import { Product } from '../../../database/entities/product.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
 import { SyncHistory, SyncResourceType } from '../../../database/entities/operational.entity';
 import { MarketplaceSource } from '../../../database/entities/order.entity';
@@ -29,218 +28,48 @@ export class ProductsProcessor {
     @InjectQueue(QUEUE_NAMES.PRODUCTS) private readonly productsQueue: Queue,
     @InjectQueue(QUEUE_NAMES.INVENTORY) private readonly inventoryQueue: Queue,
     @InjectQueue(QUEUE_NAMES.PRICING) private readonly pricingQueue: Queue,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
     @InjectRepository(SyncHistory)
     private readonly syncHistoryRepo: Repository<SyncHistory>,
   ) { }
 
-  /**
-   * Fetches products from ERPNext and upserts them into the local database
-   */
-  @Process(JOB_NAMES.FETCH_PRODUCTS)
-  async fetchProductsFromERPNext(job: Job): Promise<void> {
-    const skuFilter = job.data?.sku;
-    this.logger.log(`Executing background job: Fetch Products from ERPNext${skuFilter ? ' (SKU: ' + skuFilter + ')' : ''}`);
-
-    try {
-      const result = await this.erpnextService.fetchProducts({
-        pageSize: 500,
-        sku: skuFilter
-      });
-      if (!result?.success) {
-        throw new Error(`Failed to fetch products from ERPNext: ${result?.error || 'Unknown error'}`);
-      }
-
-      const products = result.data?.items || [];
-
-      const syncHistory = this.syncHistoryRepo.create({
-        resourceType: SyncResourceType.PRODUCT,
-        source: 'ERPNEXT',
-        status: 'IN_PROGRESS',
-        itemsTotal: products.length,
-        startedAt: new Date(),
-      });
-      await this.syncHistoryRepo.save(syncHistory);
-
-      let upserted = 0;
-      let failed = 0;
-
-      for (const p of products) {
-        try {
-          await this.productRepo.upsert(
-            {
-              sku: p.sku,
-              erpnextItemCode: p.sku,
-              name: p.name,
-              description: p.description,
-              category: p.category,
-              brand: p.brand,
-              mrp: p.mrp || 0,
-              sellingPrice: p.sellingPrice || 0,
-              hsnCode: p.hsnCode,
-              gstRate: p.gstRate || 18,
-              weight: p.weight,
-              costPrice: p.valuationRate || 0,
-              customAmazonPrice: p.customAmazonPrice,
-              customFlipkartPrice: p.customFlipkartPrice,
-              customAmazon: p.customAmazon,
-              customFlipkart: p.customFlipkart,
-              amazonProductType: p.amazonProductType || null,
-              upc: p.upc || null,
-              isParent: p.isParent || false,
-              variantOf: p.variantOf || null,
-              variationTheme: p.variationTheme || null,
-              variantAttributes: p.variantAttributes || null,
-
-              erpnextRawPayload: p.rawPayload,
-              lastSyncedAt: new Date(),
-            },
-            ['sku'],
-          );
-          upserted++;
-        } catch (err) {
-          failed++;
-          this.logger.error(`Failed to upsert product ${p.sku}: ${err.message}`);
-        }
-      }
-
-      syncHistory.status = failed > 0 ? (upserted === 0 ? 'FAILED' : 'PARTIAL') : 'COMPLETED';
-      syncHistory.itemsSynced = upserted;
-      syncHistory.itemsFailed = failed;
-      syncHistory.completedAt = new Date();
-      syncHistory.durationMs = syncHistory.completedAt.getTime() - syncHistory.startedAt.getTime();
-      await this.syncHistoryRepo.save(syncHistory);
-
-      this.logger.log(`Products fetched from ERPNext: ${upserted}/${products.length}`);
-
-      // Auto-sync single product if triggered by Webhook
-      if (skuFilter && products.length > 0) {
-        const p = products[0];
-        if (p.customAmazon) {
-          // 2. Sync to amazon (full)
-          await this.productsQueue.add(JOB_NAMES.SYNC_PRODUCTS, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, QUEUE_DEFAULT_OPTIONS);
-          this.logger.log(`Auto-queued Amazon sync for ${skuFilter}`);
-
-          // 3. Amazon price update
-          await this.pricingQueue.add(JOB_NAMES.SYNC_PRICES_TO_MARKETPLACE, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, { ...QUEUE_DEFAULT_OPTIONS, delay: 5000 });
-          this.logger.log(`Auto-queued Amazon price sync for ${skuFilter}`);
-
-          // Removed direct inventory sync from product fetch webhook
-          // await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, { source: MarketplaceSource.AMAZON, skus: [skuFilter] }, { ...QUEUE_DEFAULT_OPTIONS, delay: 10000 });
-          // this.logger.log(`Auto-queued Amazon inventory sync for ${skuFilter}`);
-
-          // 5. Fetch from Amazon
-          await this.productsQueue.add('fetch-amazon-product-single', { sku: skuFilter }, { ...QUEUE_DEFAULT_OPTIONS, delay: 15000 });
-          this.logger.log(`Auto-queued Amazon fetch single for ${skuFilter}`);
-        }
-        if (p.customFlipkart) {
-          await this.productsQueue.add(JOB_NAMES.SYNC_PRODUCTS, { source: MarketplaceSource.FLIPKART, skus: [skuFilter] }, QUEUE_DEFAULT_OPTIONS);
-          this.logger.log(`Auto-queued Flipkart sync for ${skuFilter}`);
-        }
-      }
-
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  @Process(JOB_NAMES.FETCH_AMAZON_PRODUCTS)
-  async fetchAmazonProducts(job: Job): Promise<void> {
-    this.logger.log(`Executing background job: Fetch Products from Amazon`);
-    try {
-      await this.productsService.fetchFromAmazonAndStore();
-    } catch (error) {
-      this.logger.error(`Error in fetchAmazonProducts: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-
-  @Process('fetch-amazon-product-single')
-  async fetchAmazonProductSingle(job: Job): Promise<void> {
-    const { sku } = job.data;
-    this.logger.log(`Executing background job: Fetch single product from Amazon for SKU: ${sku}`);
-    try {
-      await this.productsService.fetchSingleFromAmazonAndStore(sku);
-    } catch (error) {
-      this.logger.error(`Error in fetchAmazonProductSingle: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-
-  @Process(JOB_NAMES.FETCH_AMAZON_PRICES)
-  async fetchAmazonPrices(job: Job): Promise<void> {
-    this.logger.log(`Executing background job: Fetch Prices from Amazon`);
-    try {
-      await this.productsService.fetchAndStoreAmazonPrices();
-    } catch (error) {
-      this.logger.error(`Error in fetchAmazonPrices: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-
-  @Process(JOB_NAMES.PATCH_AMAZON_PRODUCT)
-  async patchAmazonProduct(job: Job): Promise<void> {
-    const { sku, changedKeys } = job.data;
-    this.logger.log(`Executing background job: Patch Amazon Product ${sku}`);
-    try {
-      const product = await this.productRepo.findOne({ where: { sku } });
-      if (!product) {
-        throw new Error(`Product ${sku} not found`);
-      }
-
-      const normalizedProduct: NormalizedProduct = {
-        sku: product.sku,
-        amazonAsin: product.amazonAsin,
-        amazonProductType: product.amazonProductType,
-        upc: product.upc,
-        flipkartSku: product.flipkartSku,
-        name: product.name,
-        description: product.description ? product.description.replace(/<[^>]*>?/gm, '') : product.description,
-        brand: product.brand,
-        mrp: product.mrp,
-        sellingPrice: product.sellingPrice,
-        isParent: product.isParent,
-        variantOf: product.variantOf,
-        variationTheme: product.variationTheme,
-        variantAttributes: product.variantAttributes,
-        amazonRawPayload: product.amazonRawPayload,
-        erpnextRawPayload: product.erpnextRawPayload,
-        rawPayload: product,
-      };
-
-      const result = await this.amazonConnector.patchListing(normalizedProduct, changedKeys);
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      this.logger.log(`Successfully patched Amazon product ${sku}`);
-    } catch (error) {
-      this.logger.error(`Error in patchAmazonProduct for ${sku}: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-
   @Process(JOB_NAMES.SYNC_PRODUCTS)
   async syncProducts(job: Job): Promise<void> {
     const { source, skus, skipInventorySync } = job.data;
     this.logger.log(`Executing background job: Sync Products to ${source || 'all marketplaces'}`);
 
-    const query = this.productRepo.createQueryBuilder('product');
+    // Fetch products from ERPNext instead of local DB
+    let products: any[] = [];
+    
     if (skus && skus.length > 0) {
-      query.where('product.sku IN (:...skus)', { skus });
+      // Fetch each SKU
+      for (const sku of skus) {
+        const result = await this.erpnextService['connector'].getFullItem(sku);
+        if (result.success && result.data) {
+          products.push(result.data);
+        }
+      }
+    } else {
+      // If no SKUs provided, fetch all from ERPNext (be careful with limits)
+      // Usually triggered for specific SKUs now.
+      const result = await this.erpnextService['connector'].fetchProducts({ pageSize: 1000 });
+      if (result.success && result.data?.items) {
+        products = result.data.items;
+      }
     }
-    const products = await query.getMany();
 
     if (!products.length) {
       this.logger.warn('No products found matching the criteria for sync.');
       return;
     }
 
+    // Sort to process parents first
     products.sort((a, b) => {
-      if (a.isParent && !b.isParent) return -1;
-      if (!a.isParent && b.isParent) return 1;
+      const aIsParent = a.has_variants === 1;
+      const bIsParent = b.has_variants === 1;
+      if (aIsParent && !bIsParent) return -1;
+      if (!aIsParent && bIsParent) return 1;
       return 0;
     });
 
@@ -250,7 +79,7 @@ export class ProductsProcessor {
 
     for (const mp of marketplaces) {
       const connector = mp === MarketplaceSource.AMAZON ? this.amazonConnector : this.flipkartConnector;
-
+      
       let successCount = 0;
       let failureCount = 0;
 
@@ -264,8 +93,17 @@ export class ProductsProcessor {
       await this.syncHistoryRepo.save(syncHistory);
 
       for (const product of products) {
-        if (mp === MarketplaceSource.AMAZON && !product.customAmazon) continue;
-        if (mp === MarketplaceSource.FLIPKART && !product.customFlipkart) continue;
+        // Product structure here is the raw ERPNext item data or NormalizedProduct 
+        // Need to adapt to NormalizedProduct expected by connectors
+        
+        const isAmazon = mp === MarketplaceSource.AMAZON;
+        const isFlipkart = mp === MarketplaceSource.FLIPKART;
+        
+        const customAmazon = product.custom_amazon === 1;
+        const customFlipkart = product.custom_flipkart === 1;
+
+        if (isAmazon && !customAmazon) continue;
+        if (isFlipkart && !customFlipkart) continue;
 
         try {
           const getPrice = (customPrice: number, standardPrice: number, valRate: number) => {
@@ -274,132 +112,84 @@ export class ProductsProcessor {
             return valRate || 0;
           };
 
-          const sellingPrice = mp === MarketplaceSource.AMAZON
-            ? getPrice(product.customAmazonPrice, product.sellingPrice, product.costPrice)
-            : mp === MarketplaceSource.FLIPKART
-              ? getPrice(product.customFlipkartPrice, product.sellingPrice, product.costPrice)
-              : getPrice(0, product.sellingPrice, product.costPrice);
+          const sellingPrice = isAmazon
+            ? getPrice(product.custom_amazon_price, product.custom_mrp, product.valuation_rate)
+            : isFlipkart
+              ? getPrice(product.custom_flipkart_price, product.custom_mrp, product.valuation_rate)
+              : product.custom_mrp;
 
           const normalizedProduct: NormalizedProduct = {
-            sku: product.sku,
-            amazonAsin: product.amazonAsin,
-            amazonProductType: product.amazonProductType,
-            upc: product.upc,
-            flipkartSku: product.flipkartSku,
-            name: product.name,
-            description: product.description ? product.description.replace(/<[^>]*>?/gm, '') : product.description,
-            category: product.category,
+            sku: product.item_code,
+            amazonAsin: product.custom_amazon_asin,
+            amazonProductType: product.custom_amazon_product_type,
+            upc: product.barcodes?.length > 0 ? product.barcodes[0].barcode : null,
+            name: product.item_name,
+            description: product.description,
+            category: product.item_group,
             brand: product.brand,
-            mrp: product.mrp,
+            mrp: product.custom_mrp,
             sellingPrice: sellingPrice,
-            isParent: product.isParent,
-            variantOf: product.variantOf,
-            variationTheme: product.variationTheme,
-            variantAttributes: product.variantAttributes,
-            amazonRawPayload: product.amazonRawPayload,
-            erpnextRawPayload: product.erpnextRawPayload,
-            rawPayload: product,
+            weight: product.weight_per_unit,
+            isParent: product.has_variants === 1,
+            variantOf: product.variant_of,
+            erpnextRawPayload: product, 
           };
 
-          if (product.isParent) {
-            const childProducts = products.filter(p => p.variantOf === product.sku);
-            normalizedProduct.children = childProducts.map(cp => ({
-              sku: cp.sku,
-              amazonAsin: cp.amazonAsin,
-              amazonProductType: cp.amazonProductType,
-              upc: cp.upc,
-              name: cp.name,
-              mrp: cp.mrp,
-              sellingPrice: cp.sellingPrice,
-              isParent: cp.isParent,
-              variantOf: cp.variantOf,
-              variationTheme: cp.variationTheme,
-              variantAttributes: cp.variantAttributes,
-            }));
-          }
-
-          const result = await connector.createListing(normalizedProduct, true); // true = isDraft
+          const result = await connector.createListing(normalizedProduct, true);
 
           if (result.success) {
             successCount++;
-            if (mp === MarketplaceSource.AMAZON) {
-              const updateData: any = {
-                isAmazonListed: true,
-                amazonSync: true,
-                amazonLastSync: new Date(),
-                lastSyncedAt: new Date()
-              };
-              if (result.meta && result.meta.asin) {
-                updateData.amazonAsin = result.meta.asin;
-              }
-              await this.productRepo.update(product.id, updateData);
-            } else if (mp === MarketplaceSource.FLIPKART) {
-              await this.productRepo.update(product.id, {
-                isFlipkartListed: true,
-                flipkartSync: true,
-                flipkartLastSync: new Date(),
-                lastSyncedAt: new Date()
-              });
-            }
+            this.logger.log(`Successfully synced ${product.item_code} to ${mp}`);
+            
+            // Write success status back to ERPNext
+            const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
+            const dateField = isAmazon ? 'custom_amazon_sync' : 'custom_flipkart_sync';
+            
+            await this.erpnextService['connector'].updateItem(product.item_code, {
+              [statusField]: 'synced',
+              [dateField]: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            });
+            
           } else {
             failureCount++;
-            const errorMsg = result.error || 'Unknown error from marketplace connector';
-            this.logger.error(`Failed to push product ${product.sku} to ${mp}: ${errorMsg}`);
-
-            if (mp === MarketplaceSource.AMAZON) {
-              await this.productRepo.update(product.id, { amazonSync: false, amazonLastSync: new Date(), lastSyncedAt: new Date() });
-            } else if (mp === MarketplaceSource.FLIPKART) {
-              await this.productRepo.update(product.id, { flipkartSync: false, flipkartLastSync: new Date(), lastSyncedAt: new Date() });
-            }
+            this.logger.error(`Failed to sync ${product.item_code} to ${mp}: ${result.error}`);
+            
+            // Write failure status back to ERPNext
+            const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
+            
+            await this.erpnextService['connector'].updateItem(product.item_code, {
+              [statusField]: 'failed'
+            });
 
             await this.errorLogRepo.save({
-              source: QUEUE_NAMES.PRODUCTS,
-              context: `sync-to-${mp.toLowerCase()}`,
-              message: `Failed to sync SKU "${product.sku}" to ${mp}: ${errorMsg}`,
-              stackTrace: JSON.stringify(result),
-              payload: { sku: product.sku, marketplace: mp },
-            });
+              source: mp,
+              context: 'SYNC_ERROR',
+              message: `Failed to sync product ${product.item_code}: ${result.error}`,
+              payload: normalizedProduct,
+            } as any);
           }
         } catch (error: any) {
           failureCount++;
-          this.logger.error(`Error syncing product ${product.sku} to ${mp}: ${error.message}`);
-
-          if (mp === MarketplaceSource.AMAZON) {
-            await this.productRepo.update(product.id, { amazonSync: false, amazonLastSync: new Date(), lastSyncedAt: new Date() });
-          } else if (mp === MarketplaceSource.FLIPKART) {
-            await this.productRepo.update(product.id, { flipkartSync: false, flipkartLastSync: new Date(), lastSyncedAt: new Date() });
-          }
+          this.logger.error(`Exception syncing ${product.item_code} to ${mp}: ${error.message}`);
+          
+          const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
+          await this.erpnextService['connector'].updateItem(product.item_code, {
+            [statusField]: 'failed'
+          });
         }
       }
 
-      this.logger.log(`Finished syncing products to ${mp}: ${successCount} succeeded, ${failureCount} failed.`);
-
-      syncHistory.status = failureCount > 0 ? (successCount === 0 ? 'FAILED' : 'PARTIAL') : 'COMPLETED';
+      syncHistory.status = failureCount > 0 ? 'PARTIAL_SUCCESS' : 'COMPLETED';
       syncHistory.itemsSynced = successCount;
       syncHistory.itemsFailed = failureCount;
       syncHistory.completedAt = new Date();
-      syncHistory.durationMs = syncHistory.completedAt.getTime() - syncHistory.startedAt.getTime();
       await this.syncHistoryRepo.save(syncHistory);
 
-      // Automatic inventory sync has been completely disabled here as requested.
-
+      this.logger.log(`Finished syncing to ${mp}. Success: ${successCount}, Failed: ${failureCount}`);
     }
-  }
 
-  @OnQueueCompleted()
-  onCompleted(job: Job): void {
-    this.logger.debug(`Products job ${job.id} (${job.name}) completed`);
-  }
-
-  @OnQueueFailed()
-  async onFailed(job: Job, error: Error): Promise<void> {
-    this.logger.error(`Products job ${job.id} failed: ${error.message}`);
-    await this.errorLogRepo.save({
-      source: QUEUE_NAMES.PRODUCTS,
-      context: job.name,
-      message: error.message,
-      stackTrace: error.stack,
-      payload: job.data,
-    });
+    if (!skipInventorySync && skus && skus.length > 0) {
+      await this.inventoryQueue.add(JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE, { source, skus });
+    }
   }
 }

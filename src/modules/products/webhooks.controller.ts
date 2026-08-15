@@ -61,21 +61,10 @@ export class ProductsWebhookController {
 
     this.logger.log(`Received ERPNext webhook for item: ${itemCode}`);
     
-    // Process payload locally (no need to fetch from ERPNext)
-    let processedData;
-    try {
-      processedData = await this.productsService.processWebhookPayload(doc, payload);
-    } catch (err: any) {
-      this.logger.error(`Failed to process webhook payload for ${itemCode}: ${err.message}`);
-      logEntry.processingError = err.message;
-      await this.webhookLogRepo.save(logEntry);
-      return { success: false, message: 'Failed to process payload', error: err.message };
-    }
-
     const queuedJobs = [];
 
     // Trigger Amazon syncs if enabled
-    if (processedData.customAmazon) {
+    if (doc.custom_amazon) {
       this.logger.log(`Queueing Amazon syncs for ${itemCode}`);
       
       const syncJobId = await this.productsService.triggerSync(MarketplaceSource.AMAZON, [itemCode], true);
@@ -89,8 +78,10 @@ export class ProductsWebhookController {
       // queuedJobs.push({ type: 'Amazon Inventory Sync', jobId: inventoryJobId });
     }
 
+
+
     // Trigger Flipkart syncs if enabled
-    if (processedData.customFlipkart) {
+    if (doc.custom_flipkart) {
       this.logger.log(`Queueing Flipkart syncs for ${itemCode}`);
       const fkSyncJobId = await this.productsService.triggerSync(MarketplaceSource.FLIPKART, [itemCode]);
       queuedJobs.push({ type: 'Flipkart Sync', jobId: fkSyncJobId });
@@ -102,39 +93,4 @@ export class ProductsWebhookController {
     return { success: true, message: 'Processed locally', queuedJobs };
   }
 
-  @Post('erpnext/fetch-from-amazon')
-  @ApiOperation({ summary: 'ERPNext Webhook to fetch single product from Amazon' })
-  async handleERPNextFetchFromAmazonWebhook(
-    @Headers('authorization') authHeader: string,
-    @Body() payload: any
-  ) {
-    const secret = process.env.ERPNEXT_WEBHOOK_SECRET;
-    
-    if (secret && authHeader !== secret) {
-      this.logger.warn('Unauthorized webhook attempt');
-      throw new UnauthorizedException('Invalid webhook secret');
-    }
-
-    let doc = payload;
-    if (payload.data && typeof payload.data === 'object') doc = payload.data;
-    else if (payload.message && typeof payload.message === 'object') doc = payload.message;
-    else if (payload.doc && typeof payload.doc === 'object') doc = payload.doc;
-
-    const sku = doc.sku || doc.item_code || doc.name;
-    
-    if (!sku) {
-      this.logger.warn(`Received webhook without SKU. Payload: ${JSON.stringify(payload).substring(0, 500)}`);
-      return { success: false, message: 'Missing sku or item_code' };
-    }
-
-    this.logger.log(`Received ERPNext webhook to fetch from Amazon for SKU: ${sku}`);
-    
-    try {
-      const result = await this.productsService.fetchSingleFromAmazonAndStore(sku);
-      return { success: true, message: `Product ${sku} fetched from Amazon successfully`, data: result };
-    } catch (err: any) {
-      this.logger.error(`Failed to fetch product ${sku} from Amazon via webhook: ${err.message}`);
-      return { success: false, message: err.message || `Failed to fetch product ${sku} from Amazon` };
-    }
-  }
 }

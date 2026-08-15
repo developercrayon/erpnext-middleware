@@ -10,8 +10,6 @@ import { FlipkartConnector } from '../../connectors/flipkart/flipkart.connector'
 import { SyncHistory, SyncResourceType, ItemSyncLog } from '../../../database/entities/operational.entity';
 import { MarketplaceSource, Order } from '../../../database/entities/order.entity';
 import { ErrorLog } from '../../../database/entities/logs.entity';
-import { Product } from '../../../database/entities/product.entity';
-
 @Processor(QUEUE_NAMES.PRICING)
 export class PricingProcessor {
   private readonly logger = new Logger(PricingProcessor.name);
@@ -24,8 +22,6 @@ export class PricingProcessor {
     private readonly itemSyncLogRepo: Repository<ItemSyncLog>,
     @InjectRepository(ErrorLog)
     private readonly errorLogRepo: Repository<ErrorLog>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
   ) {}
 
   @Process(JOB_NAMES.SYNC_PRICES_TO_MARKETPLACE)
@@ -44,11 +40,14 @@ export class PricingProcessor {
     // const priceMap = await this.erpnextService.getPricesForSkus(skusToSync);
     const priceMap: Record<string, number> = {};
 
-    // Fetch products from local DB
-    const localProducts = await this.productRepo.find({
-      where: skusToSync.map(sku => ({ sku }))
-    });
-    const localProductMap = new Map(localProducts.map(p => [p.sku, p]));
+    // Fetch products from ERPNext directly
+    const localProductMap = new Map<string, any>();
+    for (const sku of skusToSync) {
+      const result = await this.erpnextService['connector'].getFullItem(sku);
+      if (result.success && result.data) {
+        localProductMap.set(sku, result.data);
+      }
+    }
 
     const priceItems: any[] = [];
     const missingSkus: string[] = [];
@@ -63,25 +62,22 @@ export class PricingProcessor {
       const localProd = localProductMap.get(sku);
       if (localProd) {
         // Use marketplace specific custom price if available, else generic selling price
-        if (source === MarketplaceSource.AMAZON && localProd.customAmazonPrice) {
-          finalPrice = parseFloat(localProd.customAmazonPrice.toString());
-        } else if (source === MarketplaceSource.FLIPKART && localProd.customFlipkartPrice) {
-          finalPrice = parseFloat(localProd.customFlipkartPrice.toString());
-        } else if (localProd.sellingPrice) {
-          finalPrice = parseFloat(localProd.sellingPrice.toString());
+        if (source === MarketplaceSource.AMAZON && localProd.custom_amazon_price) {
+          finalPrice = parseFloat(localProd.custom_amazon_price.toString());
+        } else if (source === MarketplaceSource.FLIPKART && localProd.custom_flipkart_price) {
+          finalPrice = parseFloat(localProd.custom_flipkart_price.toString());
+        } else if (localProd.custom_mrp) {
+          finalPrice = parseFloat(localProd.custom_mrp.toString());
         }
       }
 
       if (finalPrice && finalPrice > 0) {
-        const localProd = localProductMap.get(sku);
-        const productType = localProd?.amazonRawPayload?.summaries?.[0]?.productType 
-          || localProd?.amazonRawPayload?.productType 
-          || 'PRODUCT';
+        const productType = localProd?.custom_amazon_product_type || 'PRODUCT';
           
         priceItems.push({
           sku,
           sellingPrice: finalPrice,
-          mrp: localProd?.mrp || finalPrice,
+          mrp: localProd?.custom_mrp || finalPrice,
           currency: 'INR',
           productType
         });

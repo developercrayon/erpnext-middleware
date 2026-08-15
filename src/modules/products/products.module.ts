@@ -6,7 +6,6 @@ import { ProductsWebhookController } from './webhooks.controller';
 import { ProductsService } from './products.service';
 import { FieldMapping } from '../../database/entities/mapping.entity';
 import { ErpnextProductField } from '../../database/entities/erpnext-product-field.entity';
-import { Product } from '../../database/entities/product.entity';
 import { Country } from '../../database/entities/country.entity';
 import { QueueJob } from '../../database/entities/operational.entity';
 import { WebhookLog, ErrorLog } from '../../database/entities/logs.entity';
@@ -20,7 +19,7 @@ import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, QueueJob, WebhookLog, ErrorLog, FieldMapping, ErpnextProductField, Country]),
+    TypeOrmModule.forFeature([QueueJob, WebhookLog, ErrorLog, FieldMapping, ErpnextProductField, Country]),
     BullModule.registerQueue({ name: QUEUE_NAMES.PRODUCTS }),
     AuthModule,
     ERPNextModule,

@@ -21,7 +21,6 @@ import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { ErrorLog } from '../../database/entities/logs.entity';
 import { Inventory } from '../../database/entities/inventory.entity';
-import { Product } from '../../database/entities/product.entity';
 
 const queues = Object.values(QUEUE_NAMES).map((name) =>
   BullModule.registerQueueAsync({
@@ -62,7 +61,6 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
       ErrorLog,
       Inventory,
       ItemSyncLog,
-      Product,
       SyncHistory,
     ]),
     OrdersModule,

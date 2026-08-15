@@ -52,6 +52,8 @@ export interface FetchOrdersParams {
 export interface FetchProductsParams {
   nextToken?: string;
   pageSize?: number;
+  limit_start?: number;
+  search?: string;
   category?: string;
   sku?: string;
 }

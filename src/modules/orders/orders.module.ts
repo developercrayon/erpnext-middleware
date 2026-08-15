@@ -13,11 +13,9 @@ import { ERPNextModule } from '../connectors/erpnext/erpnext.module';
 import { AmazonModule } from '../connectors/amazon/amazon.module';
 import { FlipkartModule } from '../connectors/flipkart/flipkart.module';
 
-import { Product } from '../../database/entities/product.entity';
-
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, WebhookLog, QueueJob, ApiLog, Product]),
+    TypeOrmModule.forFeature([Order, OrderItem, WebhookLog, QueueJob, ApiLog]),
     BullModule.registerQueue({ name: QUEUE_NAMES.ORDERS }),
     AuthModule,
     ERPNextModule,

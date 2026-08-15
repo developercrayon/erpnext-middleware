@@ -11,7 +11,7 @@ import { NormalizedOrder } from '../connectors/base/connector.types';
 import { OrderQueryDto } from './dto/order.dto';
 import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
 import { generateCorrelationId } from '../../utils/crypto.util';
-import { Product } from '../../database/entities/product.entity';
+
 import { AmazonConnector } from '../connectors/amazon/amazon.connector';
 import { ERPNextConnector } from '../connectors/erpnext/erpnext.connector';
 
@@ -30,8 +30,6 @@ export class OrdersService {
     private readonly apiLogRepo: Repository<ApiLog>,
     @InjectRepository(QueueJob)
     private readonly queueJobRepo: Repository<QueueJob>,
-    @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>,
     @InjectQueue(QUEUE_NAMES.ORDERS)
     private readonly ordersQueue: Queue,
     private readonly amazonConnector: AmazonConnector,
@@ -208,9 +206,9 @@ export class OrdersService {
             productsString += `> **Product Name :** ${item.productName}\n> **Product SKU :** ${item.sku}\n> **Quantity :** ${item.quantity}\n> **Item Price :** ${itemPriceAmount} ${itemPriceCurrency}\n\n`;
 
             try {
-              const product = await this.productRepo.findOne({ where: { sku: item.sku } });
-              if (product) {
-                const raw = product.erpnextRawPayload || {};
+              const productRes = await this.erpNextConnector.getFullItem(item.sku);
+              if (productRes.success && productRes.data) {
+                const raw = productRes.data;
                 let thumb = raw.custom_thumbnail_image || raw.image;
                 if (!thumb && raw.attachments && raw.attachments.length > 0) {
                   thumb = raw.attachments[0]?.file_url;
