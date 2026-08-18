@@ -98,4 +98,9 @@ export default () => ({
     maxFiles: process.env.LOG_MAX_FILES || '14d',
     maxSize: process.env.LOG_MAX_SIZE || '20m',
   },
+
+  ai: {
+    encryptionKey: process.env.AI_ENCRYPTION_KEY || '',
+  },
 });
+

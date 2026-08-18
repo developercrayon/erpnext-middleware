@@ -21,9 +21,9 @@ export default registerAs(
     logging: process.env.DB_LOGGING === 'true',
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     extra: {
-      max: 10,
+      max: 50,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 30000,
     },
   }),
 );

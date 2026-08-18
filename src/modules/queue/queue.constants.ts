@@ -6,6 +6,7 @@ export const QUEUE_NAMES = {
   SHIPMENTS: 'shipments',
   RETRY: 'retry',
   AMAZON_PRODUCT_TYPES: 'amazon-product-types',
+  AI: 'ai',
 } as const;
 
 export const JOB_NAMES = {
@@ -38,6 +39,9 @@ export const JOB_NAMES = {
 
   // Retry
   RETRY_FAILED_JOB: 'retry-failed-job',
+
+  // AI
+  AI_GENERATE_PRODUCT: 'ai-generate-product',
 } as const;
 
 export const QUEUE_DEFAULT_OPTIONS = {

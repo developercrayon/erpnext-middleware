@@ -32,6 +32,7 @@ import { OrderFieldMappingModule } from './modules/order-field-mapping/order-fie
 // Infrastructure
 import { QueueModule } from './modules/queue/queue.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { AiModule } from './modules/ai/ai.module';
 import { HealthController } from './common/health/health.controller';
 import { AppController } from './app.controller';
 
@@ -115,6 +116,7 @@ import { AdminModule } from './admin/admin.module';
     // ─── Infrastructure ───────────────────────────────────────────────────────
     QueueModule,
     SchedulerModule,
+    AiModule,
   ],
   controllers: [AppController, HealthController],
 })

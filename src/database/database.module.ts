@@ -25,9 +25,9 @@ import { join } from 'path';
             ? { rejectUnauthorized: false }
             : false,
         extra: {
-          max: 10,
+          max: 50,
           idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 10000,
+          connectionTimeoutMillis: 30000,
         },
       }),
     }),
