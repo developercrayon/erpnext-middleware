@@ -22,6 +22,7 @@ export interface AiModelDefinition {
   capabilities: AiModelCapabilities;
 }
 
+export { AI_MODELS_RAW } from './ai-models';
 import { AI_MODELS_RAW } from './ai-models';
 
 export const AI_MODEL_REGISTRY: AiModelDefinition[] = [];
