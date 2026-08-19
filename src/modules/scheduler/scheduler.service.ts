@@ -6,6 +6,14 @@ import { Queue } from 'bull';
 import { QUEUE_NAMES, JOB_NAMES, QUEUE_DEFAULT_OPTIONS } from '../queue/queue.constants';
 import { MarketplaceSource } from '../../database/entities/order.entity';
 
+function parseCron(envValue: string | undefined, defaultCron: string): string {
+  if (!envValue) return defaultCron;
+  if (envValue === 'disabled' || envValue.includes('31 2')) {
+    return '0 0 1 1 *'; // Valid fallback that runs once a year
+  }
+  return envValue;
+}
+
 @Injectable()
 export class SchedulerService {
   private readonly logger = new Logger(SchedulerService.name);
@@ -26,7 +34,7 @@ export class SchedulerService {
    * Fetch new marketplace orders from Amazon and Flipkart.
    * Default: every 15 minutes (configurable via CRON_FETCH_ORDERS env).
    */
-  @Cron(process.env.CRON_FETCH_ORDERS || '*/15 * * * *', {
+  @Cron(parseCron(process.env.CRON_FETCH_ORDERS, '*/15 * * * *'), {
     name: 'fetch-marketplace-orders',
   })
   async fetchMarketplaceOrders(): Promise<void> {
@@ -58,7 +66,7 @@ export class SchedulerService {
    * Sync inventory from ERPNext to all marketplaces.
    * Default: every 30 minutes (configurable via CRON_SYNC_INVENTORY env).
    */
-  @Cron(process.env.CRON_SYNC_INVENTORY || '*/30 * * * *', {
+  @Cron(parseCron(process.env.CRON_SYNC_INVENTORY, '*/30 * * * *'), {
     name: 'sync-inventory',
   })
   async syncInventory(): Promise<void> {
@@ -82,7 +90,7 @@ export class SchedulerService {
    * Sync prices from ERPNext to all marketplaces.
    * Default: every hour (configurable via CRON_SYNC_PRICES env).
    */
-  @Cron(process.env.CRON_SYNC_PRICES || '0 * * * *', {
+  @Cron(parseCron(process.env.CRON_SYNC_PRICES, '0 * * * *'), {
     name: 'sync-prices',
   })
   async syncPrices(): Promise<void> {
@@ -106,7 +114,7 @@ export class SchedulerService {
    * Retry failed synchronization jobs.
    * Default: every 10 minutes (configurable via CRON_RETRY_FAILED env).
    */
-  @Cron(process.env.CRON_RETRY_FAILED || '*/10 * * * *', {
+  @Cron(parseCron(process.env.CRON_RETRY_FAILED, '*/10 * * * *'), {
     name: 'retry-failed',
   })
   async retryFailedJobs(): Promise<void> {
