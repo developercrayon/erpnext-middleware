@@ -14,6 +14,7 @@ alter-*.js
 fetch-*.js
 find-*.js
 clear-*.js
+flush_redis.js
 get-*.js
 *.json
 !package.json

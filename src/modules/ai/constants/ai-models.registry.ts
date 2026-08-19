@@ -26,7 +26,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export const AI_MODELS_RAW = JSON.parse(
-  fs.readFileSync(path.join(process.cwd(), 'src', 'modules', 'ai', 'constants', 'ai-models.json'), 'utf8')
+  fs.readFileSync(path.join(__dirname, 'ai-models.json'), 'utf8')
 );
 
 export const AI_MODEL_REGISTRY: AiModelDefinition[] = [];

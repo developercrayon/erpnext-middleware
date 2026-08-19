@@ -12,6 +12,10 @@
       {
         "include": "**/*.tsx",
         "outDir": "dist"
+      },
+      {
+        "include": "**/*.json",
+        "outDir": "dist"
       }
     ]
   }
