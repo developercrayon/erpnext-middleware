@@ -22,12 +22,7 @@ export interface AiModelDefinition {
   capabilities: AiModelCapabilities;
 }
 
-import * as fs from 'fs';
-import * as path from 'path';
-
-export const AI_MODELS_RAW = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'ai-models.json'), 'utf8')
-);
+import { AI_MODELS_RAW } from './ai-models';
 
 export const AI_MODEL_REGISTRY: AiModelDefinition[] = [];
 
