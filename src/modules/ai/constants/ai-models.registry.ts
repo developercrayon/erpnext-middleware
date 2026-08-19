@@ -4,7 +4,7 @@
  * and for validating user-configured models.
  */
 
-export type AiProviderName = 'openai' | 'anthropic' | 'google';
+export type AiProviderName = 'openai' | 'anthropic' | 'google' | 'scalemax';
 
 export interface AiModelCapabilities {
   /** Can generate text content (product title, description, SEO fields) */

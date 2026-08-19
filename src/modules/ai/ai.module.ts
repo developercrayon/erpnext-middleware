@@ -17,6 +17,7 @@ import { AiProviderFactory } from './providers/ai-provider.factory';
 import { OpenAiProvider } from './providers/openai.provider';
 import { AnthropicProvider } from './providers/anthropic.provider';
 import { GoogleProvider } from './providers/google.provider';
+import { ScalemaxProvider } from './providers/scalemax.provider';
 
 // Controllers
 import { AiSettingsController } from './controllers/ai-settings.controller';
@@ -49,6 +50,7 @@ import { AiGenerationProcessor } from './processors/ai-generation.processor';
     OpenAiProvider,
     AnthropicProvider,
     GoogleProvider,
+    ScalemaxProvider,
     AiGenerationProcessor,
   ],
   exports: [ProductAiService, AiSettingsService],

@@ -6,6 +6,7 @@ import { AiProviderName } from '../constants/ai-models.registry';
 import { OpenAiProvider } from './openai.provider';
 import { AnthropicProvider } from './anthropic.provider';
 import { GoogleProvider } from './google.provider';
+import { ScalemaxProvider } from './scalemax.provider';
 
 @Injectable()
 export class AiProviderFactory {
@@ -13,6 +14,7 @@ export class AiProviderFactory {
     private readonly openAiProvider: OpenAiProvider,
     private readonly anthropicProvider: AnthropicProvider,
     private readonly googleProvider: GoogleProvider,
+    private readonly scalemaxProvider: ScalemaxProvider,
   ) {}
 
   /**
@@ -26,6 +28,8 @@ export class AiProviderFactory {
         return this.anthropicProvider;
       case 'google':
         return this.googleProvider;
+      case 'scalemax':
+        return this.scalemaxProvider;
       default:
         throw new BadRequestException(`Unsupported AI provider: ${providerName}`);
     }

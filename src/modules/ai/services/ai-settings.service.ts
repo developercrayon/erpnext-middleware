@@ -67,14 +67,14 @@ export class AiSettingsService {
       relations: configType === AiConfigType.IMAGE ? ['imagePrompts'] : [],
     });
 
-    if (!config || !config.apiKeyEncrypted) {
+    if (!config || (!config.apiKeyEncrypted && !(config.provider === 'scalemax' && process.env.SCALEMAX_API_KEY))) {
       throw new NotFoundException(`AI ${configType} configuration is missing or incomplete.`);
     }
 
     return {
       provider: config.provider,
       model: config.model,
-      apiKey: this.encryptionService.decrypt(config.apiKeyEncrypted),
+      apiKey: config.apiKeyEncrypted ? this.encryptionService.decrypt(config.apiKeyEncrypted) : (config.provider === 'scalemax' ? process.env.SCALEMAX_API_KEY : undefined),
       apiSecret: config.apiSecretEncrypted
         ? this.encryptionService.decrypt(config.apiSecretEncrypted)
         : undefined,

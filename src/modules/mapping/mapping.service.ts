@@ -166,18 +166,22 @@ export class MappingService {
     const entitiesToUpsert: any[] = [];
 
 
+    let fieldIdx = 0;
     // Prepare ERPNext fields
     for (const f of result.data) {
-      if (!f.fieldname || ['Column Break', 'Section Break', 'Tab Break', 'HTML', 'Heading', 'Fold'].includes(f.fieldtype)) continue;
+      if (['HTML', 'Heading', 'Fold'].includes(f.fieldtype)) continue;
+      
+      const fieldname = f.fieldname || `generated_${f.fieldtype.replace(/\\s+/g, '_').toLowerCase()}_${fieldIdx}`;
 
       entitiesToUpsert.push({
-        name: f.fieldname,
-        label: f.label || this.formatLabel(f.fieldname),
+        name: fieldname,
+        idx: fieldIdx++,
+        label: f.label || this.formatLabel(fieldname),
         fieldtype: f.fieldtype,
         options: f.options ? String(f.options) : null,
         fetchFrom: f.fetch_from || null,
         defaultValue: f.default_value ? String(f.default_value) : null,
-        isCustom: f.fieldname.startsWith('custom_'),
+        isCustom: fieldname.startsWith('custom_'),
       });
     }
 
@@ -277,18 +281,29 @@ export class MappingService {
   }
 
   async getErpnextDocTypeSchema(doctype: string) {
+    if (doctype === 'Item') {
+      const fields = await this.erpnextProductFieldRepo.find({ order: { idx: 'ASC' } });
+      return fields.map(f => ({
+        label: f.label,
+        value: f.name,
+        fieldtype: f.fieldtype,
+        options: f.options,
+      }));
+    }
+
     try {
       const result = await this.erpnextConnector.getDocTypeFields(doctype);
       if (!result.success || !result.data || !Array.isArray(result.data)) {
         return [];
       }
 
-      const validFields = result.data.filter((f: any) => !['Column Break', 'Section Break', 'Tab Break', 'HTML', 'Heading', 'Fold'].includes(f.fieldtype));
+      const validFields = result.data.filter((f: any) => !['HTML', 'Heading', 'Fold'].includes(f.fieldtype));
       
       return validFields.map((f: any) => ({
-        label: f.label || this.formatLabel(f.fieldname),
-        value: f.fieldname,
+        label: f.label || this.formatLabel(f.fieldname || f.label || 'unknown'),
+        value: f.fieldname || `generated_${f.fieldtype}_${Math.random()}`,
         fieldtype: f.fieldtype,
+        options: f.options,
       }));
     } catch (err: any) {
       this.logger.error(`getErpnextDocTypeSchema error for ${doctype}: ${err.message}`);
@@ -310,11 +325,11 @@ export class MappingService {
       const [data, total] = await this.erpnextProductFieldRepo.findAndCount({
         where: search
           ? [
-            { name: ILike(`%${search}%`) },
-            { label: ILike(`%${search}%`) },
+            { name: ILike(`%${search}%`), fieldtype: Not(In(['Tab Break', 'Section Break'])) },
+            { label: ILike(`%${search}%`), fieldtype: Not(In(['Tab Break', 'Section Break'])) },
             { fieldtype: ILike(`%${search}%`) },
           ]
-          : undefined,
+          : { fieldtype: Not(In(['Tab Break', 'Section Break'])) },
         order: { name: 'ASC' },
         skip,
         take: limitNum,
@@ -329,6 +344,7 @@ export class MappingService {
     }
 
     const fields = await this.erpnextProductFieldRepo.find({
+      where: { fieldtype: Not(In(['Tab Break', 'Section Break'])) },
       order: { label: 'ASC' },
     });
 

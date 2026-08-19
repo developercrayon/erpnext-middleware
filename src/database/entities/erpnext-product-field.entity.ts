@@ -8,6 +8,9 @@ export class ErpnextProductField {
   @Column({ type: 'varchar', unique: true })
   name: string;
 
+  @Column({ type: 'int', default: 0 })
+  idx: number;
+
   @Column({ type: 'varchar', nullable: true })
   label: string;
 
