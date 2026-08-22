@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Delete,
   Param,
   Query,
@@ -29,6 +30,12 @@ export class QueueController {
   @ApiOperation({ summary: 'Get a single queue job by ID' })
   async getQueueJobById(@Param('id', ParseUUIDPipe) id: string) {
     return this.queueService.getQueueJobById(id);
+  }
+
+  @Post('drain-all')
+  @ApiOperation({ summary: 'Drain and obliterate all BullMQ queues — stops infinite loops immediately' })
+  async drainAll() {
+    return this.queueService.drainAll();
   }
 
   @Delete()

@@ -116,14 +116,17 @@ export class AiGenerationProcessor {
               apiKey: imageConfig.apiKey,
               apiSecret: imageConfig.apiSecret,
             },
+            onProgress: async (result, currentResults) => {
+              productData.generatedImages = currentResults;
+              await this.productDataRepo.save(productData);
+
+              aiJob.imageCompleted = currentResults.filter((img) => img.success).length;
+              aiJob.imageFailed = currentResults.filter((img) => !img.success).length;
+              await this.jobRepo.save(aiJob);
+            }
           });
 
-          productData.generatedImages = generatedImages;
-          await this.productDataRepo.save(productData);
-
-          aiJob.imageCompleted = generatedImages.filter((img) => img.success).length;
-          aiJob.imageFailed = generatedImages.filter((img) => !img.success).length;
-          await this.jobRepo.save(aiJob);
+          // Generated images and job counts are saved progressively in onProgress
         }
       } catch (err: any) {
         this.logger.error(`Image Generation Phase Failed: ${err.message}`);

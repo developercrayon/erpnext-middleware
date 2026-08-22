@@ -153,13 +153,18 @@ export class ProductsProcessor {
           } else {
             failureCount++;
             this.logger.error(`Failed to sync ${product.item_code} to ${mp}: ${result.error}`);
-            
-            // Write failure status back to ERPNext
-            const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
-            
-            await this.erpnextService['connector'].updateItem(product.item_code, {
-              [statusField]: 'failed'
-            });
+
+            // Check if it's a 4xx error — writing failed status back to ERPNext would
+            // re-trigger the ERPNext webhook, creating an infinite sync loop.
+            const is4xx = result.error && /HTTP 4\d\d/.test(result.error);
+            if (!is4xx) {
+              const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
+              await this.erpnextService['connector'].updateItem(product.item_code, {
+                [statusField]: 'failed'
+              });
+            } else {
+              this.logger.warn(`Skipping ERPNext status write for ${product.item_code} — 4xx errors trigger webhook loop.`);
+            }
 
             await this.errorLogRepo.save({
               source: mp,
@@ -171,11 +176,20 @@ export class ProductsProcessor {
         } catch (error: any) {
           failureCount++;
           this.logger.error(`Exception syncing ${product.item_code} to ${mp}: ${error.message}`);
-          
-          const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
-          await this.erpnextService['connector'].updateItem(product.item_code, {
-            [statusField]: 'failed'
-          });
+
+          // 4xx errors (e.g. 400 InvalidInput, 422 Unprocessable) are permanent failures.
+          // Retrying them creates an infinite loop — discard the job immediately.
+          const statusCode = error?.response?.status || error?.statusCode || 0;
+          if (statusCode >= 400 && statusCode < 500) {
+            this.logger.warn(`Non-retryable ${statusCode} error for ${product.item_code}. Discarding job — NOT writing to ERPNext to avoid webhook loop.`);
+            job.discard();
+            // DO NOT write back to ERPNext — that write triggers the webhook again!
+          } else {
+            const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
+            await this.erpnextService['connector'].updateItem(product.item_code, {
+              [statusField]: 'failed'
+            });
+          }
         }
       }
 

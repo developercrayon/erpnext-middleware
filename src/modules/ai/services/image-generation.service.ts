@@ -17,6 +17,7 @@ export interface GenerateImagesOptions {
     apiKey: string;
     apiSecret?: string;
   };
+  onProgress?: (result: GeneratedImageResult, currentResults: GeneratedImageResult[]) => Promise<void>;
 }
 
 export interface GeneratedImageResult {
@@ -70,7 +71,7 @@ export class ImageGenerationService {
         // Write to disk
         fs.writeFileSync(filePath, Buffer.from(response.imageBase64, 'base64'));
 
-        results.push({
+        const result = {
           filename,
           file_path: filePath,
           serve_url: `/api/v1/ai/images/${options.dataId}/${i}`, // Used to stream from DB via API
@@ -78,11 +79,15 @@ export class ImageGenerationService {
           prompt_index: i,
           prompt_text: prompt.promptText,
           success: true,
-        });
+        };
+        results.push(result);
+        if (options.onProgress) {
+          await options.onProgress(result, [...results]);
+        }
       } catch (error: any) {
         this.logger.error(`Failed to generate image for prompt ${i}: ${error.message}`);
         
-        results.push({
+        const result = {
           filename: '',
           file_path: '',
           serve_url: '',
@@ -91,7 +96,11 @@ export class ImageGenerationService {
           prompt_text: prompt.promptText,
           success: false,
           error: error.message,
-        });
+        };
+        results.push(result);
+        if (options.onProgress) {
+          await options.onProgress(result, [...results]);
+        }
       }
     }
 

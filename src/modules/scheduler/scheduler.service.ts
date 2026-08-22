@@ -28,6 +28,8 @@ export class SchedulerService {
     private readonly pricingQueue: Queue,
     @InjectQueue(QUEUE_NAMES.RETRY)
     private readonly retryQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.SYSTEM)
+    private readonly systemQueue: Queue,
   ) {}
 
   /**
@@ -135,5 +137,21 @@ export class SchedulerService {
     );
 
     this.logger.log('CRON: Retry job queued');
+  }
+
+  /**
+   * Clear old logs daily at 12:00 noon (configurable via CRON_CLEANUP_LOGS).
+   */
+  @Cron(parseCron(process.env.CRON_CLEANUP_LOGS, '0 12 * * *'), {
+    name: 'clear-old-logs',
+  })
+  async clearOldLogs(): Promise<void> {
+    const cronValue = process.env.CRON_CLEANUP_LOGS;
+    if (cronValue && (cronValue.includes('31 2') || cronValue === 'disabled')) {
+      this.logger.log('CRON: clear-old-logs is disabled');
+      return;
+    }
+    this.logger.log('CRON: Triggering log cleanup...');
+    await this.systemQueue.add(JOB_NAMES.CLEAR_LOGS, {}, QUEUE_DEFAULT_OPTIONS);
   }
 }

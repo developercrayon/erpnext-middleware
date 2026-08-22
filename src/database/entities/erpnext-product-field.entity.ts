@@ -29,11 +29,14 @@ export class ErpnextProductField {
   @Column({ name: 'is_custom', type: 'boolean', default: false })
   isCustom: boolean;
 
-  @Column({ name: 'amazon_template', type: 'text', nullable: true })
-  amazonTemplate: string;
+  @Column({ name: 'reqd', type: 'boolean', default: false })
+  reqd: boolean;
 
-  @Column({ name: 'flipkart_template', type: 'text', nullable: true })
-  flipkartTemplate: string;
+  @Column({ name: 'collapsible', type: 'boolean', default: false })
+  collapsible: boolean;
+
+  @Column({ name: 'insert_after', type: 'varchar', nullable: true })
+  insertAfter: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

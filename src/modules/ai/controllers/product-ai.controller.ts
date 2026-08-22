@@ -10,6 +10,7 @@ import {
   Res,
   NotFoundException,
   Logger,
+  Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
@@ -32,8 +33,11 @@ export class ProductAiController {
 
   @Get('product-data')
   @UseGuards(AuthGuard('jwt'))
-  async listAiProducts() {
-    const data = await this.productAiService.listAiProducts();
+  async listAiProducts(
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ) {
+    const data = await this.productAiService.listAiProducts(Number(page), Number(pageSize));
     return data;
   }
 

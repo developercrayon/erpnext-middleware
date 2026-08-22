@@ -65,12 +65,49 @@ export class ProductsService {
   // ─── Actions (Proxied to ERPNext) ────────────────────────────────────────
 
   async createProduct(data: any) {
-    // We create directly in ERPNext
-    const mappedData = mapFrontendToERPNext(data);
+    // Fetch the Item schema so the mapper can resolve child table doctypes
+    let schema: Array<{ fieldname: string; fieldtype: string; options?: string }> = [];
+    try {
+      const schemaResult = await this.erpnextService['connector'].getItemSchema();
+      if (schemaResult?.success && Array.isArray(schemaResult.data)) {
+        schema = schemaResult.data;
+      }
+    } catch (e) {
+      this.logger.warn('Could not fetch item schema for mapper — child doctype injection skipped');
+    }
+
+    const mappedData = mapFrontendToERPNext(data, schema);
     const result = await this.erpnextService['connector'].createItem(mappedData);
     if (!result.success) {
       throw new Error(result.error);
     }
+
+    const itemCode = result.data.name;
+
+    // Upload attachment files to ERPNext via upload_file API (with doctype + docname context)
+    if (data._uploaded_images && data._uploaded_images.length > 0) {
+      for (const url of data._uploaded_images) {
+        try {
+          await this.erpnextService['connector'].attachFileToItem(itemCode, url);
+        } catch (e) {
+          this.logger.warn(`Failed to attach image URL to item ${itemCode}: ${url}`);
+        }
+      }
+    }
+
+    return result.data;
+  }
+
+
+  async uploadImage(file: any) {
+    const result = await this.erpnextService['connector'].uploadFile(file);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  }
+
+  async uploadImageToItem(file: any, itemCode: string) {
+    const result = await this.erpnextService['connector'].uploadFileToItem(file, itemCode);
+    if (!result.success) throw new Error(result.error);
     return result.data;
   }
 
@@ -81,10 +118,10 @@ export class ProductsService {
   }
 
   async remove(sku: string) {
-    // Delete from ERPNext directly
-    // This assumes we add deleteItem to the connector
-    const result = await this.erpnextService['connector'].updateItem(sku, { disabled: 1 });
-    return result;
+    // Hard delete from ERPNext
+    const result = await this.erpnextService['connector'].deleteItem(sku);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   }
 
   async updateStatus(sku: string, disabled: number) {
@@ -118,8 +155,42 @@ export class ProductsService {
     return this.erpnextService['connector'].getItemSchema();
   }
 
+  async getDoctypeSchema(doctype: string) {
+    return this.erpnextService['connector'].getDoctypeSchema(doctype);
+  }
+
   async getLinkOptions(doctype: string, query?: string) {
     return this.erpnextService['connector'].getLinkOptions(doctype, query);
+  }
+
+  async createMultipleVariants(
+    item: string,
+    args: Record<string, string[]>,
+    useTemplateImage = 0,
+  ): Promise<any> {
+    const connector = this.erpnextService['connector'] as any;
+    // ERPNext expects:
+    //   item            — template item code
+    //   args            — JSON string mapping attribute name → array of values
+    //   use_template_image — 0 | 1
+    const result = await connector.enqueueMultipleVariantCreation({
+      item,
+      args: JSON.stringify(args),
+      use_template_image: useTemplateImage,
+    });
+    return result;
+  }
+
+  async getItemAttachments(sku: string) {
+    const result = await this.erpnextService['connector'].fetchItemAttachments(sku);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  }
+
+  async deleteAttachment(fileName: string) {
+    const result = await this.erpnextService['connector'].deleteAttachment(fileName);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   }
 
   async getStats() {

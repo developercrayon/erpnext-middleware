@@ -12,6 +12,7 @@ import { QUEUE_NAMES } from '../queue/queue.constants';
       { name: QUEUE_NAMES.INVENTORY },
       { name: QUEUE_NAMES.PRICING },
       { name: QUEUE_NAMES.RETRY },
+      { name: QUEUE_NAMES.SYSTEM },
     ),
   ],
   providers: [SchedulerService],

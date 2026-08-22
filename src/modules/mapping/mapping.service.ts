@@ -158,20 +158,38 @@ export class MappingService {
   }
 
   async syncErpnextFields(): Promise<{ message: string; count: number }> {
-    const result = await this.erpnextConnector.getItemFields();
-    if (!result.success || !result.data) {
-      throw new Error(`Failed to fetch ERPNext Item fields: ${result.error || 'Unknown error'}`);
+    // Try v2 meta API first (includes is_system_generated, reqd, collapsible, insert_after)
+    let fieldsData: any[] | null = null;
+    const v2Result = await this.erpnextConnector.getItemMetaV2();
+    if (v2Result.success && Array.isArray(v2Result.data) && v2Result.data.length > 0) {
+      fieldsData = v2Result.data;
+    } else {
+      // Fallback to v1 getItemFields if v2 not available
+      this.logger.warn('v2 meta API failed or returned empty, falling back to v1 getItemFields');
+      const v1Result = await this.erpnextConnector.getItemFields();
+      if (!v1Result.success || !v1Result.data) {
+        throw new Error(`Failed to fetch ERPNext Item fields: ${v1Result.error || 'Unknown error'}`);
+      }
+      fieldsData = v1Result.data;
     }
 
     const entitiesToUpsert: any[] = [];
-
-
     let fieldIdx = 0;
-    // Prepare ERPNext fields
-    for (const f of result.data) {
+
+    for (const f of fieldsData) {
       if (['HTML', 'Heading', 'Fold'].includes(f.fieldtype)) continue;
-      
-      const fieldname = f.fieldname || `generated_${f.fieldtype.replace(/\\s+/g, '_').toLowerCase()}_${fieldIdx}`;
+
+      const fieldname = f.fieldname || `generated_${(f.fieldtype || 'data').replace(/\s+/g, '_').toLowerCase()}_${fieldIdx}`;
+
+      // is_system_generated=0 means it IS a custom field (0 = not system-generated = custom)
+      // is_system_generated=1 means standard/system field
+      // Also fall back to checking if fieldname starts with 'custom_'
+      let isCustom: boolean;
+      if (f.is_system_generated !== undefined && f.is_system_generated !== null) {
+        isCustom = f.is_system_generated === 0 || f.is_system_generated === false;
+      } else {
+        isCustom = fieldname.startsWith('custom_');
+      }
 
       entitiesToUpsert.push({
         name: fieldname,
@@ -180,8 +198,11 @@ export class MappingService {
         fieldtype: f.fieldtype,
         options: f.options ? String(f.options) : null,
         fetchFrom: f.fetch_from || null,
-        defaultValue: f.default_value ? String(f.default_value) : null,
-        isCustom: fieldname.startsWith('custom_'),
+        defaultValue: (f.default !== undefined && f.default !== null) ? String(f.default) : (f.default_value ? String(f.default_value) : null),
+        isCustom,
+        reqd: f.reqd === 1 || f.reqd === true,
+        collapsible: f.collapsible === 1 || f.collapsible === true,
+        insertAfter: f.insert_after || null,
       });
     }
 
@@ -201,6 +222,7 @@ export class MappingService {
 
     return { message: 'ERPNext fields synced successfully', count: entitiesToUpsert.length };
   }
+
 
   async syncErpnextOrderFields(): Promise<{ message: string; count: number }> {
     const result = await this.erpnextConnector.getOrderFields();
@@ -286,8 +308,14 @@ export class MappingService {
       return fields.map(f => ({
         label: f.label,
         value: f.name,
+        fieldname: f.name,
         fieldtype: f.fieldtype,
         options: f.options,
+        reqd: f.reqd,
+        collapsible: f.collapsible,
+        insert_after: f.insertAfter,
+        is_custom: f.isCustom,
+        default_value: f.defaultValue,
       }));
     }
 
@@ -302,8 +330,14 @@ export class MappingService {
       return validFields.map((f: any) => ({
         label: f.label || this.formatLabel(f.fieldname || f.label || 'unknown'),
         value: f.fieldname || `generated_${f.fieldtype}_${Math.random()}`,
+        fieldname: f.fieldname,
         fieldtype: f.fieldtype,
         options: f.options,
+        reqd: f.reqd === 1,
+        collapsible: f.collapsible === 1,
+        insert_after: f.insert_after,
+        is_custom: false,
+        default_value: f.default,
       }));
     } catch (err: any) {
       this.logger.error(`getErpnextDocTypeSchema error for ${doctype}: ${err.message}`);
@@ -311,7 +345,8 @@ export class MappingService {
     }
   }
 
-  async updateErpnextField(id: string, dto: { amazonTemplate?: string; flipkartTemplate?: string }) {
+
+  async updateErpnextField(id: string, dto: Record<string, any>) {
     await this.erpnextProductFieldRepo.update(id, dto);
     return this.erpnextProductFieldRepo.findOne({ where: { id } });
   }

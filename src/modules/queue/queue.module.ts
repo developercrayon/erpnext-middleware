@@ -9,6 +9,7 @@ import { PricingProcessor } from './processors/pricing.processor';
 import { ShipmentsProcessor } from './processors/shipments.processor';
 import { ProductsProcessor } from './processors/products.processor';
 import { RetryProcessor } from './processors/retry.processor';
+import { SystemProcessor } from './processors/system.processor';
 import { QueueListenerService } from './queue.listener';
 import { OrdersModule } from '../orders/orders.module';
 import { ProductsModule } from '../products/products.module';
@@ -19,7 +20,7 @@ import { OrderFieldMappingModule } from '../order-field-mapping/order-field-mapp
 import { QueueJob, SyncHistory, ItemSyncLog } from '../../database/entities/operational.entity';
 import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
-import { ErrorLog } from '../../database/entities/logs.entity';
+import { ErrorLog, ApiLog, WebhookLog, ConnectorLog } from '../../database/entities/logs.entity';
 import { Inventory } from '../../database/entities/inventory.entity';
 
 const queues = Object.values(QUEUE_NAMES).map((name) =>
@@ -40,7 +41,7 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
           }
         }),
         defaultJobOptions: {
-          attempts: config.get<number>('queues.maxRetries') || 3,
+          attempts: 1, // No retries by default — 4xx errors would loop forever; increase per-job if needed
           backoff: {
             type: 'exponential',
             delay: config.get<number>('queues.retryDelay') || 5000,
@@ -59,6 +60,9 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
     TypeOrmModule.forFeature([
       QueueJob,
       ErrorLog,
+      ApiLog,
+      WebhookLog,
+      ConnectorLog,
       Inventory,
       ItemSyncLog,
       SyncHistory,
@@ -79,6 +83,7 @@ const queues = Object.values(QUEUE_NAMES).map((name) =>
     ShipmentsProcessor,
     ProductsProcessor,
     RetryProcessor,
+    SystemProcessor,
     QueueListenerService,
   ],
   exports: [BullModule],

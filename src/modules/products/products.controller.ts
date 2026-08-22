@@ -9,7 +9,10 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ProductsService, ProductStatus } from './products.service';
@@ -46,6 +49,12 @@ export class ProductsController {
     return this.productsService.getItemSchema();
   }
 
+  @Get('options/schema/:doctype')
+  @ApiOperation({ summary: 'Get the ERPNext doctype schema for a given doctype' })
+  async getDoctypeSchema(@Param('doctype') doctype: string) {
+    return this.productsService.getDoctypeSchema(doctype);
+  }
+
   @Get('options/link/:doctype')
   @ApiOperation({ summary: 'Get options for an ERPNext Link field' })
   async getLinkOptions(@Param('doctype') doctype: string, @Query('q') query?: string) {
@@ -56,6 +65,18 @@ export class ProductsController {
   @ApiOperation({ summary: 'Get full product data from ERPNext' })
   async getFullItem(@Param('id') id: string) {
     return this.productsService.getFullItem(id);
+  }
+
+  @Get(':id/attachments')
+  @ApiOperation({ summary: 'Get attachments from ERPNext' })
+  async getAttachments(@Param('id') id: string) {
+    return this.productsService.getItemAttachments(id);
+  }
+
+  @Delete('attachments/:fileName')
+  @ApiOperation({ summary: 'Delete an attachment from ERPNext' })
+  async deleteAttachment(@Param('fileName') fileName: string) {
+    return this.productsService.deleteAttachment(fileName);
   }
 
   @Get(':id')
@@ -77,11 +98,79 @@ export class ProductsController {
     }
   }
 
+  @Post('upload-image')
+  @ApiOperation({ summary: 'Upload an image file to ERPNext' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: any) {
+    if (!file) throw new BadRequestException('No file provided');
+    try {
+      const result = await this.productsService.uploadImage(file);
+      return result;
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to upload image');
+    }
+  }
+
+  @Post('upload-image-to-item')
+  @ApiOperation({ summary: 'Upload an image file and attach it to a specific ERPNext Item' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImageToItem(
+    @UploadedFile() file: any,
+    @Body('item_code') itemCode: string,
+  ) {
+    if (!file) throw new BadRequestException('No file provided');
+    if (!itemCode) throw new BadRequestException('item_code is required');
+    try {
+      const result = await this.productsService.uploadImageToItem(file, itemCode);
+      return result;
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to upload image to item');
+    }
+  }
+
+  @Post('create-variants-bulk')
+  @ApiOperation({
+    summary:
+      'Enqueue bulk ERPNext item variant creation from a template (calls enqueue_multiple_variant_creation)',
+  })
+  async createVariantsBulk(
+    @Body()
+    dto: {
+      item: string;
+      args: Record<string, string[]> | string;
+      use_template_image?: number;
+    },
+  ) {
+    try {
+      if (!dto.item) throw new Error('item is required');
+
+      // Accept args as a plain object OR as a pre-serialised JSON string
+      const argsMap: Record<string, string[]> =
+        typeof dto.args === 'string' ? JSON.parse(dto.args) : dto.args;
+
+      const result = await this.productsService.createMultipleVariants(
+        dto.item,
+        argsMap,
+        dto.use_template_image ?? 0,
+      );
+      return {
+        success: true,
+        message: 'Variant creation enqueued in ERPNext',
+        data: result,
+      };
+    } catch (error: any) {
+      throw new BadRequestException(
+        error.message || 'Failed to enqueue variant creation',
+      );
+    }
+  }
+
+
   @Put(':id')
   @ApiOperation({ summary: 'Update product details' })
   async updateProduct(
     @Param('id') id: string,
-    @Body() dto: UpdateProductDto
+    @Body() dto: any
   ) {
     try {
       const product = await this.productsService.updateProduct(id, dto);

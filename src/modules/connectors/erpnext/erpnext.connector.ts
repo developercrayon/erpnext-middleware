@@ -79,6 +79,8 @@ export class ERPNextConnector extends BaseConnector {
   }
 
 
+
+
   async fetchItemAttributes(): Promise<ConnectorResult<any>> {
     try {
       const response = await this.http.get(
@@ -87,6 +89,41 @@ export class ERPNextConnector extends BaseConnector {
       );
       return this.success(response.data);
     } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async fetchItemAttachments(itemCode: string): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.get(
+        `${this.baseUrl}/api/resource/File`,
+        {
+          headers: this.authHeaders,
+          params: {
+            fields: JSON.stringify(['name', 'file_url', 'file_name', 'is_private']),
+            filters: JSON.stringify([
+              ['attached_to_doctype', '=', 'Item'],
+              ['attached_to_name', '=', itemCode]
+            ])
+          }
+        }
+      );
+      return this.success(response.data?.data || []);
+    } catch (error) {
+      this.logger.error(`Failed to fetch attachments for ${itemCode}`, error);
+      return this.failure(error);
+    }
+  }
+
+  async deleteAttachment(fileName: string): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.delete(
+        `${this.baseUrl}/api/resource/File/${encodeURIComponent(fileName)}`,
+        { headers: this.authHeaders }
+      );
+      return this.success(response.data);
+    } catch (error) {
+      this.logger.error(`Failed to delete attachment ${fileName}`, error);
       return this.failure(error);
     }
   }
@@ -252,6 +289,55 @@ export class ERPNextConnector extends BaseConnector {
       return this.failure(error);
     }
   }
+
+  /**
+   * Fetches Item doctype meta via ERPNext v2 API.
+   * Returns fields with is_system_generated, reqd, collapsible, insert_after etc.
+   * is_system_generated=1 => default/standard field; =0 => custom field
+   */
+  async getItemMetaV2(): Promise<ConnectorResult<any[]>> {
+    try {
+      const baseUrl = this.baseUrl.replace(/\/$/, '');
+      const response = await this.http.get(
+        `${baseUrl}/api/v2/doctype/Item/meta`,
+        { headers: this.authHeaders },
+      );
+
+      // v2 response: { data: { fields: [...] } } or { fields: [...] }
+      const fields: any[] =
+        response.data?.data?.fields ||
+        response.data?.fields ||
+        response.data?.docs?.[0]?.fields ||
+        [];
+
+      return this.success(fields);
+    } catch (error: any) {
+      this.logger.error(`Failed to fetch Item meta v2: ${error.message}`);
+      return this.failure(error);
+    }
+  }
+
+  /**
+   * Call any ERPNext Frappe method via POST.
+   * Used as a public alternative to the private `http` property.
+   */
+  async callErpNextMethod(method: string, data?: Record<string, any>): Promise<any> {
+    try {
+      const baseUrl = this.baseUrl.replace(/\/$/, '');
+      const response = await this.http.post(
+        `${baseUrl}/api/method/${method}`,
+        data || {},
+        { headers: this.authHeaders }
+      );
+      return response.data?.message ?? response.data;
+    } catch (error: any) {
+      const errMsg = error.response?.data?._server_messages
+        ? JSON.parse(JSON.parse(error.response.data._server_messages)[0]).message
+        : (error.response?.data?.message || error.message);
+      throw new Error(errMsg);
+    }
+  }
+
 
   async getOrderFields(): Promise<ConnectorResult<any[]>> {
     try {
@@ -610,7 +696,82 @@ export class ERPNextConnector extends BaseConnector {
       return this.failure(errMsg);
     }
   }
+  async attachFileToItem(itemCode: string, fileUrl: string): Promise<ConnectorResult<any>> {
+    try {
+      await this.authenticate();
+      const payload = {
+        file_url: fileUrl,
+        attached_to_doctype: 'Item',
+        attached_to_name: itemCode,
+        is_private: 0
+      };
+      const response = await this.http.post(
+        `${this.baseUrl}/api/resource/File`,
+        payload,
+        { headers: this.authHeaders }
+      );
+      return this.success(response.data?.data);
+    } catch (error: any) {
+      this.logger.error(`Failed to attach file to item: ${error.message}`);
+      return this.failure(error.message);
+    }
+  }
 
+  async uploadFile(file: any): Promise<ConnectorResult<any>> {
+    try {
+      await this.authenticate();
+      const FormData = require('form-data');
+      const formData = new FormData();
+      formData.append('file', file.buffer, { filename: file.originalname });
+      formData.append('is_private', '0');
+
+      const response = await this.http.post(
+        `${this.baseUrl}/api/method/upload_file`,
+        formData,
+        {
+          headers: {
+            ...this.authHeaders,
+            ...formData.getHeaders(),
+          },
+        }
+      );
+      return this.success(response.data?.message);
+    } catch (error: any) {
+      this.logger.error(`Failed to upload file to ERPNext: ${error.message}`);
+      return this.failure(error.message);
+    }
+  }
+
+  /**
+   * Upload a file buffer to ERPNext and attach it directly to an Item record.
+   * Uses POST /api/method/upload_file with doctype=Item and docname={{itemCode}}.
+   */
+  async uploadFileToItem(file: any, itemCode: string): Promise<ConnectorResult<any>> {
+    try {
+      await this.authenticate();
+      const FormData = require('form-data');
+      const formData = new FormData();
+      formData.append('file', file.buffer, { filename: file.originalname });
+      formData.append('doctype', 'Item');
+      formData.append('docname', itemCode);
+      formData.append('is_private', '0');
+
+      const response = await this.http.post(
+        `${this.baseUrl}/api/method/upload_file`,
+        formData,
+        {
+          headers: {
+            ...this.authHeaders,
+            ...formData.getHeaders(),
+          },
+        }
+      );
+      return this.success(response.data?.message);
+    } catch (error: any) {
+      this.logger.error(`Failed to upload file to item ${itemCode}: ${error.message}`);
+      return this.failure(error.message);
+    }
+  }
 
 
   async getReferenceData(): Promise<ConnectorResult<any>> {
@@ -646,6 +807,9 @@ export class ERPNextConnector extends BaseConnector {
 
   private cachedItemSchema: any = null;
   private cachedItemSchemaTimestamp: number = 0;
+  
+  private cachedSchemas: Record<string, { schema: any, timestamp: number }> = {};
+  
   private readonly CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   async getItemSchema(): Promise<ConnectorResult<any>> {
@@ -666,6 +830,26 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async getDoctypeSchema(doctype: string): Promise<ConnectorResult<any>> {
+    if (this.cachedSchemas[doctype] && (Date.now() - this.cachedSchemas[doctype].timestamp < this.CACHE_TTL_MS)) {
+      return this.success(this.cachedSchemas[doctype].schema);
+    }
+    
+    try {
+      const response = await this.http.get(`${this.baseUrl}/api/method/frappe.desk.form.load.getdoctype?doctype=${encodeURIComponent(doctype)}`, {
+        headers: this.authHeaders,
+      });
+      const schema = response.data?.docs?.[0]?.fields || [];
+      this.cachedSchemas[doctype] = {
+        schema,
+        timestamp: Date.now()
+      };
+      return this.success(schema);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
   async getFullItem(itemCode: string): Promise<ConnectorResult<any>> {
     try {
       const response = await this.http.get(`${this.baseUrl}/api/resource/Item/${encodeURIComponent(itemCode)}`, {
@@ -680,11 +864,11 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
-  async getLinkOptions(doctype: string, query?: string): Promise<ConnectorResult<string[]>> {
+  async getLinkOptions(doctype: string, query?: string): Promise<ConnectorResult<any[]>> {
     try {
       const params: any = {
         fields: JSON.stringify(['name']),
-        limit_page_length: 100,
+        limit_page_length: 9999,
       };
       if (query) {
         params.filters = JSON.stringify([['name', 'like', `%${query}%`]]);
@@ -693,7 +877,8 @@ export class ERPNextConnector extends BaseConnector {
         headers: this.authHeaders,
         params,
       });
-      return this.success((response.data?.data || []).map((d: any) => d.name));
+      // Return full objects (with at least `name`) so consumers can use name for Table MultiSelect submissions
+      return this.success(response.data?.data || []);
     } catch (error) {
       return this.failure(error);
     }
@@ -938,6 +1123,57 @@ export class ERPNextConnector extends BaseConnector {
       return this.success(true);
     } catch (error) {
       return this.failure(error);
+    }
+  }
+
+  // ─── Variant Creation ─────────────────────────────────────────────────────
+
+  /**
+   * Enqueue bulk variant creation in ERPNext.
+   * Calls: POST api/method/erpnext.controllers.item_variant.enqueue_multiple_variant_creation
+   *
+   * @param payload.item              Template item code (e.g. "WW-SLF-N-COM")
+   * @param payload.args              JSON string — attribute name → array of values
+   *                                  e.g. '{"Furniture Finish":["Walnut Wood Finish"],"Grid Size":["5x5 Inch"]}'
+   * @param payload.use_template_image  0 | 1
+   */
+  async enqueueMultipleVariantCreation(payload: {
+    item: string;
+    args: string;
+    use_template_image: number;
+  }): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.post(
+        `${this.baseUrl}/api/method/erpnext.controllers.item_variant.enqueue_multiple_variant_creation`,
+        payload,
+        { headers: this.authHeaders },
+      );
+      this.logger.log(
+        `Enqueued multiple variant creation for item "${payload.item}"`,
+      );
+      return this.success(response.data);
+    } catch (error: any) {
+      let errMsg = error.message;
+      const responseData = error.response?.data || error.data;
+      if (responseData) {
+        try {
+          if (responseData._server_messages) {
+            errMsg = JSON.parse(JSON.parse(responseData._server_messages)[0]).message;
+          } else {
+            errMsg = typeof responseData === 'string'
+              ? responseData
+              : JSON.stringify(responseData);
+          }
+        } catch {
+          errMsg = typeof responseData === 'string'
+            ? responseData
+            : JSON.stringify(responseData);
+        }
+      }
+      this.logger.error(
+        `Failed to enqueue multiple variant creation for "${payload.item}": ${errMsg}`,
+      );
+      return this.failure(errMsg);
     }
   }
 }

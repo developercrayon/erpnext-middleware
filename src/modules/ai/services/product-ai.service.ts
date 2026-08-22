@@ -67,11 +67,22 @@ export class ProductAiService {
     return savedData;
   }
 
-  async listAiProducts() {
-    return await this.productDataRepo.find({
+  async listAiProducts(page: number = 1, pageSize: number = 20) {
+    const skip = (page - 1) * pageSize;
+    const [items, total] = await this.productDataRepo.findAndCount({
       where: { status: Not(Equal(AiProductDataStatus.CONVERTED)) },
       order: { createdAt: 'DESC' },
+      skip,
+      take: pageSize,
     });
+    
+    return {
+      items,
+      total,
+      page: Number(page),
+      pageSize: Number(pageSize),
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
   async getAiProductData(id: string) {
@@ -128,6 +139,7 @@ export class ProductAiService {
     }
 
     data.status = AiProductDataStatus.IN_PROGRESS;
+    data.generatedImages = [];
     await this.productDataRepo.save(data);
 
     const job = this.jobRepo.create({

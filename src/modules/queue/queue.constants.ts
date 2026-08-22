@@ -7,6 +7,7 @@ export const QUEUE_NAMES = {
   RETRY: 'retry',
   AMAZON_PRODUCT_TYPES: 'amazon-product-types',
   AI: 'ai',
+  SYSTEM: 'system',
 } as const;
 
 export const JOB_NAMES = {
@@ -42,6 +43,9 @@ export const JOB_NAMES = {
 
   // AI
   AI_GENERATE_PRODUCT: 'ai-generate-product',
+
+  // System
+  CLEAR_LOGS: 'clear-logs',
 } as const;
 
 export const QUEUE_DEFAULT_OPTIONS = {
