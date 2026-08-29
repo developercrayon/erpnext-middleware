@@ -163,6 +163,96 @@ export class ProductsService {
     return this.erpnextService['connector'].getLinkOptions(doctype, query);
   }
 
+  async resolveItemDisplayValues(itemData: any) {
+    const schemaResult = await this.getItemSchema();
+    const schema = schemaResult.success ? schemaResult.data : schemaResult;
+    const resolvedMap: Record<string, string> = {};
+    
+    const fetchRequests: { targetDoctype: string, hash: string, fieldName: string }[] = [];
+
+    for (const field of schema) {
+      const value = itemData[field.fieldname];
+      if (!value) continue;
+
+      if (field.fieldtype === 'Link') {
+        fetchRequests.push({ targetDoctype: field.options, hash: value, fieldName: field.fieldname });
+      } else if (field.fieldtype === 'Table MultiSelect' || field.fieldtype === 'Table') {
+        const childSchemaResult = await this.getDoctypeSchema(field.options);
+        const childSchema = childSchemaResult.success ? childSchemaResult.data : childSchemaResult;
+        
+        if (Array.isArray(childSchema)) {
+          const linkField = childSchema.find((f: any) => f.fieldtype === 'Link');
+          if (linkField && Array.isArray(value)) {
+            for (const row of value) {
+              // Row might be a string (hash) or an object
+              let hash = '';
+              if (typeof row === 'string') {
+                hash = row;
+              } else if (typeof row === 'object' && row !== null) {
+                hash = row[linkField.fieldname] || row.name;
+              }
+              if (hash) {
+                fetchRequests.push({ targetDoctype: linkField.options, hash, fieldName: field.fieldname });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const grouped: Record<string, string[]> = {};
+    for (const req of fetchRequests) {
+      if (!grouped[req.targetDoctype]) grouped[req.targetDoctype] = [];
+      grouped[req.targetDoctype].push(req.hash);
+    }
+
+    const titlesMap: Record<string, string> = {}; // "doctype_hash" -> title
+    for (const [doctype, hashes] of Object.entries(grouped)) {
+      const uniqueHashes = [...new Set(hashes)];
+      const result = await this.erpnextService['connector'].getDocuments(doctype, uniqueHashes);
+      const docs = result.success ? result.data : [];
+      for (const doc of docs) {
+        const title = doc.title || doc.item_name || doc.tag_name || doc.name;
+        titlesMap[`${doctype}_${doc.name}`] = title;
+      }
+    }
+
+    for (const field of schema) {
+      const value = itemData[field.fieldname];
+      if (!value) continue;
+
+      if (field.fieldtype === 'Link') {
+        const title = titlesMap[`${field.options}_${value}`];
+        if (title) resolvedMap[field.fieldname] = title;
+      } else if (field.fieldtype === 'Table MultiSelect' || field.fieldtype === 'Table') {
+        const childSchemaResult = await this.getDoctypeSchema(field.options);
+        const childSchema = childSchemaResult.success ? childSchemaResult.data : childSchemaResult;
+        
+        if (Array.isArray(childSchema)) {
+          const linkField = childSchema.find((f: any) => f.fieldtype === 'Link');
+          if (linkField && Array.isArray(value)) {
+            const titles: string[] = [];
+            for (const row of value) {
+              let hash = '';
+              if (typeof row === 'string') hash = row;
+              else if (typeof row === 'object' && row !== null) hash = row[linkField.fieldname] || row.name;
+              
+              if (hash) {
+                const title = titlesMap[`${linkField.options}_${hash}`];
+                if (title) titles.push(title);
+              }
+            }
+            if (titles.length > 0) {
+              resolvedMap[field.fieldname] = titles.join(', ');
+            }
+          }
+        }
+      }
+    }
+
+    return { success: true, data: resolvedMap };
+  }
+
   async createMultipleVariants(
     item: string,
     args: Record<string, string[]>,

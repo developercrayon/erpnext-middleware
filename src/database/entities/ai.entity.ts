@@ -244,3 +244,66 @@ export class AiGenerationJob {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
+
+// ─── AiSocialMediaConfig ───────────────────────────────────────────────────────
+
+/**
+ * Stores AI social media configuration.
+ * Configured per platform (e.g. Facebook, Instagram).
+ */
+@Entity('ai_social_media_config')
+export class AiSocialMediaConfig {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'platform', type: 'varchar', length: 50 })
+  platform: string;
+
+  @Column({ name: 'is_enabled', type: 'boolean', default: true })
+  isEnabled: boolean;
+
+  @Column({ name: 'app_name', type: 'varchar', length: 100, nullable: true })
+  appName: string | null;
+
+  @Column({ name: 'app_id', type: 'varchar', length: 100, nullable: true })
+  appId: string | null;
+
+  @Column({ name: 'client_id', type: 'varchar', length: 255, nullable: true })
+  clientId: string | null;
+
+  @Column({ name: 'client_secret_encrypted', type: 'text', nullable: true })
+  clientSecretEncrypted: string | null;
+
+  @Column({ name: 'authorization_url', type: 'varchar', length: 255, nullable: true })
+  authorizationUrl: string | null;
+
+  @Column({ name: 'token_url', type: 'varchar', length: 255, nullable: true })
+  tokenUrl: string | null;
+
+  @Column({ name: 'api_base_url', type: 'varchar', length: 255, nullable: true })
+  apiBaseUrl: string | null;
+
+  @Column({ name: 'api_version', type: 'varchar', length: 50, nullable: true })
+  apiVersion: string | null;
+
+  /**
+   * Prompts stored as JSONB. Expected structure:
+   * { post, caption, hashtag, hook, cta, videoReel, contentIdea }
+   */
+  @Column({ name: 'prompts', type: 'jsonb', nullable: true })
+  prompts: {
+    post?: string;
+    caption?: string;
+    hashtag?: string;
+    hook?: string;
+    cta?: string;
+    videoReel?: string;
+    contentIdea?: string;
+  } | null;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}

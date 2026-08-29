@@ -33,6 +33,7 @@ import { OrderFieldMappingModule } from './modules/order-field-mapping/order-fie
 import { QueueModule } from './modules/queue/queue.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { AiModule } from './modules/ai/ai.module';
+import { SocialPostsModule } from './modules/social-posts/social-posts.module';
 import { HealthController } from './common/health/health.controller';
 import { AppController } from './app.controller';
 
@@ -117,6 +118,7 @@ import { AdminModule } from './admin/admin.module';
     QueueModule,
     SchedulerModule,
     AiModule,
+    SocialPostsModule,
   ],
   controllers: [AppController, HealthController],
 })

@@ -884,6 +884,26 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async getDocuments(doctype: string, names: string[]): Promise<ConnectorResult<any[]>> {
+    if (!names || names.length === 0) {
+      return this.success([]);
+    }
+    try {
+      const params: any = {
+        fields: JSON.stringify(['*']),
+        limit_page_length: names.length,
+        filters: JSON.stringify([['name', 'in', names]]),
+      };
+      const response = await this.http.get(`${this.baseUrl}/api/resource/${encodeURIComponent(doctype)}`, {
+        headers: this.authHeaders,
+        params,
+      });
+      return this.success(response.data?.data || []);
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
   async deleteItem(itemCode: string): Promise<ConnectorResult<boolean>> {
     try {
       const response = await this.http.delete(`${this.baseUrl}/api/resource/Item/${encodeURIComponent(itemCode)}`, {

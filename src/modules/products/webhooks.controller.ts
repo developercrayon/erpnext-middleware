@@ -82,9 +82,9 @@ export class ProductsWebhookController {
 
     // Trigger Flipkart syncs if enabled
     if (doc.custom_flipkart) {
-      this.logger.log(`Queueing Flipkart syncs for ${itemCode}`);
-      const fkSyncJobId = await this.productsService.triggerSync(MarketplaceSource.FLIPKART, [itemCode]);
-      queuedJobs.push({ type: 'Flipkart Sync', jobId: fkSyncJobId });
+      this.logger.log(`Skipping Flipkart syncs for ${itemCode} (Temporarily bypassed)`);
+      // const fkSyncJobId = await this.productsService.triggerSync(MarketplaceSource.FLIPKART, [itemCode]);
+      // queuedJobs.push({ type: 'Flipkart Sync', jobId: fkSyncJobId });
     }
     
     logEntry.processed = true;

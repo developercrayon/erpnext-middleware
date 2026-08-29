@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
-import { AiConfig, AiImagePrompt, AiProductData, AiGenerationJob } from '../../database/entities/ai.entity';
+import { AiConfig, AiImagePrompt, AiProductData, AiGenerationJob, AiSocialMediaConfig } from '../../database/entities/ai.entity';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 
 // Services
@@ -33,6 +33,7 @@ import { AiGenerationProcessor } from './processors/ai-generation.processor';
       AiImagePrompt,
       AiProductData,
       AiGenerationJob,
+      AiSocialMediaConfig,
     ]),
     BullModule.registerQueue({
       name: QUEUE_NAMES.AI,
@@ -53,6 +54,6 @@ import { AiGenerationProcessor } from './processors/ai-generation.processor';
     ScalemaxProvider,
     AiGenerationProcessor,
   ],
-  exports: [ProductAiService, AiSettingsService],
+  exports: [ProductAiService, AiSettingsService, ContentGenerationService, ImageGenerationService],
 })
 export class AiModule {}

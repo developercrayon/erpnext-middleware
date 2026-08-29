@@ -74,6 +74,64 @@ export class UpsertImageAiDto {
   prompts?: ImagePromptDto[];
 }
 
+export class UpsertSocialMediaDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  platform: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isEnabled?: boolean;
+
+  @IsString()
+  @IsOptional()
+  appName?: string;
+
+  @IsString()
+  @IsOptional()
+  appId?: string;
+
+  @IsString()
+  @IsOptional()
+  clientId?: string;
+
+  @IsString()
+  @IsOptional()
+  clientSecret?: string;
+
+  @IsString()
+  @IsOptional()
+  authorizationUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  tokenUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  apiBaseUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  apiVersion?: string;
+
+  @IsOptional()
+  prompts?: {
+    post?: string;
+    caption?: string;
+    hashtag?: string;
+    hook?: string;
+    cta?: string;
+    videoReel?: string;
+    contentIdea?: string;
+  };
+}
+
+
 export class UpsertAiSettingsDto {
   @IsOptional()
   @ValidateNested()
@@ -84,6 +142,11 @@ export class UpsertAiSettingsDto {
   @ValidateNested()
   @Type(() => UpsertImageAiDto)
   image?: UpsertImageAiDto;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => UpsertSocialMediaDto)
+  socialMedia?: UpsertSocialMediaDto[];
 }
 
 export class CreateAiProductDataDto {

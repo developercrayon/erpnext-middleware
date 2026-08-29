@@ -54,7 +54,7 @@ export class PricingProcessor {
 
     const marketplaces = source
       ? [source]
-      : [MarketplaceSource.AMAZON, MarketplaceSource.FLIPKART];
+      : [MarketplaceSource.AMAZON];
 
     for (const sku of skusToSync) {
       let finalPrice = 0;

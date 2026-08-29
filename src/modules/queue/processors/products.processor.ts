@@ -145,9 +145,17 @@ export class ProductsProcessor {
             const statusField = isAmazon ? 'custom_amazon_sync_status' : 'custom_flipkart_sync_status';
             const dateField = isAmazon ? 'custom_amazon_sync' : 'custom_flipkart_sync';
             
+            const now = new Date();
+            const localTimeStr = now.getFullYear() + '-' + 
+              String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+              String(now.getDate()).padStart(2, '0') + ' ' + 
+              String(now.getHours()).padStart(2, '0') + ':' + 
+              String(now.getMinutes()).padStart(2, '0') + ':' + 
+              String(now.getSeconds()).padStart(2, '0');
+              
             await this.erpnextService['connector'].updateItem(product.item_code, {
               [statusField]: 'synced',
-              [dateField]: new Date().toISOString().replace('T', ' ').substring(0, 19)
+              [dateField]: localTimeStr
             });
             
           } else {

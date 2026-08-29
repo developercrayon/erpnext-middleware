@@ -17,13 +17,17 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ProductsService, ProductStatus } from './products.service';
 import { ProductQueryDto, SyncProductsDto, UpdateProductDto } from './dto/product.dto';
+import { AmazonConnector } from '../connectors/amazon/amazon.connector';
 
 @ApiTags('Products')
 @Controller('products')
 @UseGuards(AuthGuard('jwt'))
 @ApiBearerAuth()
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly amazonConnector: AmazonConnector
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all products with filtering and pagination' })
@@ -65,6 +69,12 @@ export class ProductsController {
   @ApiOperation({ summary: 'Get full product data from ERPNext' })
   async getFullItem(@Param('id') id: string) {
     return this.productsService.getFullItem(id);
+  }
+
+  @Post('resolve-display-values')
+  @ApiOperation({ summary: 'Resolve ERPNext hashes to human-readable titles' })
+  async resolveDisplayValues(@Body() data: any) {
+    return this.productsService.resolveItemDisplayValues(data);
   }
 
   @Get(':id/attachments')
@@ -216,6 +226,55 @@ export class ProductsController {
       return { success: true, message: `Product marked as ${disabled === 1 ? 'disabled' : 'enabled'}` };
     } catch (error: any) {
       throw new BadRequestException(error.message || 'Failed to update status');
+    }
+  }
+
+  @Post('sync/amazon-validate-single')
+  @ApiOperation({ summary: 'Validate single product on Amazon SP-API' })
+  async validateAmazonListing(@Body('sku') sku: string) {
+    try {
+      const spData = await this.amazonConnector.getListingItem(sku);
+
+      if (spData.is404) {
+        return {
+          success: true,
+          data: {
+            amazon_listed: false,
+            has_404: true,
+            active: false,
+            in_stock: false,
+            valid: true,
+            has_issues: false
+          }
+        };
+      }
+
+      const active = spData.summaries?.some((s: any) => s.status?.includes("BUYABLE") || s.statuses?.includes("BUYABLE")) || false;
+      const availableQuantity = spData.fulfillmentAvailability?.[0]?.quantity ?? 0;
+      const in_stock = availableQuantity > 0;
+      
+      const issues = spData.issues || [];
+      const has_issues = issues.length > 0;
+      
+      // valid is false ONLY if there is an ERROR
+      const hasError = issues.some((i: any) => i.severity === 'ERROR');
+      const valid = !hasError;
+
+      return { 
+        success: true, 
+        message: 'Amazon validation successful', 
+        data: { 
+          amazon_listed: true,
+          has_404: false,
+          active,
+          in_stock,
+          valid,
+          has_issues,
+          raw_issues: issues
+        } 
+      };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to validate Amazon listing');
     }
   }
 

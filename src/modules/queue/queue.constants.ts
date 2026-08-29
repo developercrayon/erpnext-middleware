@@ -43,6 +43,7 @@ export const JOB_NAMES = {
 
   // AI
   AI_GENERATE_PRODUCT: 'ai-generate-product',
+  AI_GENERATE_SOCIAL_POST: 'ai-generate-social-post',
 
   // System
   CLEAR_LOGS: 'clear-logs',

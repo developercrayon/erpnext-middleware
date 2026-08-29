@@ -54,11 +54,11 @@ export class SchedulerService {
         { source: MarketplaceSource.AMAZON, fromDate },
         QUEUE_DEFAULT_OPTIONS,
       ),
-      this.ordersQueue.add(
-        JOB_NAMES.FETCH_MARKETPLACE_ORDERS,
-        { source: MarketplaceSource.FLIPKART, fromDate },
-        QUEUE_DEFAULT_OPTIONS,
-      ),
+      // this.ordersQueue.add(
+      //   JOB_NAMES.FETCH_MARKETPLACE_ORDERS,
+      //   { source: MarketplaceSource.FLIPKART, fromDate },
+      //   QUEUE_DEFAULT_OPTIONS,
+      // ),
     ]);
 
     this.logger.log('CRON: Order fetch jobs queued for Amazon and Flipkart');
@@ -79,11 +79,11 @@ export class SchedulerService {
     }
     this.logger.log('CRON: Syncing inventory to marketplaces...');
 
-    await this.inventoryQueue.add(
-      JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE,
-      { source: null }, // null = sync to all marketplaces
-      QUEUE_DEFAULT_OPTIONS,
-    );
+    // await this.inventoryQueue.add(
+    //   JOB_NAMES.SYNC_INVENTORY_TO_MARKETPLACE,
+    //   { source: null }, // null = sync to all marketplaces
+    //   QUEUE_DEFAULT_OPTIONS,
+    // );
 
     this.logger.log('CRON: Inventory sync job queued');
   }
@@ -103,11 +103,11 @@ export class SchedulerService {
     }
     this.logger.log('CRON: Syncing prices to marketplaces...');
 
-    await this.pricingQueue.add(
-      JOB_NAMES.SYNC_PRICES_TO_MARKETPLACE,
-      { source: null }, // null = sync to all marketplaces
-      QUEUE_DEFAULT_OPTIONS,
-    );
+    // await this.pricingQueue.add(
+    //   JOB_NAMES.SYNC_PRICES_TO_MARKETPLACE,
+    //   { source: null }, // null = sync to all marketplaces
+    //   QUEUE_DEFAULT_OPTIONS,
+    // );
 
     this.logger.log('CRON: Price sync job queued');
   }
@@ -127,14 +127,14 @@ export class SchedulerService {
     }
     this.logger.log('CRON: Retrying failed jobs...');
 
-    await this.retryQueue.add(
-      JOB_NAMES.RETRY_FAILED_JOB,
-      {},
-      {
-        ...QUEUE_DEFAULT_OPTIONS,
-        attempts: 1, // retry processor itself should not retry
-      },
-    );
+    // await this.retryQueue.add(
+    //   JOB_NAMES.RETRY_FAILED_JOB,
+    //   {},
+    //   {
+    //     ...QUEUE_DEFAULT_OPTIONS,
+    //     attempts: 1, // retry processor itself should not retry
+    //   },
+    // );
 
     this.logger.log('CRON: Retry job queued');
   }

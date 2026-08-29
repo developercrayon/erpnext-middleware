@@ -107,6 +107,32 @@ export class AmazonConnector extends BaseConnector {
     }
   }
 
+  // ─── Fetch Listing Item ───────────────────────────────────────────────────
+
+  async getListingItem(sku: string): Promise<any> {
+    try {
+      await this.ensureAuthenticated();
+      
+      const response = await this.withRetry(() =>
+        this.http.get(`${this.endpoint}/listings/2021-08-01/items/${this.sellerId}/${sku}`, {
+          headers: this.spApiHeaders,
+          params: {
+            marketplaceIds: this.marketplaceId,
+            includedData: 'summaries,attributes,issues,offers,fulfillmentAvailability',
+          },
+        }),
+      );
+
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return { is404: true };
+      }
+      this.logger.error(`Failed to fetch listing for ${sku}: ${error.message}`);
+      throw error;
+    }
+  }
+
   // ─── Fetch Orders ─────────────────────────────────────────────────────────
 
   async fetchOrders(

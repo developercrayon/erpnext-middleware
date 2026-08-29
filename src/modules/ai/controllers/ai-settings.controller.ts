@@ -4,6 +4,7 @@ import { AiSettingsService } from '../services/ai-settings.service';
 import { AiModelService } from '../services/ai-model.service';
 import { AiConfigType } from '../../../database/entities/ai.entity';
 import { UpsertAiSettingsDto } from '../dto/ai.dto';
+import * as socialPlatformsJson from '../constants/social-platforms.json';
 
 @Controller('ai')
 @UseGuards(AuthGuard('jwt'))
@@ -12,6 +13,11 @@ export class AiSettingsController {
     private readonly settingsService: AiSettingsService,
     private readonly modelService: AiModelService,
   ) {}
+
+  @Get('social-platforms')
+  getSocialPlatforms() {
+    return Array.isArray(socialPlatformsJson) ? socialPlatformsJson : (socialPlatformsJson as any).default || socialPlatformsJson;
+  }
 
   @Get('models')
   getModels(@Query('capability') capability?: 'content' | 'image' | 'structured' | 'flat') {
@@ -31,10 +37,12 @@ export class AiSettingsController {
   async getSettings() {
     const content = await this.settingsService.getSafeSettings(AiConfigType.CONTENT);
     const image = await this.settingsService.getSafeSettings(AiConfigType.IMAGE);
+    const socialMedia = await this.settingsService.getSocialMediaSettings();
 
     return {
       content,
       image,
+      socialMedia,
     };
   }
 
@@ -45,6 +53,9 @@ export class AiSettingsController {
     }
     if (dto.image) {
       await this.settingsService.upsertImageSettings(dto.image);
+    }
+    if (dto.socialMedia) {
+      await this.settingsService.upsertSocialMediaSettings(dto.socialMedia);
     }
 
     return { message: 'AI settings updated successfully' };

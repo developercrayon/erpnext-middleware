@@ -72,7 +72,7 @@ export class InventoryProcessor {
     // Update marketplaces
     const marketplaces = source
       ? [source]
-      : [MarketplaceSource.AMAZON, MarketplaceSource.FLIPKART];
+      : [MarketplaceSource.AMAZON];
 
     for (const mp of marketplaces) {
       const connector =

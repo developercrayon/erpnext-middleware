@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AiConfig, AiConfigType, AiImagePrompt } from '../../../database/entities/ai.entity';
+import { AiConfig, AiConfigType, AiImagePrompt, AiSocialMediaConfig } from '../../../database/entities/ai.entity';
 import { AiEncryptionService } from './ai-encryption.service';
 import { AiModelService } from './ai-model.service';
-import { UpsertContentAiDto, UpsertImageAiDto } from '../dto/ai.dto';
+import { UpsertContentAiDto, UpsertImageAiDto, UpsertSocialMediaDto } from '../dto/ai.dto';
 
 @Injectable()
 export class AiSettingsService {
@@ -13,6 +13,8 @@ export class AiSettingsService {
     private readonly configRepo: Repository<AiConfig>,
     @InjectRepository(AiImagePrompt)
     private readonly promptRepo: Repository<AiImagePrompt>,
+    @InjectRepository(AiSocialMediaConfig)
+    private readonly socialMediaRepo: Repository<AiSocialMediaConfig>,
     private readonly encryptionService: AiEncryptionService,
     private readonly modelService: AiModelService,
   ) {}
@@ -165,6 +167,71 @@ export class AiSettingsService {
       if (newPrompts.length > 0) {
         await this.promptRepo.save(newPrompts);
       }
+    }
+  }
+
+  async getSocialMediaSettings(): Promise<any[]> {
+    const configs = await this.socialMediaRepo.find();
+    return configs.map((c) => ({
+      id: c.id,
+      platform: c.platform,
+      isEnabled: c.isEnabled,
+      appName: c.appName,
+      appId: c.appId,
+      clientId: c.clientId,
+      isClientSecretConfigured: !!c.clientSecretEncrypted,
+      authorizationUrl: c.authorizationUrl,
+      tokenUrl: c.tokenUrl,
+      apiBaseUrl: c.apiBaseUrl,
+      apiVersion: c.apiVersion,
+      prompts: c.prompts || {},
+    }));
+  }
+
+  async upsertSocialMediaSettings(dtos: UpsertSocialMediaDto[]): Promise<void> {
+    const existingConfigs = await this.socialMediaRepo.find();
+    
+    // Find configs to delete (not present in new list, if we assume it overwrites)
+    // Actually, maybe we only update or add what is sent. 
+    // Usually, array sent replaces the whole list, so let's clear and save or update by ID.
+    const incomingIds = dtos.map(d => d.id).filter(id => id);
+    
+    // Remove ones that were deleted by user
+    const toDelete = existingConfigs.filter(ec => !incomingIds.includes(ec.id));
+    if (toDelete.length > 0) {
+      await this.socialMediaRepo.remove(toDelete);
+    }
+
+    for (const dto of dtos) {
+      let config: AiSocialMediaConfig;
+      
+      if (dto.id) {
+        config = await this.socialMediaRepo.findOne({ where: { id: dto.id } });
+        if (!config) {
+          config = this.socialMediaRepo.create();
+        }
+      } else {
+        config = this.socialMediaRepo.create();
+      }
+
+      config.platform = dto.platform;
+      
+      if (dto.isEnabled !== undefined) config.isEnabled = dto.isEnabled;
+      if (dto.appName !== undefined) config.appName = dto.appName;
+      if (dto.appId !== undefined) config.appId = dto.appId;
+      if (dto.clientId !== undefined) config.clientId = dto.clientId;
+      
+      if (dto.clientSecret) {
+        config.clientSecretEncrypted = this.encryptionService.encrypt(dto.clientSecret);
+      }
+      
+      if (dto.authorizationUrl !== undefined) config.authorizationUrl = dto.authorizationUrl;
+      if (dto.tokenUrl !== undefined) config.tokenUrl = dto.tokenUrl;
+      if (dto.apiBaseUrl !== undefined) config.apiBaseUrl = dto.apiBaseUrl;
+      if (dto.apiVersion !== undefined) config.apiVersion = dto.apiVersion;
+      if (dto.prompts !== undefined) config.prompts = dto.prompts as any;
+      
+      await this.socialMediaRepo.save(config);
     }
   }
 }
