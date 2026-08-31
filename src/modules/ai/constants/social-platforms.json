@@ -1,0 +1,282 @@
+[
+  {
+    "id": "facebook",
+    "name": "Facebook",
+    "authorization_url": "https://www.facebook.com/v19.0/dialog/oauth",
+    "token_url": "https://graph.facebook.com/v19.0/oauth/access_token",
+    "api_base_url": "https://graph.facebook.com",
+    "api_version": "v19.0",
+    "post_types": [
+      {
+        "id": "image",
+        "name": "Image",
+        "aspect_ratios": [
+          "1:1",
+          "4:5",
+          "1.91:1"
+        ]
+      },
+      {
+        "id": "video",
+        "name": "Video",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "4:5",
+          "9:16"
+        ]
+      },
+      {
+        "id": "reel",
+        "name": "Reel",
+        "aspect_ratios": [
+          "9:16"
+        ]
+      },
+      {
+        "id": "story",
+        "name": "Story",
+        "aspect_ratios": [
+          "9:16"
+        ]
+      },
+      {
+        "id": "carousel",
+        "name": "Carousel",
+        "aspect_ratios": [
+          "1:1",
+          "4:5"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "instagram",
+    "name": "Instagram",
+    "authorization_url": "https://api.instagram.com/oauth/authorize",
+    "token_url": "https://api.instagram.com/oauth/access_token",
+    "api_base_url": "https://graph.instagram.com",
+    "api_version": "v19.0",
+    "post_types": [
+      {
+        "id": "image",
+        "name": "Feed Image",
+        "aspect_ratios": [
+          "1:1",
+          "4:5",
+          "1.91:1"
+        ]
+      },
+      {
+        "id": "carousel",
+        "name": "Carousel",
+        "aspect_ratios": [
+          "1:1",
+          "4:5",
+          "1.91:1"
+        ]
+      },
+      {
+        "id": "video",
+        "name": "Feed Video",
+        "aspect_ratios": [
+          "1:1",
+          "4:5",
+          "1.91:1"
+        ]
+      },
+      {
+        "id": "reel",
+        "name": "Reel",
+        "aspect_ratios": [
+          "9:16"
+        ]
+      },
+      {
+        "id": "story",
+        "name": "Story",
+        "aspect_ratios": [
+          "9:16"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "pinterest",
+    "name": "Pinterest",
+    "authorization_url": "https://www.pinterest.com/oauth/",
+    "token_url": "https://api.pinterest.com/v5/oauth/token",
+    "api_base_url": "https://api.pinterest.com",
+    "api_version": "v5",
+    "post_types": [
+      {
+        "id": "pin",
+        "name": "Pin",
+        "aspect_ratios": [
+          "2:3",
+          "1:1",
+          "4:5"
+        ]
+      },
+      {
+        "id": "video_pin",
+        "name": "Video Pin",
+        "aspect_ratios": [
+          "2:3",
+          "1:1",
+          "4:5",
+          "9:16"
+        ]
+      },
+      {
+        "id": "carousel",
+        "name": "Carousel",
+        "aspect_ratios": [
+          "1:1",
+          "2:3",
+          "4:5"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tiktok",
+    "name": "TikTok",
+    "authorization_url": "https://www.tiktok.com/v2/auth/authorize/",
+    "token_url": "https://open.tiktokapis.com/v2/oauth/token/",
+    "api_base_url": "https://open.tiktokapis.com",
+    "api_version": "v2",
+    "post_types": [
+      {
+        "id": "video",
+        "name": "Video",
+        "aspect_ratios": [
+          "9:16",
+          "1:1",
+          "16:9"
+        ]
+      },
+      {
+        "id": "photo",
+        "name": "Photo",
+        "aspect_ratios": [
+          "9:16",
+          "1:1",
+          "4:5"
+        ]
+      },
+      {
+        "id": "carousel",
+        "name": "Photo Carousel",
+        "aspect_ratios": [
+          "9:16",
+          "1:1",
+          "4:5"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "linkedin",
+    "name": "LinkedIn",
+    "authorization_url": "https://www.linkedin.com/oauth/v2/authorization",
+    "token_url": "https://www.linkedin.com/oauth/v2/accessToken",
+    "api_base_url": "https://api.linkedin.com",
+    "api_version": "v2",
+    "post_types": [
+      {
+        "id": "image",
+        "name": "Image",
+        "aspect_ratios": [
+          "1:1",
+          "1.91:1",
+          "4:5"
+        ]
+      },
+      {
+        "id": "video",
+        "name": "Video",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "4:5",
+          "9:16"
+        ]
+      },
+      {
+        "id": "document",
+        "name": "Document",
+        "aspect_ratios": [
+          "1:1",
+          "4:5",
+          "16:9"
+        ]
+      },
+      {
+        "id": "carousel",
+        "name": "Carousel",
+        "aspect_ratios": [
+          "1:1",
+          "4:5",
+          "1.91:1"
+        ]
+      },
+      {
+        "id": "text",
+        "name": "Text Post",
+        "aspect_ratios": []
+      }
+    ]
+  },
+  {
+    "id": "x",
+    "name": "X (Twitter)",
+    "authorization_url": "https://twitter.com/i/oauth2/authorize",
+    "token_url": "https://api.twitter.com/2/oauth2/token",
+    "api_base_url": "https://api.twitter.com",
+    "api_version": "2",
+    "post_types": [
+      {
+        "id": "text",
+        "name": "Text Post",
+        "aspect_ratios": []
+      },
+      {
+        "id": "image",
+        "name": "Image",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "4:5"
+        ]
+      },
+      {
+        "id": "video",
+        "name": "Video",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "9:16"
+        ]
+      },
+      {
+        "id": "gif",
+        "name": "GIF",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "4:5"
+        ]
+      },
+      {
+        "id": "carousel",
+        "name": "Media Carousel",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "4:5"
+        ]
+      }
+    ]
+  }
+]
