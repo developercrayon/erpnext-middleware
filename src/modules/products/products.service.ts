@@ -38,10 +38,12 @@ export class ProductsService {
     const limit = query.pageSize || 50;
     const offset = query.page ? (query.page - 1) * limit : 0;
     const searchParam = (query as any).search || undefined;
+    const brandParam = query.brand || undefined;
     const result = await this.erpnextService['connector'].fetchProducts({
       pageSize: limit,
       limit_start: offset,
       search: searchParam,
+      brand: brandParam,
     });
     
     if (!result.success || !result.data) {

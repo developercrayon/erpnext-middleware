@@ -56,6 +56,7 @@ export interface FetchProductsParams {
   search?: string;
   category?: string;
   sku?: string;
+  brand?: string;
 }
 
 export interface UpdateResult {

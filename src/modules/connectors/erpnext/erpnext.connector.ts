@@ -211,17 +211,31 @@ export class ERPNextConnector extends BaseConnector {
     try {
       const baseUrl = this.baseUrl.replace(/\/$/, '');
 
+      const filters: any[] = [];
+      if (params?.brand && params.brand !== 'All') {
+        filters.push(['brand', '=', params.brand]);
+      }
+
       const queryParams: any = {
         limit_start: params?.limit_start || 0,
         limit_page_length: params?.pageSize || 500,
+        fields: JSON.stringify(['*']),
+        order_by: 'creation desc',
       };
 
       if (params?.search) {
-        queryParams.search = params.search;
+        queryParams.or_filters = JSON.stringify([
+          ['item_code', 'like', `%${params.search}%`],
+          ['item_name', 'like', `%${params.search}%`]
+        ]);
+      }
+
+      if (filters.length > 0) {
+        queryParams.filters = JSON.stringify(filters);
       }
 
       const queryString = new URLSearchParams(queryParams).toString();
-      const endpointUrl = `${baseUrl}/api/method/paginateditem?${queryString}`;
+      const endpointUrl = `${baseUrl}/api/resource/Item?${queryString}`;
 
       let listResponse: any;
       try {
@@ -232,13 +246,23 @@ export class ERPNextConnector extends BaseConnector {
         const status = httpErr?.status || 'unknown';
         const body = httpErr?.data || httpErr?.response?.data;
         const bodyStr = body ? JSON.stringify(body) : httpErr.message;
-        this.logger.error(`ERPNext paginateditem failed — HTTP ${status}: ${bodyStr}`);
-        throw new Error(`HTTP ${status} from ERPNext /api/method/paginateditem — ${bodyStr}`);
+        this.logger.error(`ERPNext Item fetch failed — HTTP ${status}: ${bodyStr}`);
+        throw new Error(`HTTP ${status} from ERPNext /api/resource/Item — ${bodyStr}`);
       }
 
-      const responseData = listResponse.data?.message || listResponse.data?.data || listResponse.data;
-      const itemsData: any[] = responseData?.items || [];
-      const totalItems = responseData?.pagination?.total_items || responseData?.total_items || itemsData.length;
+      const itemsData: any[] = listResponse.data?.data || [];
+      
+      let totalItems = itemsData.length;
+      if (itemsData.length === queryParams.limit_page_length || params?.limit_start > 0) {
+        try {
+          const countParams: any = { limit_page_length: 0, fields: JSON.stringify(['name']) };
+          if (filters.length > 0) countParams.filters = JSON.stringify(filters);
+          const countRes = await this.http.get(`${baseUrl}/api/resource/Item?${new URLSearchParams(countParams).toString()}`, { headers: this.authHeaders });
+          totalItems = countRes.data?.data?.length || totalItems;
+        } catch (e: any) {
+          this.logger.warn('Failed to fetch total count for products: ' + e.message);
+        }
+      }
 
       this.logger.log(`ERPNext returned ${itemsData.length} items out of ${totalItems} for sync`);
 
