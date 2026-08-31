@@ -64,7 +64,14 @@ export class ProductsWebhookController {
     const queuedJobs = [];
 
     // Trigger Amazon syncs if enabled
-    if (doc.custom_amazon) {
+    if (doc.disabled == 1 || doc.disabled === true || !doc.custom_amazon || doc.custom_amazon == 0) {
+      this.logger.log(`Disabling Amazon listing (qty=0, price=0) for ${itemCode}`);
+      
+      this.productsService.disableAmazonListing(itemCode).catch(e => {
+        this.logger.error(`Failed to zero-out Amazon listing for ${itemCode}: ${e.message}`);
+      });
+      queuedJobs.push({ type: 'Amazon Zero Out Sync', status: 'triggered' });
+    } else if (doc.custom_amazon) {
       this.logger.log(`Queueing Amazon syncs for ${itemCode}`);
       
       const syncJobId = await this.productsService.triggerSync(MarketplaceSource.AMAZON, [itemCode], true);

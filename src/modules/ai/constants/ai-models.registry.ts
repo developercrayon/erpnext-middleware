@@ -27,7 +27,7 @@ import { AI_MODELS_RAW } from './ai-models';
 
 export const AI_MODEL_REGISTRY: AiModelDefinition[] = [];
 
-if (AI_MODELS_RAW.content) {
+if (AI_MODELS_RAW && AI_MODELS_RAW.content) {
   for (const [provider, models] of Object.entries(AI_MODELS_RAW.content)) {
     for (const model of (models as any[])) {
       if (model.active) {
@@ -42,7 +42,7 @@ if (AI_MODELS_RAW.content) {
   }
 }
 
-if (AI_MODELS_RAW.image) {
+if (AI_MODELS_RAW && AI_MODELS_RAW.image) {
   for (const [provider, models] of Object.entries(AI_MODELS_RAW.image)) {
     for (const model of (models as any[])) {
       if (model.active) {

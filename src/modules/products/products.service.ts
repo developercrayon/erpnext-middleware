@@ -129,6 +129,43 @@ export class ProductsService {
     return result;
   }
 
+  async disableAmazonListing(sku: string) {
+    this.logger.log(`Setting Amazon qty=0 and price=0 for ${sku}`);
+    
+    // Set Quantity = 0
+    try {
+      const invResult = await this.amazonConnector.updateInventory([{
+        sku,
+        warehouse: 'DEFAULT',
+        availableQty: 0
+      }]);
+      if (!invResult.success) {
+        this.logger.error(`Failed to zero-out inventory for ${sku}: ${invResult.error}`);
+      } else {
+        this.logger.log(`Successfully set Amazon qty=0 for ${sku}`);
+      }
+    } catch (e) {
+      this.logger.error(`Error setting qty=0 for ${sku}: ${e.message}`);
+    }
+
+    // Set Price = 0
+    try {
+      const priceResult = await this.amazonConnector.updatePrice([{
+        sku,
+        sellingPrice: 0,
+        currency: 'INR',
+        productType: 'PRODUCT' // default type
+      }]);
+      if (!priceResult.success) {
+        this.logger.error(`Failed to zero-out price for ${sku}: ${priceResult.error}`);
+      } else {
+        this.logger.log(`Successfully set Amazon price=0 for ${sku}`);
+      }
+    } catch (e) {
+      this.logger.error(`Error setting price=0 for ${sku}: ${e.message}`);
+    }
+  }
+
   // ─── Sync Methods ────────────────────────────────────────────────────────
 
   async triggerSync(
