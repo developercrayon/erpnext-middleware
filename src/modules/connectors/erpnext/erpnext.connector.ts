@@ -78,6 +78,36 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async patchItem(itemCode: string, fields: Record<string, any>): Promise<ConnectorResult<any>> {
+    try {
+      const response = await this.http.patch(
+        `${this.baseUrl}/api/v2/document/Item/${encodeURIComponent(itemCode)}`,
+        fields,
+        { headers: this.authHeaders }
+      );
+      this.logger.log(`Successfully patched item ${itemCode} in ERPNext`);
+      return this.success(response.data?.data);
+    } catch (error: any) {
+      let errMsg = error.message;
+      const responseData = error.response?.data || error.data;
+      if (responseData) {
+        try {
+          if (responseData.errors && responseData.errors.length > 0) {
+            errMsg = responseData.errors[0].message || responseData.errors[0].type;
+          } else if (responseData._server_messages) {
+            errMsg = JSON.parse(JSON.parse(responseData._server_messages)[0]).message;
+          } else {
+            errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
+          }
+        } catch (e) {
+          errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
+        }
+      }
+      this.logger.error(`Failed to patch item ${itemCode} in ERPNext: ${errMsg}`);
+      return this.failure(errMsg);
+    }
+  }
+
 
 
 

@@ -2,7 +2,7 @@ import { Controller, Post, Body, Headers, UnauthorizedException, Logger } from '
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProductsService } from './products.service';
+import { ProductsService, recentlySyncedItems } from './products.service';
 import { PricingService } from '../pricing/pricing.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { WebhookLog } from '../../database/entities/logs.entity';
@@ -61,6 +61,16 @@ export class ProductsWebhookController {
 
     this.logger.log(`Received ERPNext webhook for item: ${itemCode}`);
     
+    // Check if we just updated this item from the processor to prevent infinite webhook loops
+    const lastSyncTime = recentlySyncedItems.get(itemCode);
+    if (lastSyncTime && Date.now() - lastSyncTime < 15000) { // 15 seconds
+      this.logger.warn(`Ignoring webhook for ${itemCode} because it was recently updated by the middleware (loop prevention).`);
+      logEntry.processed = true;
+      logEntry.processingError = 'Ignored to prevent loop';
+      await this.webhookLogRepo.save(logEntry);
+      return { success: true, message: 'Ignored locally to prevent loop' };
+    }
+
     const queuedJobs = [];
 
     // Trigger Amazon syncs if enabled

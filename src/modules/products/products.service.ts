@@ -16,6 +16,8 @@ export enum ProductStatus {
   INACTIVE = 'Inactive',
 }
 
+export const recentlySyncedItems = new Map<string, number>();
+
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);

@@ -303,6 +303,14 @@ export class ERPNextService {
     return result.data;
   }
 
+  async patchItem(itemCode: string, fields: Record<string, any>): Promise<any> {
+    const result = await this.connector.patchItem(itemCode, fields);
+    if (!result.success) {
+      throw new Error(`Failed to update ERPNext item: ${result.error}`);
+    }
+    return result.data;
+  }
+
   async createItem(fields: Record<string, any>): Promise<any> {
     const result = await this.connector.createItem(fields);
     if (!result.success) {
