@@ -50,6 +50,7 @@ export class AiSettingsService {
       model: config.model,
       isEnabled: config.isEnabled,
       contentPrompt: config.contentPrompt,
+      masterPrompt: config.imageMasterPrompt,
       prompts: config.imagePrompts
         ? config.imagePrompts.map((p) => ({
             id: p.id,
@@ -81,6 +82,7 @@ export class AiSettingsService {
         ? this.encryptionService.decrypt(config.apiSecretEncrypted)
         : undefined,
       contentPrompt: config.contentPrompt,
+      imageMasterPrompt: config.imageMasterPrompt,
       prompts: config.imagePrompts?.filter((p) => p.isEnabled) || [],
     };
   }
@@ -137,6 +139,10 @@ export class AiSettingsService {
 
     if (dto.isEnabled !== undefined) {
       config.isEnabled = dto.isEnabled;
+    }
+
+    if (dto.masterPrompt !== undefined) {
+      config.imageMasterPrompt = dto.masterPrompt;
     }
 
     if (dto.apiKey) {

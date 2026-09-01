@@ -71,6 +71,10 @@ export class AiConfig {
   @Column({ name: 'is_enabled', type: 'boolean', default: true })
   isEnabled: boolean;
 
+  /** Master prompt prepended to all dynamic image prompts */
+  @Column({ name: 'image_master_prompt', type: 'text', nullable: true })
+  imageMasterPrompt: string | null;
+
   @OneToMany(() => AiImagePrompt, (p) => p.aiConfig, { cascade: true })
   imagePrompts: AiImagePrompt[];
 

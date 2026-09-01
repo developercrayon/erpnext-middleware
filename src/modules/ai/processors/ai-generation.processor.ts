@@ -108,6 +108,7 @@ export class AiGenerationProcessor {
             dataId: productData.id,
             itemName: productData.userInput.item_name,
             prompts: imageConfig.prompts,
+            masterPrompt: imageConfig.imageMasterPrompt,
             referenceImageUrl: productData.userInput.reference_image_url,
             referenceImageBase64: productData.userInput.reference_image_base64,
             config: {

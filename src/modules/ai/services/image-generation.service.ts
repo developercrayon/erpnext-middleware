@@ -11,6 +11,7 @@ export interface GenerateImagesOptions {
   prompts: AiImagePrompt[];
   referenceImageUrl?: string;
   referenceImageBase64?: string;
+  masterPrompt?: string;
   config: {
     provider: AiProviderName;
     model: string;
@@ -50,10 +51,14 @@ export class ImageGenerationService {
 
     for (let i = 0; i < options.prompts.length; i++) {
       const prompt = options.prompts[i];
+      const finalPromptText = options.masterPrompt 
+        ? `${options.masterPrompt}\n\n${prompt.promptText}` 
+        : prompt.promptText;
+
       try {
         const response = await provider.generateImage({
           itemName: options.itemName,
-          promptText: prompt.promptText,
+          promptText: finalPromptText,
           referenceImageUrl: options.referenceImageUrl,
           referenceImageBase64: options.referenceImageBase64,
           model: options.config.model,
@@ -78,7 +83,7 @@ export class ImageGenerationService {
           serve_url: `/api/v1/ai/images/${options.dataId}/${i}`, // Used to stream from DB via API
           mime_type: response.mimeType,
           prompt_index: i,
-          prompt_text: prompt.promptText,
+          prompt_text: finalPromptText,
           success: true,
         };
         results.push(result);
@@ -94,7 +99,7 @@ export class ImageGenerationService {
           serve_url: '',
           mime_type: '',
           prompt_index: i,
-          prompt_text: prompt.promptText,
+          prompt_text: finalPromptText,
           success: false,
           error: error.message,
         };

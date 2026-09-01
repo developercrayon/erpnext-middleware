@@ -72,6 +72,10 @@ export class UpsertImageAiDto {
   @ValidateNested({ each: true })
   @Type(() => ImagePromptDto)
   prompts?: ImagePromptDto[];
+
+  @IsString()
+  @IsOptional()
+  masterPrompt?: string;
 }
 
 export class UpsertSocialMediaDto {
