@@ -36,6 +36,53 @@ export class ERPNextConnector extends BaseConnector {
     };
   }
 
+  private extractFrappeError(error: any): string {
+    let errMsg = error?.message || 'Unknown ERPNext error';
+    const responseData = error?.response?.data || error?.data;
+
+    if (responseData) {
+      if (typeof responseData === 'string') {
+        const lowerData = responseData.trim().toLowerCase();
+        if (lowerData.startsWith('<!doctype') || lowerData.startsWith('<html')) {
+          return 'Something went wrong with ERPNext. Please check the server logs or try again.';
+        }
+        return responseData;
+      }
+
+      try {
+        if (responseData.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+          return responseData.errors[0].message || responseData.errors[0].type || errMsg;
+        }
+        
+        if (responseData._server_messages) {
+          const parsed = JSON.parse(responseData._server_messages);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const firstMsg = typeof parsed[0] === 'string' ? JSON.parse(parsed[0]) : parsed[0];
+            if (firstMsg.message) return firstMsg.message;
+          }
+        }
+      } catch (e) {
+        // ignore parse errors and fallback
+      }
+
+      if (responseData.message && typeof responseData.message === 'string') {
+        return responseData.message;
+      }
+      if (responseData.exc_type) {
+        return `${responseData.exc_type}: Validation Failed`;
+      }
+
+      const cleanData = { ...responseData };
+      delete cleanData.exc; // Remove huge traceback
+      delete cleanData._server_messages;
+      
+      if (Object.keys(cleanData).length > 0) {
+        return JSON.stringify(cleanData);
+      }
+    }
+    return errMsg;
+  }
+
   // ─── Authentication ───────────────────────────────────────────────────────
 
   async authenticate(): Promise<ConnectorResult<boolean>> {
@@ -60,19 +107,7 @@ export class ERPNextConnector extends BaseConnector {
       this.logger.log(`Successfully updated item ${itemCode} in ERPNext`);
       return this.success(response.data?.data);
     } catch (error: any) {
-      let errMsg = error.message;
-      const responseData = error.response?.data || error.data;
-      if (responseData) {
-        try {
-          if (responseData._server_messages) {
-            errMsg = JSON.parse(JSON.parse(responseData._server_messages)[0]).message;
-          } else {
-            errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
-          }
-        } catch (e) {
-          errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
-        }
-      }
+      const errMsg = this.extractFrappeError(error);
       this.logger.error(`Failed to update item ${itemCode} in ERPNext: ${errMsg}`);
       return this.failure(errMsg);
     }
@@ -88,21 +123,7 @@ export class ERPNextConnector extends BaseConnector {
       this.logger.log(`Successfully patched item ${itemCode} in ERPNext`);
       return this.success(response.data?.data);
     } catch (error: any) {
-      let errMsg = error.message;
-      const responseData = error.response?.data || error.data;
-      if (responseData) {
-        try {
-          if (responseData.errors && responseData.errors.length > 0) {
-            errMsg = responseData.errors[0].message || responseData.errors[0].type;
-          } else if (responseData._server_messages) {
-            errMsg = JSON.parse(JSON.parse(responseData._server_messages)[0]).message;
-          } else {
-            errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
-          }
-        } catch (e) {
-          errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
-        }
-      }
+      const errMsg = this.extractFrappeError(error);
       this.logger.error(`Failed to patch item ${itemCode} in ERPNext: ${errMsg}`);
       return this.failure(errMsg);
     }
@@ -777,19 +798,7 @@ export class ERPNextConnector extends BaseConnector {
 
       return this.success(response.data?.data);
     } catch (error: any) {
-      let errMsg = error.message;
-      const responseData = error.response?.data || error.data;
-      if (responseData) {
-        try {
-          if (responseData._server_messages) {
-            errMsg = JSON.parse(JSON.parse(responseData._server_messages)[0]).message;
-          } else {
-            errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
-          }
-        } catch (e) {
-          errMsg = typeof responseData === 'string' ? responseData : JSON.stringify(responseData);
-        }
-      }
+      const errMsg = this.extractFrappeError(error);
       this.logger.error(`Failed to create ERPNext item: ${errMsg}`);
       return this.failure(errMsg);
     }
