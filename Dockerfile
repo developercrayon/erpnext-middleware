@@ -35,8 +35,8 @@ COPY --from=builder /usr/src/app/dist ./dist
 # Copy public static assets
 COPY public ./public
 
-# Create logs and .adminjs directories
-RUN mkdir -p logs .adminjs && chown -R node:node logs .adminjs
+# Create logs, .adminjs, and generated_images directories
+RUN mkdir -p logs .adminjs public/generated_images && chown -R node:node logs .adminjs public/generated_images
 
 # Run as non-root user
 USER node
