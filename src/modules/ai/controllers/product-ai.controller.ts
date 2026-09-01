@@ -100,7 +100,7 @@ export class ProductAiController {
     @Res() res: Response,
   ) {
     const data = await this.productAiService.getAiProductData(dataId);
-    const publicDir = require('path').resolve(__dirname, '..', '..', '..', '..', 'public');
+    const publicDir = require('path').join(process.cwd(), 'public');
 
     if (index === 'original') {
       let basePath = require('path').join(publicDir, 'generated_images', dataId, 'original');

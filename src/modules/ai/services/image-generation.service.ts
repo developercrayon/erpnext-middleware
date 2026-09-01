@@ -42,8 +42,7 @@ export class ImageGenerationService {
     const provider = this.providerFactory.getProvider(options.config.provider);
     const results: GeneratedImageResult[] = [];
 
-    // Resolve public dir from current file location (dist/modules/ai/services) -> ../../../../public
-    const publicDir = path.resolve(__dirname, '..', '..', '..', '..', 'public');
+    const publicDir = path.join(process.cwd(), 'public');
     const imagesDir = path.join(publicDir, 'generated_images', options.dataId);
     if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true });
