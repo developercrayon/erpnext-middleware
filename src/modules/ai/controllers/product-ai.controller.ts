@@ -100,11 +100,12 @@ export class ProductAiController {
     @Res() res: Response,
   ) {
     const data = await this.productAiService.getAiProductData(dataId);
+    const publicDir = require('path').resolve(__dirname, '..', '..', '..', '..', 'public');
 
     if (index === 'original') {
-      let ext = 'jpg'; // We'll try common extensions since we don't save the extension in DB explicitly, though we could check the file system.
-      let basePath = require('path').join(process.cwd(), 'public', 'generated_images', dataId, 'original');
+      let basePath = require('path').join(publicDir, 'generated_images', dataId, 'original');
       let finalPath = '';
+      const fs = require('fs');
       if (fs.existsSync(`${basePath}.jpg`)) finalPath = `${basePath}.jpg`;
       else if (fs.existsSync(`${basePath}.png`)) finalPath = `${basePath}.png`;
       else if (fs.existsSync(`${basePath}.webp`)) finalPath = `${basePath}.webp`;
@@ -124,16 +125,20 @@ export class ProductAiController {
     }
 
     const image = data.generatedImages[parseInt(index, 10)];
+    const fs = require('fs');
+    
+    // Dynamically build path to ensure portability across environments
+    const filePath = require('path').join(publicDir, 'generated_images', dataId, image.filename);
 
-    if (!fs.existsSync(image.file_path)) {
-      this.logger.error(`File not found at path: ${image.file_path}`);
+    if (!fs.existsSync(filePath)) {
+      this.logger.error(`File not found at path: ${filePath}`);
       throw new NotFoundException('Image file missing from disk');
     }
 
     res.setHeader('Content-Type', image.mime_type);
 
     // Read and stream the file
-    const fileStream = fs.createReadStream(image.file_path);
+    const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
   }
 }
