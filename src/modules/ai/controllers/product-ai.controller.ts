@@ -48,6 +48,37 @@ export class ProductAiController {
     return data;
   }
 
+  @Get('debug-fs')
+  async debugFs() {
+    const fs = require('fs');
+    const path = require('path');
+    const cwd = process.cwd();
+    const publicDir = path.join(cwd, 'public');
+    const imagesDir = path.join(publicDir, 'generated_images');
+    
+    let exists = false;
+    let files = [];
+    try {
+      exists = fs.existsSync(imagesDir);
+      if (exists) {
+        files = fs.readdirSync(imagesDir);
+      }
+    } catch (e) {
+      files = [e.message];
+    }
+
+    return {
+      cwd,
+      publicDir,
+      imagesDir,
+      exists,
+      files,
+      dirname: __dirname,
+      nodeEnv: process.env.NODE_ENV,
+      redisDb: process.env.REDIS_DB
+    };
+  }
+
   @Patch('product-data/:id')
   @UseGuards(AuthGuard('jwt'))
   async updateGeneratedContent(
