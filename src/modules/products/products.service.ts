@@ -44,6 +44,7 @@ export class ProductsService {
       limit_start: offset,
       search: searchParam,
       brand: brandParam,
+      excludeVariants: query.excludeVariants,
     });
     
     if (!result.success || !result.data) {
@@ -64,6 +65,14 @@ export class ProductsService {
 
   async getFullItem(sku: string) {
     return this.erpnextService['connector'].getFullItem(sku);
+  }
+
+  async getVariants(sku: string) {
+    const result = await (this.erpnextService['connector'] as any).fetchVariants(sku);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch variants from ERPNext');
+    }
+    return result.data;
   }
 
   // ─── Actions (Proxied to ERPNext) ────────────────────────────────────────

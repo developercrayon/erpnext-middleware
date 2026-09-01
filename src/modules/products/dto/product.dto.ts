@@ -23,6 +23,12 @@ export class ProductQueryDto {
   @IsEnum(MarketplaceSource)
   marketplace?: MarketplaceSource;
 
+  @ApiPropertyOptional({ description: 'Exclude variants from the response' })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  excludeVariants?: boolean;
+
   @ApiPropertyOptional({ description: 'Filter by SKU prefix' })
   @IsOptional()
   @IsString()

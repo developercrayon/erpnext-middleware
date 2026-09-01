@@ -216,6 +216,11 @@ export class ERPNextConnector extends BaseConnector {
         filters.push(['brand', '=', params.brand]);
       }
 
+      if (params?.excludeVariants) {
+        // Exclude items that are variants of another item (meaning we keep masters and simple items)
+        filters.push(['variant_of', 'is', 'not set']);
+      }
+
       const queryParams: any = {
         limit_start: params?.limit_start || 0,
         limit_page_length: params?.pageSize || 500,
@@ -290,6 +295,45 @@ export class ERPNextConnector extends BaseConnector {
         pageSize: params?.pageSize || 500,
         hasMore: false,
       });
+    } catch (error) {
+      return this.failure(error);
+    }
+  }
+
+  async fetchVariants(sku: string): Promise<ConnectorResult<NormalizedProduct[]>> {
+    try {
+      const baseUrl = this.baseUrl.replace(/\/$/, '');
+      const filters = JSON.stringify([['variant_of', '=', sku]]);
+      const queryParams = {
+        limit_page_length: 500,
+        fields: JSON.stringify(['*']),
+        filters,
+        order_by: 'creation desc',
+      };
+      const queryString = new URLSearchParams(queryParams as any).toString();
+      const endpointUrl = `${baseUrl}/api/resource/Item?${queryString}`;
+
+      const response = await this.http.get(endpointUrl, { headers: this.authHeaders });
+      
+      const itemsData = response.data?.data || [];
+      const items: any[] = itemsData.map((listItem: any) => {
+        const customAmazon = listItem.custom_amazon === 1 || listItem.custom_amazon === true;
+        const customFlipkart = listItem.custom_flipkart === 1 || listItem.custom_flipkart === true;
+        const customMrp = listItem.custom_mrp || 0;
+
+        return {
+          ...listItem, // Add payload data directly to the frontend
+          sku: listItem.item_code,
+          name: listItem.item_name,
+          mrp: customMrp || listItem.standard_rate || 0,
+          sellingPrice: listItem.standard_rate || 0,
+          customAmazon,
+          customFlipkart,
+          rawPayload: listItem,
+        };
+      });
+
+      return this.success(items);
     } catch (error) {
       return this.failure(error);
     }

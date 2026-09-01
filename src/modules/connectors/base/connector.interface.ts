@@ -57,6 +57,7 @@ export interface FetchProductsParams {
   category?: string;
   sku?: string;
   brand?: string;
+  excludeVariants?: boolean;
 }
 
 export interface UpdateResult {

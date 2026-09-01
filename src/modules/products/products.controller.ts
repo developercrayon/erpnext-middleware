@@ -90,9 +90,15 @@ export class ProductsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get product by SKU/ID' })
+  @ApiOperation({ summary: 'Get a single product by SKU' })
   async findOne(@Param('id') id: string) {
     return this.productsService.findById(id);
+  }
+
+  @Get(':id/variants')
+  @ApiOperation({ summary: 'Get variants for a product by SKU' })
+  async getVariants(@Param('id') id: string) {
+    return this.productsService.getVariants(id);
   }
 
   @Post('create-sync')
