@@ -3,6 +3,7 @@ process.env.TZ = 'Asia/Kolkata';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { json, urlencoded } from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -70,8 +71,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // ─── Compression ──────────────────────────────────────────────────────────
+  // ─── Compression & Payload Limit ──────────────────────────────────────────
   app.use(compression());
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   // ─── Global Prefix ────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1', {
