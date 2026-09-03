@@ -28,6 +28,10 @@ export interface ContentGenerationOutput {
   meta_description: string;
   short_description: string;
   description: string;
+  /** Optional array of feature/marketing bullet points for the product */
+  bullet_points?: string[];
+  /** Optional raw response from the AI provider */
+  raw_response?: string;
 }
 
 export interface ImageGenerationInput {

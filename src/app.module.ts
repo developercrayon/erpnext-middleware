@@ -28,6 +28,7 @@ import { LogsModule } from './modules/logs/logs.module';
 import { UnitModule } from './modules/unit/unit.module';
 import { CountryModule } from './modules/country/country.module';
 import { OrderFieldMappingModule } from './modules/order-field-mapping/order-field-mapping.module';
+import { ItemGroupModule } from './modules/item-group/item-group.module';
 
 // Infrastructure
 import { QueueModule } from './modules/queue/queue.module';
@@ -113,6 +114,7 @@ import { AdminModule } from './admin/admin.module';
     UnitModule,
     CountryModule,
     OrderFieldMappingModule,
+    ItemGroupModule,
 
     // ─── Infrastructure ───────────────────────────────────────────────────────
     QueueModule,

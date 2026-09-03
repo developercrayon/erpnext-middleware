@@ -35,26 +35,6 @@ export class ContentGenerationService {
       apiSecret: options.config.apiSecret,
     });
 
-    this.validateOutput(result);
-
     return result;
-  }
-
-  private validateOutput(output: any) {
-    const requiredFields = [
-      'title',
-      'meta_title',
-      'meta_description',
-      'short_description',
-      'description',
-    ];
-
-    for (const field of requiredFields) {
-      if (typeof output[field] !== 'string') {
-        throw new InternalServerErrorException(
-          `Missing or invalid required fields in AI output. Expected string for '${field}'.`,
-        );
-      }
-    }
   }
 }

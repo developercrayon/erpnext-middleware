@@ -12,6 +12,9 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { QUEUE_NAMES, JOB_NAMES } from '../../queue/queue.constants';
 import * as fs from 'fs';
+import { AiSettingsService } from './ai-settings.service';
+import { ContentGenerationService } from './content-generation.service';
+import { AiConfigType } from '../../../database/entities/ai.entity';
 
 @Injectable()
 export class ProductAiService {
@@ -24,6 +27,8 @@ export class ProductAiService {
     private readonly jobRepo: Repository<AiGenerationJob>,
     @InjectQueue(QUEUE_NAMES.AI)
     private readonly aiQueue: Queue,
+    private readonly settingsService: AiSettingsService,
+    private readonly contentGenService: ContentGenerationService,
   ) {}
 
   async createAiProductData(dto: CreateAiProductDataDto) {
@@ -120,13 +125,56 @@ export class ProductAiService {
 
     const job = this.jobRepo.create({
       aiProductDataId: data.id,
-      status: AiGenerationJobStatus.PENDING,
+      status: AiGenerationJobStatus.IN_PROGRESS,
+      contentStatus: 'in_progress',
     });
     const savedJob = await this.jobRepo.save(job);
 
-    await this.aiQueue.add(JOB_NAMES.AI_GENERATE_PRODUCT, {
-      aiProductDataId: data.id,
-    });
+    try {
+      // 1. Generate text content synchronously
+      const contentConfig = await this.settingsService.getDecryptedConfig(AiConfigType.CONTENT);
+
+      const generatedContent = await this.contentGenService.generateContent({
+        itemName: data.userInput.item_name,
+        description: data.userInput.description,
+        referenceImageUrl: data.userInput.reference_image_url,
+        referenceImageBase64: data.userInput.reference_image_base64,
+        config: {
+          provider: contentConfig.provider as any,
+          model: contentConfig.model,
+          apiKey: contentConfig.apiKey,
+          apiSecret: contentConfig.apiSecret,
+          contentPrompt: contentConfig.contentPrompt,
+        },
+      });
+
+      // 2. Save text content
+      data.generatedContent = generatedContent as any;
+      await this.productDataRepo.save(data);
+
+      savedJob.contentStatus = 'completed';
+      await this.jobRepo.save(savedJob);
+
+      // 3. Queue image generation (handled asynchronously by AiGenerationProcessor)
+      await this.aiQueue.add(JOB_NAMES.AI_GENERATE_PRODUCT, {
+        aiProductDataId: data.id,
+        imageOnly: true, // Tell processor to only run image generation
+      });
+
+    } catch (err: any) {
+      // If text generation fails, mark as failed immediately
+      savedJob.contentStatus = 'failed';
+      savedJob.status = AiGenerationJobStatus.FAILED;
+      savedJob.error = err.message;
+      savedJob.completedAt = new Date();
+      await this.jobRepo.save(savedJob);
+
+      // Revert product data status to PENDING so user can retry
+      data.status = AiProductDataStatus.PENDING;
+      await this.productDataRepo.save(data);
+
+      throw new BadRequestException(`Content generation failed: ${err.message}`);
+    }
 
     return { jobId: savedJob.id };
   }

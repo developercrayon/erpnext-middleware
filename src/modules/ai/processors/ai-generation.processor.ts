@@ -13,6 +13,7 @@ import {
 import { AiSettingsService } from '../services/ai-settings.service';
 import { ContentGenerationService } from '../services/content-generation.service';
 import { ImageGenerationService } from '../services/image-generation.service';
+import { ItemGroupService } from '../../item-group/item-group.service';
 import { Logger } from '@nestjs/common';
 
 @Processor(QUEUE_NAMES.AI)
@@ -27,6 +28,7 @@ export class AiGenerationProcessor {
     private readonly settingsService: AiSettingsService,
     private readonly contentGenService: ContentGenerationService,
     private readonly imageGenService: ImageGenerationService,
+    private readonly itemGroupService: ItemGroupService,
   ) {}
 
   @Process(JOB_NAMES.AI_GENERATE_PRODUCT)
@@ -100,15 +102,36 @@ export class AiGenerationProcessor {
           imageConfig = null;
         }
 
-        if (imageConfig && imageConfig.prompts && imageConfig.prompts.length > 0) {
-          aiJob.imageTotal = imageConfig.prompts.length;
+        const hasReferenceImage = !!productData.userInput.reference_image_url || !!productData.userInput.reference_image_base64;
+
+        if (imageConfig && hasReferenceImage) {
+          let promptsToUse = imageConfig.prompts || [];
+          let masterPromptToUse = imageConfig.imageMasterPrompt || '';
+
+          if (productData.userInput.item_group) {
+            try {
+              const groupConfig = await this.itemGroupService.getConfig(productData.userInput.item_group);
+              if (groupConfig && groupConfig.imagePrompts && groupConfig.imagePrompts.length > 0) {
+                // Only use enabled prompts
+                const enabledGroupPrompts = groupConfig.imagePrompts.filter(p => p.isEnabled);
+                if (enabledGroupPrompts.length > 0) {
+                  promptsToUse = enabledGroupPrompts;
+                }
+              }
+            } catch (err) {
+              this.logger.warn(`Failed to fetch item group config for ${productData.userInput.item_group}, falling back to global image prompts`);
+            }
+          }
+
+          if (promptsToUse.length > 0) {
+          aiJob.imageTotal = promptsToUse.length;
           await this.jobRepo.save(aiJob);
 
           const generatedImages = await this.imageGenService.generateImages({
             dataId: productData.id,
             itemName: productData.userInput.item_name,
-            prompts: imageConfig.prompts,
-            masterPrompt: imageConfig.imageMasterPrompt,
+            prompts: promptsToUse,
+            masterPrompt: masterPromptToUse,
             referenceImageUrl: productData.userInput.reference_image_url,
             referenceImageBase64: productData.userInput.reference_image_base64,
             config: {
@@ -128,6 +151,7 @@ export class AiGenerationProcessor {
           });
 
           // Generated images and job counts are saved progressively in onProgress
+          }
         }
       } catch (err: any) {
         this.logger.error(`Image Generation Phase Failed: ${err.message}`);
@@ -141,7 +165,13 @@ export class AiGenerationProcessor {
 
       productData.status = AiProductDataStatus.GENERATED;
       productData.generatedAt = new Date();
-      await this.productDataRepo.save(productData);
+      try {
+        await this.productDataRepo.save(productData);
+      } catch (err: any) {
+        this.logger.warn(`Failed to save productData with generatedAt, retrying without it: ${err.message}`);
+        delete (productData as any).generatedAt;
+        await this.productDataRepo.save(productData);
+      }
 
       this.logger.log(`Completed AI generation job for ProductData ${aiProductDataId}`);
     } catch (error: any) {
@@ -154,7 +184,12 @@ export class AiGenerationProcessor {
 
       // Revert product data status to PENDING so user can retry
       productData.status = AiProductDataStatus.PENDING;
-      await this.productDataRepo.save(productData);
+      try {
+        await this.productDataRepo.save(productData);
+      } catch (err) {
+        delete (productData as any).generatedAt;
+        await this.productDataRepo.save(productData);
+      }
 
       throw error;
     }

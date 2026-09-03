@@ -25,6 +25,7 @@ import { ProductAiController } from './controllers/product-ai.controller';
 
 // Processors
 import { AiGenerationProcessor } from './processors/ai-generation.processor';
+import { ItemGroupModule } from '../item-group/item-group.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AiGenerationProcessor } from './processors/ai-generation.processor';
     BullModule.registerQueue({
       name: QUEUE_NAMES.AI,
     }),
+    ItemGroupModule,
   ],
   controllers: [AiSettingsController, ProductAiController],
   providers: [

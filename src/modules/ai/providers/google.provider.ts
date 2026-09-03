@@ -37,7 +37,7 @@ export class GoogleProvider extends AIProvider {
     });
 
     const basePrompt = input.systemPrompt || 'You are an expert ecommerce product copywriter.';
-    const systemPrompt = `${basePrompt}\n\nCRITICAL INSTRUCTION: You must strictly output valid JSON with ONLY these exact keys: "title", "meta_title", "meta_description", "short_description", "description".`;
+    const systemPrompt = `${basePrompt}\n\nCRITICAL INSTRUCTION: You must strictly output valid JSON. Do not include markdown formatting or extra text.`;
 
     const modelName = input.model || 'gemini-3.5-flash-lite';
 
@@ -97,13 +97,7 @@ export class GoogleProvider extends AIProvider {
 
       const parsed = JSON.parse(responseText);
 
-      return {
-        title: parsed.title || parsed.item_title || input.itemName,
-        meta_title: parsed.meta_title || parsed.item_metatitle || '',
-        meta_description: parsed.meta_description || parsed.item_description || '',
-        short_description: parsed.short_description || (parsed.item_bulletpoints ? parsed.item_bulletpoints.join('\n') : ''),
-        description: parsed.description || parsed.item_description || '',
-      };
+      return parsed as ContentGenerationOutput;
     } catch (error: any) {
       this.logToFile('error', 'content', input.itemName, error);
       throw new Error(`Google Content Generation failed: ${error.message}`);

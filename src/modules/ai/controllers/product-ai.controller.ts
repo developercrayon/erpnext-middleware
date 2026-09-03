@@ -48,35 +48,21 @@ export class ProductAiController {
     return data;
   }
 
-  @Get('debug-fs')
-  async debugFs() {
-    const fs = require('fs');
-    const path = require('path');
-    const cwd = process.cwd();
-    const publicDir = path.join(cwd, 'public');
-    const imagesDir = path.join(publicDir, 'generated_images');
-    
-    let exists = false;
-    let files = [];
+  @Get('debug-google')
+  async debugGoogle() {
+    const { GoogleProvider } = require('../providers/google.provider');
+    const google = new GoogleProvider();
     try {
-      exists = fs.existsSync(imagesDir);
-      if (exists) {
-        files = fs.readdirSync(imagesDir);
-      }
-    } catch (e) {
-      files = [e.message];
+      const res = await google.generateContent({
+        itemName: 'Test Product',
+        description: 'Test description',
+        model: 'gemini-1.5-flash',
+        apiKey: process.env.GOOGLE_API_KEY || '',
+      });
+      return { success: true, raw_response: res.raw_response };
+    } catch (err: any) {
+      return { success: false, error: err.message, stack: err.stack };
     }
-
-    return {
-      cwd,
-      publicDir,
-      imagesDir,
-      exists,
-      files,
-      dirname: __dirname,
-      nodeEnv: process.env.NODE_ENV,
-      redisDb: process.env.REDIS_DB
-    };
   }
 
   @Patch('product-data/:id')

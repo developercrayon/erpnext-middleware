@@ -142,6 +142,7 @@ export class AiProductData {
     reference_image_url?: string;
     reference_image_base64?: string;
     original_image_url?: string;
+    item_group?: string;
   };
 
   /**
@@ -155,6 +156,8 @@ export class AiProductData {
     meta_description: string;
     short_description: string;
     description: string;
+    bullet_points?: string[];
+    raw_response?: string;
   } | null;
 
   /**

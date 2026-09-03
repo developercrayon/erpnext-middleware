@@ -17,7 +17,7 @@ export class AnthropicProvider extends AIProvider {
 
     const systemPrompt =
       input.systemPrompt ||
-      'You are an expert ecommerce product copywriter. Output strictly JSON with the keys: title, meta_title, meta_description, short_description, description. Return ONLY the JSON object, with no markdown formatting or extra text.';
+      'You are an expert ecommerce product copywriter. Output strictly valid JSON. Return ONLY the JSON object, with no markdown formatting or extra text.';
 
     const content: Array<any> = [
       {
@@ -53,13 +53,7 @@ export class AnthropicProvider extends AIProvider {
       const jsonMatch = contentString.match(/\{[\s\S]*\}/);
       const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(contentString);
 
-      return {
-        title: parsed.title || input.itemName,
-        meta_title: parsed.meta_title || '',
-        meta_description: parsed.meta_description || '',
-        short_description: parsed.short_description || '',
-        description: parsed.description || '',
-      };
+      return parsed as ContentGenerationOutput;
     } catch (error: any) {
       throw new Error(`Anthropic Content Generation failed: ${error.message}`);
     }

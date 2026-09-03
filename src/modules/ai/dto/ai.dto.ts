@@ -170,6 +170,10 @@ export class CreateAiProductDataDto {
   @IsString()
   @IsOptional()
   reference_image_base64?: string;
+
+  @IsString()
+  @IsOptional()
+  item_group?: string;
 }
 
 export class UpdateAiProductContentDto {
@@ -192,4 +196,7 @@ export class UpdateAiProductContentDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsOptional()
+  bullet_points?: string[];
 }

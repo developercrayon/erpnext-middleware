@@ -97,6 +97,40 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
+  async fetchItemGroups(params: { limit_start?: number; limit_page_length?: number; search?: string } = {}): Promise<ConnectorResult<any>> {
+    try {
+      const filters = params.search ? [['name', 'like', `%${params.search}%`]] : [];
+      const response = await this.http.get(`${this.baseUrl}/api/resource/Item Group`, {
+        headers: this.authHeaders,
+        params: {
+          fields: JSON.stringify(['name', 'item_group_name', 'parent_item_group', 'is_group']),
+          filters: JSON.stringify(filters),
+          limit_start: params.limit_start || 0,
+          limit_page_length: params.limit_page_length || 50,
+        },
+      });
+
+      let total = 0;
+      try {
+        const countRes = await this.http.get(`${this.baseUrl}/api/resource/Item Group`, {
+          headers: this.authHeaders,
+          params: {
+            fields: JSON.stringify(['count(name) as total']),
+            filters: JSON.stringify(filters),
+          },
+        });
+        total = countRes.data?.data?.[0]?.total || 0;
+      } catch (e) {
+        // Ignore count error
+      }
+
+      return this.success({ data: response.data?.data || [], total });
+    } catch (error) {
+      this.logger.error('Failed to fetch item groups from ERPNext', error);
+      return this.failure(this.extractFrappeError(error));
+    }
+  }
+
   async updateItem(itemCode: string, fields: Record<string, any>): Promise<ConnectorResult<any>> {
     try {
       const response = await this.http.put(
