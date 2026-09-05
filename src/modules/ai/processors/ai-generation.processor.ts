@@ -2,7 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bull';
 import { QUEUE_NAMES, JOB_NAMES } from '../../queue/queue.constants';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import {
   AiProductData,
   AiGenerationJob,
@@ -37,7 +37,10 @@ export class AiGenerationProcessor {
     this.logger.log(`Starting AI generation job for ProductData ${aiProductDataId} (imageOnly: ${!!imageOnly})`);
 
     const aiJob = await this.jobRepo.findOne({
-      where: { aiProductDataId, status: AiGenerationJobStatus.PENDING },
+      where: { 
+        aiProductDataId, 
+        status: In([AiGenerationJobStatus.PENDING, AiGenerationJobStatus.IN_PROGRESS]) 
+      },
       order: { createdAt: 'DESC' },
     });
 

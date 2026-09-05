@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import { AiSettingsService } from './ai-settings.service';
 import { ContentGenerationService } from './content-generation.service';
 import { AiConfigType } from '../../../database/entities/ai.entity';
+import { ItemGroupService } from '../../item-group/item-group.service';
 
 @Injectable()
 export class ProductAiService {
@@ -29,6 +30,7 @@ export class ProductAiService {
     private readonly aiQueue: Queue,
     private readonly settingsService: AiSettingsService,
     private readonly contentGenService: ContentGenerationService,
+    private readonly itemGroupService: ItemGroupService,
   ) {}
 
   async createAiProductData(dto: CreateAiProductDataDto) {
@@ -123,10 +125,35 @@ export class ProductAiService {
     data.status = AiProductDataStatus.IN_PROGRESS;
     await this.productDataRepo.save(data);
 
+    let initialImageTotal = 0;
+    const hasImage = !!(data.userInput.reference_image_url || data.userInput.reference_image_base64 || data.userInput.original_image_url);
+    
+    if (hasImage) {
+      try {
+        const imageConfig = await this.settingsService.getDecryptedConfig(AiConfigType.IMAGE);
+        if (imageConfig) {
+          let promptsToUse: any[] = imageConfig.prompts || [];
+          if (data.userInput.item_group) {
+            try {
+              const groupConfig = await this.itemGroupService.getConfig(data.userInput.item_group);
+              if (groupConfig && groupConfig.imagePrompts && groupConfig.imagePrompts.length > 0) {
+                const enabledGroupPrompts = groupConfig.imagePrompts.filter(p => p.isEnabled);
+                if (enabledGroupPrompts.length > 0) {
+                  promptsToUse = enabledGroupPrompts;
+                }
+              }
+            } catch (err) {}
+          }
+          initialImageTotal = promptsToUse.length;
+        }
+      } catch (err) {}
+    }
+
     const job = this.jobRepo.create({
       aiProductDataId: data.id,
       status: AiGenerationJobStatus.IN_PROGRESS,
       contentStatus: 'in_progress',
+      imageTotal: initialImageTotal,
     });
     const savedJob = await this.jobRepo.save(job);
 
@@ -150,6 +177,19 @@ export class ProductAiService {
 
       // 2. Save text content
       data.generatedContent = generatedContent as any;
+      
+      if (!hasImage) {
+        data.status = AiProductDataStatus.GENERATED;
+        await this.productDataRepo.save(data);
+
+        savedJob.contentStatus = 'completed';
+        savedJob.status = AiGenerationJobStatus.COMPLETED;
+        savedJob.completedAt = new Date();
+        await this.jobRepo.save(savedJob);
+
+        return { jobId: savedJob.id, status: 'generated' };
+      }
+
       await this.productDataRepo.save(data);
 
       savedJob.contentStatus = 'completed';
