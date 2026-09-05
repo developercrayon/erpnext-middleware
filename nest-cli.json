@@ -6,19 +6,9 @@
     "deleteOutDir": true,
     "watchAssets": true,
     "assets": [
-      {
-        "include": "**/*.jsx",
-        "outDir": "dist"
-      },
-      {
-        "include": "**/*.tsx",
-        "outDir": "dist"
-      },
-      {
-        "include": "**/*.json",
-        "outDir": "dist",
-        "watchAssets": true
-      }
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.json"
     ]
   }
 }
