@@ -23,4 +23,10 @@ export class TokenResponseDto {
 
   @ApiProperty()
   expiresIn: string;
+
+  @ApiProperty({ required: false, type: [String] })
+  cookies?: string[];
+
+  @ApiProperty({ required: false })
+  fullName?: string;
 }

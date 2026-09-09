@@ -58,4 +58,65 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired token');
     }
   }
+  async erpnextLogin(email: string, password: string): Promise<{ accessToken: string; expiresIn: string; cookies: string[]; fullName: string }> {
+    // We assume the middleware's internal admin credentials are valid to grant the JWT.
+    // To make it fully robust, we check ERPNext FIRST.
+    
+    const baseUrl = this.config.get<string>('ERPNEXT_BASE_URL') || process.env.ERPNEXT_BASE_URL;
+    if (!baseUrl) {
+      throw new UnauthorizedException('ERPNext Base URL is not configured');
+    }
+
+    try {
+      const res = await fetch(`${baseUrl}/api/method/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          usr: email,
+          pwd: password,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new UnauthorizedException(`ERPNext authentication failed: ${res.statusText}`);
+      }
+
+      const erpnextData = await res.json();
+      const fullName = erpnextData.full_name || email;
+
+      // Collect the 'set-cookie' headers returned by ERPNext
+      const rawCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+      let cookies: string[] = [];
+      
+      // Fallback for Node environments that don't support getSetCookie() yet
+      if (rawCookies.length === 0) {
+        const headerCookie = res.headers.get("set-cookie");
+        if (headerCookie) {
+          // A naive split by comma, though getSetCookie is standard in Node 18+
+          cookies = headerCookie.split(',').map(c => c.trim());
+        }
+      } else {
+        cookies = rawCookies;
+      }
+
+      // Generate the Middleware JWT token for subsequent API requests
+      // Using 'admin' role as default since they passed ERPNext auth
+      const expiresIn = this.config.get<string>('jwt.expiresIn') || '7d';
+      const accessToken = this.jwtService.sign(
+        { sub: 'admin', email, role: 'admin' },
+        { expiresIn },
+      );
+
+      return { accessToken, expiresIn, cookies, fullName };
+    } catch (err: any) {
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
+      throw new UnauthorizedException(`Could not connect to ERPNext backend: ${err.message}`);
+    }
+  }
 }
