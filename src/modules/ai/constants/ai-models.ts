@@ -122,6 +122,12 @@ export const AI_MODELS_RAW = {
         "key": "gpt-image-2",
         "label": "Best Quality",
         "active": true
+      },
+      {
+        "name": "GPT Image 1.5",
+        "key": "gpt-image-1-5",
+        "label": "Best Quality",
+        "active": true
       }
     ],
     "openai": [
