@@ -31,17 +31,15 @@ export class ProductAiService {
     private readonly settingsService: AiSettingsService,
     private readonly contentGenService: ContentGenerationService,
     private readonly itemGroupService: ItemGroupService,
-  ) {}
+  ) { }
 
   async createAiProductData(dto: CreateAiProductDataDto) {
     let originalImageUrl;
-
     const data = this.productDataRepo.create({
       userInput: dto,
       status: AiProductDataStatus.PENDING,
     });
-    
-    // Save to get the ID
+
     const savedData = await this.productDataRepo.save(data);
 
     if (dto.reference_image_base64) {
@@ -50,7 +48,7 @@ export class ProductAiService {
         if (matches && matches.length === 3) {
           const mimeType = matches[1];
           const base64Data = matches[2];
-          
+
           let ext = 'jpg';
           if (mimeType === 'image/png') ext = 'png';
           if (mimeType === 'image/webp') ext = 'webp';
@@ -59,10 +57,8 @@ export class ProductAiService {
           if (!fs.existsSync(imagesDir)) {
             fs.mkdirSync(imagesDir, { recursive: true });
           }
-
           const filePath = require('path').join(imagesDir, `original.${ext}`);
           fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
-
           savedData.userInput.original_image_url = `/api/v1/ai/images/${savedData.id}/original`;
           await this.productDataRepo.save(savedData);
         }
@@ -70,7 +66,6 @@ export class ProductAiService {
         this.logger.error('Failed to save original image to disk', err);
       }
     }
-
     return savedData;
   }
 
@@ -82,7 +77,7 @@ export class ProductAiService {
       skip,
       take: pageSize,
     });
-    
+
     return {
       items,
       total,
@@ -111,7 +106,6 @@ export class ProductAiService {
       ...data.generatedContent,
       ...dto,
     };
-
     return await this.productDataRepo.save(data);
   }
 
@@ -127,7 +121,7 @@ export class ProductAiService {
 
     let initialImageTotal = 0;
     const hasImage = !!(data.userInput.reference_image_url || data.userInput.reference_image_base64 || data.userInput.original_image_url);
-    
+
     if (hasImage) {
       try {
         const imageConfig = await this.settingsService.getDecryptedConfig(AiConfigType.IMAGE);
@@ -142,11 +136,11 @@ export class ProductAiService {
                   promptsToUse = enabledGroupPrompts;
                 }
               }
-            } catch (err) {}
+            } catch (err) { }
           }
           initialImageTotal = promptsToUse.length;
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     const job = this.jobRepo.create({
@@ -160,7 +154,6 @@ export class ProductAiService {
     try {
       // 1. Generate text content synchronously
       const contentConfig = await this.settingsService.getDecryptedConfig(AiConfigType.CONTENT);
-
       const generatedContent = await this.contentGenService.generateContent({
         itemName: data.userInput.item_name,
         description: data.userInput.description,
@@ -177,7 +170,6 @@ export class ProductAiService {
 
       // 2. Save text content
       data.generatedContent = generatedContent as any;
-      
       if (!hasImage) {
         data.status = AiProductDataStatus.GENERATED;
         await this.productDataRepo.save(data);
@@ -265,8 +257,6 @@ export class ProductAiService {
 
   async deleteAiProductData(id: string) {
     const data = await this.getAiProductData(id);
-
-    // Delete image files from disk if they exist
     if (data.generatedImages && data.generatedImages.length > 0) {
       for (const img of data.generatedImages) {
         if (img.file_path && fs.existsSync(img.file_path)) {
