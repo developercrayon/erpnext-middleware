@@ -7,6 +7,7 @@ import {
   IsString,
   IsUrl,
   ValidateNested,
+  IsArray,
 } from 'class-validator';
 import { AiProviderName } from '../constants/ai-models.registry';
 import { AiConfigType } from '../../../database/entities/ai.entity';
@@ -174,6 +175,11 @@ export class CreateAiProductDataDto {
   @IsString()
   @IsOptional()
   item_group?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  custom_prompts?: string[];
 }
 
 export class UpdateAiProductContentDto {

@@ -114,16 +114,29 @@ export class AiGenerationProcessor {
           if (productData.userInput.item_group) {
             try {
               const groupConfig = await this.itemGroupService.getConfig(productData.userInput.item_group);
-              if (groupConfig && groupConfig.imagePrompts && groupConfig.imagePrompts.length > 0) {
-                // Only use enabled prompts
-                const enabledGroupPrompts = groupConfig.imagePrompts.filter(p => p.isEnabled);
-                if (enabledGroupPrompts.length > 0) {
-                  promptsToUse = enabledGroupPrompts;
+              if (groupConfig) {
+                if (groupConfig.masterImagePrompt) {
+                  masterPromptToUse = groupConfig.masterImagePrompt;
+                }
+                if (groupConfig.imagePrompts && groupConfig.imagePrompts.length > 0) {
+                  // Only use enabled prompts
+                  const enabledGroupPrompts = groupConfig.imagePrompts.filter(p => p.isEnabled);
+                  if (enabledGroupPrompts.length > 0) {
+                    promptsToUse = enabledGroupPrompts;
+                  }
                 }
               }
             } catch (err) {
               this.logger.warn(`Failed to fetch item group config for ${productData.userInput.item_group}, falling back to global image prompts`);
             }
+          }
+
+          if (productData.userInput.custom_prompts && productData.userInput.custom_prompts.length > 0) {
+            promptsToUse = productData.userInput.custom_prompts.map(p => ({
+              promptText: p,
+              isEnabled: true,
+            })) as any;
+            masterPromptToUse = ''; // master prompt is already prepended by UI
           }
 
           if (promptsToUse.length > 0) {

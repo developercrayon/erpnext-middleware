@@ -53,10 +53,10 @@ export class ItemGroupService {
     });
 
     if (!config) {
-      // Return a default structure if not configured yet
       config = this.configRepo.create({
         itemGroup,
         amazonProductType: null,
+        masterImagePrompt: null,
         imagePrompts: [],
       });
     }
@@ -69,7 +69,7 @@ export class ItemGroupService {
     return config;
   }
 
-  async saveConfig(itemGroup: string, data: { amazonProductType?: string, imagePrompts?: any[] }) {
+  async saveConfig(itemGroup: string, data: { amazonProductType?: string, imagePrompts?: any[], masterImagePrompt?: string }) {
     let config = await this.configRepo.findOne({
       where: { itemGroup },
       relations: ['imagePrompts'],
@@ -81,6 +81,10 @@ export class ItemGroupService {
 
     if (data.amazonProductType !== undefined) {
       config.amazonProductType = data.amazonProductType;
+    }
+
+    if (data.masterImagePrompt !== undefined) {
+      config.masterImagePrompt = data.masterImagePrompt;
     }
 
     if (data.imagePrompts) {

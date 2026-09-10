@@ -8,6 +8,9 @@ export class ItemGroupConfig {
   @Column({ name: 'amazon_product_type', type: 'varchar', nullable: true })
   amazonProductType: string;
 
+  @Column({ name: 'master_image_prompt', type: 'text', nullable: true })
+  masterImagePrompt: string;
+
   @OneToMany(() => ItemGroupPrompt, (prompt) => prompt.itemGroupConfig, { cascade: true })
   imagePrompts: ItemGroupPrompt[];
 

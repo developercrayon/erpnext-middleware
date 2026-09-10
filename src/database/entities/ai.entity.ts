@@ -143,6 +143,7 @@ export class AiProductData {
     reference_image_base64?: string;
     original_image_url?: string;
     item_group?: string;
+    custom_prompts?: string[];
   };
 
   /**
