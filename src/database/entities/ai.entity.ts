@@ -144,6 +144,8 @@ export class AiProductData {
     original_image_url?: string;
     item_group?: string;
     custom_prompts?: string[];
+    custom_sku?: string;
+    dynamic_fields?: any;
   };
 
   /**

@@ -180,6 +180,13 @@ export class CreateAiProductDataDto {
   @IsArray()
   @IsString({ each: true })
   custom_prompts?: string[];
+
+  @IsString()
+  @IsOptional()
+  custom_sku?: string;
+
+  @IsOptional()
+  dynamic_fields?: any;
 }
 
 export class UpdateAiProductContentDto {

@@ -17,6 +17,30 @@ import { ContentGenerationService } from './content-generation.service';
 import { AiConfigType } from '../../../database/entities/ai.entity';
 import { ItemGroupService } from '../../item-group/item-group.service';
 
+function replaceDynamicFields(prompt: string | null | undefined, userInput: any): string | undefined {
+  if (!prompt) return undefined;
+  let finalPrompt = prompt;
+
+  // 1. Explicit top-level replacements
+  finalPrompt = finalPrompt.replace(/\{\{item_name\}\}/g, userInput.item_name || '');
+  finalPrompt = finalPrompt.replace(/\{\{custom_sku\}\}/g, userInput.custom_sku || userInput.item_name || '');
+
+  // 2. Iterate through all dynamic fields sent from ERPNext
+  if (userInput.dynamic_fields && typeof userInput.dynamic_fields === 'object') {
+    const fieldNames = Object.keys(userInput.dynamic_fields);
+    for (const field of fieldNames) {
+      const val = userInput.dynamic_fields[field];
+      if (val !== undefined && val !== null && typeof val !== 'object') {
+        const regex = new RegExp(`\\{\\{${field}\\}\\}`, 'g');
+        finalPrompt = finalPrompt.replace(regex, String(val));
+      }
+    }
+  }
+
+  return finalPrompt;
+}
+
+
 @Injectable()
 export class ProductAiService {
   private readonly logger = new Logger(ProductAiService.name);
@@ -164,7 +188,7 @@ export class ProductAiService {
           model: contentConfig.model,
           apiKey: contentConfig.apiKey,
           apiSecret: contentConfig.apiSecret,
-          contentPrompt: contentConfig.contentPrompt,
+          contentPrompt: replaceDynamicFields(contentConfig.contentPrompt, data.userInput),
         },
       });
 
