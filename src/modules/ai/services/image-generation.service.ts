@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface GenerateImagesOptions {
-  dataId: string; // The UUID of the AiProductData record
+  dataId: string;
   itemName: string;
   prompts: AiImagePrompt[];
   referenceImageUrl?: string;
@@ -18,6 +18,8 @@ export interface GenerateImagesOptions {
     apiKey: string;
     apiSecret?: string;
   };
+  targetIndex?: number;
+  existingResults?: GeneratedImageResult[];
   onProgress?: (result: GeneratedImageResult, currentResults: GeneratedImageResult[]) => Promise<void>;
 }
 
@@ -40,7 +42,7 @@ export class ImageGenerationService {
 
   async generateImages(options: GenerateImagesOptions): Promise<GeneratedImageResult[]> {
     const provider = this.providerFactory.getProvider(options.config.provider);
-    const results: GeneratedImageResult[] = [];
+    const results: GeneratedImageResult[] = options.existingResults ? [...options.existingResults] : [];
 
     const publicDir = path.join(process.cwd(), 'public');
     const imagesDir = path.join(publicDir, 'generated_images', options.dataId);
@@ -48,8 +50,13 @@ export class ImageGenerationService {
       fs.mkdirSync(imagesDir, { recursive: true });
     }
 
-    for (let i = 0; i < options.prompts.length; i++) {
+    const startIndex = options.targetIndex !== undefined ? options.targetIndex : 0;
+    const endIndex = options.targetIndex !== undefined ? options.targetIndex + 1 : options.prompts.length;
+
+    for (let i = startIndex; i < endIndex; i++) {
       const prompt = options.prompts[i];
+      if (!prompt) continue;
+      
       const finalPromptText = options.masterPrompt 
         ? `${options.masterPrompt}\n\n${prompt.promptText}` 
         : prompt.promptText;
@@ -85,7 +92,7 @@ export class ImageGenerationService {
           prompt_text: finalPromptText,
           success: true,
         };
-        results.push(result);
+        results[i] = result;
         if (options.onProgress) {
           await options.onProgress(result, [...results]);
         }
@@ -102,7 +109,7 @@ export class ImageGenerationService {
           success: false,
           error: error.message,
         };
-        results.push(result);
+        results[i] = result;
         if (options.onProgress) {
           await options.onProgress(result, [...results]);
         }

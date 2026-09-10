@@ -84,8 +84,11 @@ export class ProductAiController {
 
   @Post('product-data/:id/generate-image')
   @UseGuards(AuthGuard('jwt'))
-  async triggerImageGeneration(@Param('id') id: string) {
-    const data = await this.productAiService.triggerImageGeneration(id);
+  async triggerImageGeneration(
+    @Param('id') id: string,
+    @Body('targetIndex') targetIndex?: number,
+  ) {
+    const data = await this.productAiService.triggerImageGeneration(id, targetIndex);
     return data;
   }
 

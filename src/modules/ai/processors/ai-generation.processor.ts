@@ -32,9 +32,9 @@ export class AiGenerationProcessor {
   ) {}
 
   @Process(JOB_NAMES.AI_GENERATE_PRODUCT)
-  async handleGenerateProduct(job: Job<{ aiProductDataId: string; imageOnly?: boolean }>) {
-    const { aiProductDataId, imageOnly } = job.data;
-    this.logger.log(`Starting AI generation job for ProductData ${aiProductDataId} (imageOnly: ${!!imageOnly})`);
+  async handleGenerateProduct(job: Job<{ aiProductDataId: string; imageOnly?: boolean; targetIndex?: number }>) {
+    const { aiProductDataId, imageOnly, targetIndex } = job.data;
+    this.logger.log(`Starting AI generation job for ProductData ${aiProductDataId} (imageOnly: ${!!imageOnly}, targetIndex: ${targetIndex})`);
 
     const aiJob = await this.jobRepo.findOne({
       where: { 
@@ -156,12 +156,14 @@ export class AiGenerationProcessor {
               apiKey: imageConfig.apiKey,
               apiSecret: imageConfig.apiSecret,
             },
+            targetIndex,
+            existingResults: productData.generatedImages,
             onProgress: async (result, currentResults) => {
               productData.generatedImages = currentResults;
               await this.productDataRepo.save(productData);
 
-              aiJob.imageCompleted = currentResults.filter((img) => img.success).length;
-              aiJob.imageFailed = currentResults.filter((img) => !img.success).length;
+              aiJob.imageCompleted = currentResults.filter((img) => img && img.success).length;
+              aiJob.imageFailed = currentResults.filter((img) => img && !img.success).length;
               await this.jobRepo.save(aiJob);
             }
           });

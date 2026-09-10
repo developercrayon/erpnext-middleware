@@ -211,7 +211,7 @@ export class ProductAiService {
     return { jobId: savedJob.id };
   }
 
-  async triggerImageGeneration(id: string) {
+  async triggerImageGeneration(id: string, targetIndex?: number) {
     const data = await this.getAiProductData(id);
 
     if (data.status === AiProductDataStatus.IN_PROGRESS) {
@@ -219,7 +219,9 @@ export class ProductAiService {
     }
 
     data.status = AiProductDataStatus.IN_PROGRESS;
-    data.generatedImages = [];
+    if (targetIndex === undefined) {
+      data.generatedImages = [];
+    }
     await this.productDataRepo.save(data);
 
     const job = this.jobRepo.create({
@@ -231,6 +233,7 @@ export class ProductAiService {
     await this.aiQueue.add(JOB_NAMES.AI_GENERATE_PRODUCT, {
       aiProductDataId: data.id,
       imageOnly: true,
+      targetIndex,
     });
 
     return { jobId: savedJob.id };
