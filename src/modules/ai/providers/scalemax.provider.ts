@@ -34,7 +34,7 @@ export class ScalemaxProvider extends AIProvider {
       }
 
       this.logger.log(
-        `Generating Scalemax image. Reference image: ${!!base64Data}`,
+        `Generating Scalemax image. Reference image: ${!!input.referenceImageBase64}`,
       );
 
       const response = await axios.post(apiUrl, body, {
