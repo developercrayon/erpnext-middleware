@@ -22,13 +22,6 @@ export class ScalemaxProvider extends AIProvider {
         );
       }
 
-      const base64Data = input.referenceImageBase64
-        ? input.referenceImageBase64.replace(
-          /^data:image\/[^;]+;base64,/,
-          '',
-        )
-        : undefined;
-
       const body: any = {
         model: input.model || 'gpt-image-2',
         prompt: input.promptText,
@@ -36,8 +29,8 @@ export class ScalemaxProvider extends AIProvider {
         size: '1024x1024',
       };
 
-      if (base64Data) {
-        body.image = `data:image/png;base64,${base64Data}`;
+      if (input.referenceImageBase64) {
+        body.image = input.referenceImageBase64;
       }
 
       this.logger.log(
