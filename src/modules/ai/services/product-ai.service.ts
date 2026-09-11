@@ -293,6 +293,30 @@ export class ProductAiService {
 
   async markAsConverted(id: string) {
     const data = await this.getAiProductData(id);
+    
+    // Delete physical image files to save disk space since they are now in ERPNext
+    if (data.generatedImages && data.generatedImages.length > 0) {
+      for (const img of data.generatedImages) {
+        if (img.file_path && fs.existsSync(img.file_path)) {
+          try {
+            fs.unlinkSync(img.file_path);
+          } catch (e: any) {
+            this.logger.error(`Failed to delete image file ${img.file_path} on convert: ${e.message}`);
+          }
+        }
+      }
+    }
+    
+    // Also delete the original reference image if it was saved
+    try {
+      const originalPath = require('path').join(process.cwd(), 'public', 'generated_images', id);
+      if (fs.existsSync(originalPath)) {
+        fs.rmSync(originalPath, { recursive: true, force: true });
+      }
+    } catch (e: any) {
+      this.logger.error(`Failed to delete original image directory ${id} on convert: ${e.message}`);
+    }
+
     data.status = AiProductDataStatus.CONVERTED;
     return await this.productDataRepo.save(data);
   }
