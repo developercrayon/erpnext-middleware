@@ -4,6 +4,7 @@ import { AiProviderName } from '../constants/ai-models.registry';
 import { AiImagePrompt } from '../../../database/entities/ai.entity';
 import * as fs from 'fs';
 import * as path from 'path';
+import axios from 'axios';
 
 export interface GenerateImagesOptions {
   dataId: string;
@@ -53,6 +54,30 @@ export class ImageGenerationService {
     const startIndex = options.targetIndex !== undefined ? options.targetIndex : 0;
     const endIndex = options.targetIndex !== undefined ? options.targetIndex + 1 : options.prompts.length;
 
+    let resolvedReferenceImageBase64 = options.referenceImageBase64;
+    if (!resolvedReferenceImageBase64 && options.referenceImageUrl && !options.referenceImageUrl.startsWith('blob:')) {
+      try {
+        let fullUrl = options.referenceImageUrl;
+        if (!fullUrl.startsWith('http')) {
+          const baseUrl = process.env.ERPNEXT_BASE_URL || 'http://localhost:8000';
+          fullUrl = `${baseUrl}/${fullUrl.startsWith('/') ? fullUrl.substring(1) : fullUrl}`;
+        }
+        
+        this.logger.log(`Fetching reference image from URL to convert to base64: ${fullUrl}`);
+        const response = await axios.get(fullUrl, { responseType: 'arraybuffer' });
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        
+        let mimeType = 'image/jpeg';
+        if (fullUrl.toLowerCase().includes('.png')) mimeType = 'image/png';
+        if (fullUrl.toLowerCase().includes('.webp')) mimeType = 'image/webp';
+        
+        resolvedReferenceImageBase64 = `data:${mimeType};base64,${base64}`;
+        this.logger.log(`Successfully converted reference image to base64 on backend`);
+      } catch (e: any) {
+        this.logger.error(`Failed to convert reference image URL to base64: ${e.message}`);
+      }
+    }
+
     for (let i = startIndex; i < endIndex; i++) {
       const prompt = options.prompts[i];
       if (!prompt) continue;
@@ -66,7 +91,7 @@ export class ImageGenerationService {
           itemName: options.itemName,
           promptText: finalPromptText,
           referenceImageUrl: options.referenceImageUrl,
-          referenceImageBase64: options.referenceImageBase64,
+          referenceImageBase64: resolvedReferenceImageBase64,
           model: options.config.model,
           apiKey: options.config.apiKey,
           apiSecret: options.config.apiSecret,
