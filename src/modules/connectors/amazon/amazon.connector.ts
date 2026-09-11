@@ -1156,9 +1156,7 @@ export class AmazonConnector extends BaseConnector {
     let otherImages: string[] = [];
 
     // Primary image lookup
-    if (erpRaw.custom_thumbnail_image) {
-      mainImage = erpRaw.custom_thumbnail_image;
-    } else if (erpRaw.image) {
+    if (erpRaw.image) {
       mainImage = erpRaw.image;
     } else if (erpRaw.attachments && erpRaw.attachments.length > 0 && erpRaw.attachments[0].file_url) {
       mainImage = erpRaw.attachments[0].file_url;
@@ -1170,11 +1168,11 @@ export class AmazonConnector extends BaseConnector {
     }
 
     // Other images lookup
-    if (erpRaw.image && erpRaw.image !== erpRaw.custom_thumbnail_image) {
+    if (erpRaw.image && erpRaw.image !== mainImage) {
       let url = erpRaw.image;
       if (url.startsWith('/')) url = url.substring(1);
       url = url.startsWith('http') ? url : `${baseUrl}/${url}`;
-      if (url !== mainImage) otherImages.push(url);
+      otherImages.push(url);
     }
 
     if (erpRaw.attachments && Array.isArray(erpRaw.attachments)) {

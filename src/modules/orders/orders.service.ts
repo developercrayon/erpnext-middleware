@@ -209,7 +209,7 @@ export class OrdersService {
               const productRes = await this.erpNextConnector.getFullItem(item.sku);
               if (productRes.success && productRes.data) {
                 const raw = productRes.data;
-                let thumb = raw.custom_thumbnail_image || raw.image;
+                let thumb = raw.image;
                 if (!thumb && raw.attachments && raw.attachments.length > 0) {
                   thumb = raw.attachments[0]?.file_url;
                 }

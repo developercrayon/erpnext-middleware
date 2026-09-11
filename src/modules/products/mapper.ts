@@ -65,14 +65,7 @@ export function mapFrontendToERPNext(
       continue;
     }
 
-    // ── Thumbnail → ERPNext native `image` field ───────────────────────────
-    if (key === 'custom_thumbnail_image') {
-      if (value) {
-        payload['image'] = value;   // ERPNext uses `image` for the item thumbnail
-        payload[key] = value;       // also keep the custom field
-      }
-      continue;
-    }
+
 
     payload[key] = value;
   }

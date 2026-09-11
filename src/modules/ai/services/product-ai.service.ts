@@ -116,6 +116,21 @@ export class ProductAiService {
     if (!data) {
       throw new NotFoundException(`AI Product Data with ID ${id} not found`);
     }
+    
+    // Self-heal status if it somehow got stuck in pending/in_progress despite having generated data
+    if ((data.status === AiProductDataStatus.PENDING || data.status === AiProductDataStatus.IN_PROGRESS) && 
+        data.generatedContent && Object.keys(data.generatedContent).length > 0) {
+      
+      const hasImages = Array.isArray(data.generatedImages) && data.generatedImages.length > 0;
+      const requiresImages = !!(data.userInput?.reference_image_url || data.userInput?.reference_image_base64 || data.userInput?.original_image_url);
+      
+      // If we don't require images, or we require them and we have them, mark as GENERATED
+      if (!requiresImages || hasImages) {
+        data.status = AiProductDataStatus.GENERATED;
+        await this.productDataRepo.save(data);
+      }
+    }
+    
     return data;
   }
 
