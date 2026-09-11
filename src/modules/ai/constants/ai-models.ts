@@ -118,6 +118,12 @@ export const AI_MODELS_RAW = {
   "image": {
     "scalemax": [
       {
+        "name": "GPT Image 2.5",
+        "key": "gpt-image-2,5",
+        "label": "Best Quality",
+        "active": true
+      },
+      {
         "name": "GPT Image 2",
         "key": "gpt-image-2",
         "label": "Best Quality",
