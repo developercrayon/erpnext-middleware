@@ -52,6 +52,7 @@ export class AnthropicProvider extends AIProvider {
       // Sometimes models wrap json in ```json ... ```
       const jsonMatch = contentString.match(/\{[\s\S]*\}/);
       const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(contentString);
+      parsed.raw_response = contentString;
 
       return parsed as ContentGenerationOutput;
     } catch (error: any) {

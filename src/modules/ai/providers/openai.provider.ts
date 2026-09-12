@@ -45,6 +45,7 @@ export class OpenAiProvider extends AIProvider {
 
       const contentString = response.choices[0]?.message?.content || '{}';
       const parsed = JSON.parse(contentString);
+      parsed.raw_response = contentString;
 
       return parsed as ContentGenerationOutput;
     } catch (error: any) {

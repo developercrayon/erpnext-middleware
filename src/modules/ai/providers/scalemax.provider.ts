@@ -80,6 +80,7 @@ export class ScalemaxProvider extends AIProvider {
 
       throw new Error('Image data not found in response');
     } catch (error: any) {
+
       const errorMessage =
         error?.response?.data?.error?.message ||
         error?.response?.data?.message ||

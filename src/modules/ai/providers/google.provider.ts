@@ -95,7 +95,10 @@ export class GoogleProvider extends AIProvider {
 
       this.logToFile('response', 'content', input.itemName, responseText);
 
-      const parsed = JSON.parse(responseText);
+      // Sometimes models wrap json in ```json ... ``` even when instructed not to
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(responseText);
+      parsed.raw_response = responseText;
 
       return parsed as ContentGenerationOutput;
     } catch (error: any) {
