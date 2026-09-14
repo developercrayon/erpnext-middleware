@@ -119,13 +119,14 @@ export class ProductAiController {
     @Param('index') index: string,
     @Res() res: Response,
   ) {
-    const data = await this.productAiService.getAiProductData(dataId);
-    const publicDir = require('path').join(process.cwd(), 'public');
+    const fs = require('fs');
+    const path = require('path');
+    const publicDir = path.join(process.cwd(), 'public');
+    const dirPath = path.join(publicDir, 'generated_images', dataId);
 
     if (index === 'original') {
-      let basePath = require('path').join(publicDir, 'generated_images', dataId, 'original');
+      let basePath = path.join(dirPath, 'original');
       let finalPath = '';
-      const fs = require('fs');
       if (fs.existsSync(`${basePath}.jpg`)) finalPath = `${basePath}.jpg`;
       else if (fs.existsSync(`${basePath}.png`)) finalPath = `${basePath}.png`;
       else if (fs.existsSync(`${basePath}.webp`)) finalPath = `${basePath}.webp`;
@@ -140,22 +141,38 @@ export class ProductAiController {
       return;
     }
 
-    if (!data.generatedImages || !data.generatedImages[parseInt(index, 10)]) {
-      throw new NotFoundException('Image not found');
+    const imgIndex = parseInt(index, 10) + 1;
+    const baseFilePath = path.join(dirPath, `image-${imgIndex}`);
+    
+    let filePath = '';
+    let mimeType = '';
+    
+    // Check possible extensions
+    if (fs.existsSync(`${baseFilePath}.png`)) { filePath = `${baseFilePath}.png`; mimeType = 'image/png'; }
+    else if (fs.existsSync(`${baseFilePath}.jpg`)) { filePath = `${baseFilePath}.jpg`; mimeType = 'image/jpeg'; }
+    else if (fs.existsSync(`${baseFilePath}.webp`)) { filePath = `${baseFilePath}.webp`; mimeType = 'image/webp'; }
+
+    if (!filePath) {
+      // Fallback: Check if the database has it stored with a custom name for Product AI
+      try {
+        const data = await this.productAiService.getAiProductData(dataId);
+        if (data.generatedImages && data.generatedImages[parseInt(index, 10)]) {
+           const image = data.generatedImages[parseInt(index, 10)];
+           const customFilePath = path.join(dirPath, image.filename);
+           if (fs.existsSync(customFilePath)) {
+             filePath = customFilePath;
+             mimeType = image.mime_type;
+           }
+        }
+      } catch (err) {}
     }
 
-    const image = data.generatedImages[parseInt(index, 10)];
-    const fs = require('fs');
-    
-    // Dynamically build path to ensure portability across environments
-    const filePath = require('path').join(publicDir, 'generated_images', dataId, image.filename);
-
-    if (!fs.existsSync(filePath)) {
-      this.logger.error(`File not found at path: ${filePath}`);
+    if (!filePath) {
+      this.logger.error(`Image not found at path: ${baseFilePath}`);
       throw new NotFoundException('Image file missing from disk');
     }
 
-    res.setHeader('Content-Type', image.mime_type);
+    res.setHeader('Content-Type', mimeType);
 
     // Read and stream the file
     const fileStream = fs.createReadStream(filePath);
