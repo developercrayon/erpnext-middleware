@@ -26,12 +26,14 @@ export class AnthropicProvider extends AIProvider {
       },
     ];
 
-    if (input.referenceImageUrl) {
+    const urlsToUse = input.referenceImageUrls?.length ? input.referenceImageUrls : (input.referenceImageUrl ? [input.referenceImageUrl] : []);
+    
+    if (urlsToUse.length > 0) {
       // Anthropic requires base64 images, so if we only have a URL we'd need to fetch it first.
       // For this implementation, we assume if it's passed it's something we can use, 
       // but if we don't have base64, we might just append the URL to the text prompt.
       // To keep it robust, we'll just add it to the text since downloading it here is complex.
-      content[0].text += `\nReference Image URL: ${input.referenceImageUrl}`;
+      content[0].text += `\nReference Image URLs:\n` + urlsToUse.join('\n');
     }
 
     try {

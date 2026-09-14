@@ -26,12 +26,14 @@ export class OpenAiProvider extends AIProvider {
       },
     ];
 
-    if (input.referenceImageUrl) {
+    const urlsToUse = input.referenceImageUrls?.length ? input.referenceImageUrls : (input.referenceImageUrl ? [input.referenceImageUrl] : []);
+    
+    urlsToUse.forEach(url => {
       userMessage.push({
         type: 'image_url',
-        image_url: { url: input.referenceImageUrl },
+        image_url: { url },
       });
-    }
+    });
 
     try {
       const response = await openai.chat.completions.create({

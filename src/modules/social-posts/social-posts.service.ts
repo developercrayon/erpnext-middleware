@@ -83,12 +83,16 @@ export class SocialPostsService {
     const description = product.description || '';
     let contentReferenceImageUrl = product.images?.[0] || '';
 
+    let contentReferenceImageUrls: string[] = [];
+
     if (post.customPrompts) {
       if (post.customPrompts.selectedReelPromptImages && Array.isArray(post.customPrompts.selectedReelPromptImages) && post.customPrompts.selectedReelPromptImages.length > 0) {
-        contentReferenceImageUrl = post.customPrompts.selectedReelPromptImages[0];
+        contentReferenceImageUrls = post.customPrompts.selectedReelPromptImages;
+        contentReferenceImageUrl = contentReferenceImageUrls[0];
       } else if (post.customPrompts.selectedImagePromptImages && Array.isArray(post.customPrompts.selectedImagePromptImages) && post.customPrompts.selectedImagePromptImages.length > 0) {
         // Fallback to Image Prompt images for content if reel prompt images not selected
-        contentReferenceImageUrl = post.customPrompts.selectedImagePromptImages[0];
+        contentReferenceImageUrls = post.customPrompts.selectedImagePromptImages;
+        contentReferenceImageUrl = contentReferenceImageUrls[0];
       }
     }
 
@@ -133,6 +137,7 @@ export class SocialPostsService {
           itemName,
           description,
           referenceImageUrl: contentReferenceImageUrl,
+          referenceImageUrls: contentReferenceImageUrls.length > 0 ? contentReferenceImageUrls : (contentReferenceImageUrl ? [contentReferenceImageUrl] : []),
           config: {
             provider: contentConfig.provider as any,
             model: contentConfig.model,

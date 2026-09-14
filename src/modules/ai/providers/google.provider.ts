@@ -60,8 +60,11 @@ export class GoogleProvider extends AIProvider {
       } catch (err) {
         console.error('Failed to parse referenceImageBase64', err);
       }
-    } else if (input.referenceImageUrl) {
-      promptParts.push(`\nReference Image URL: ${input.referenceImageUrl}`);
+    } else {
+      const urlsToUse = input.referenceImageUrls?.length ? input.referenceImageUrls : (input.referenceImageUrl ? [input.referenceImageUrl] : []);
+      if (urlsToUse.length > 0) {
+        promptParts.push(`\nReference Image URLs:\n` + urlsToUse.join('\n'));
+      }
     }
 
     try {

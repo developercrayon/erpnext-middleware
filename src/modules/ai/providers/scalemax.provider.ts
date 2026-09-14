@@ -14,12 +14,18 @@ export class ScalemaxProvider extends AIProvider {
     input: ImageGenerationInput,
   ): Promise<ImageGenerationOutput> {
     try {
-      const apiUrl = process.env.SCALEMAX_BASE_URL;
+      let apiUrl = process.env.SCALEMAX_BASE_URL;
 
       if (!apiUrl) {
         throw new Error(
           'SCALEMAX_BASE_URL is not defined in environment variables',
         );
+      }
+
+      if (input.referenceImageBase64) {
+        apiUrl = apiUrl.replace('/generations', '/edits');
+      } else {
+        apiUrl = apiUrl.replace('/edits', '/generations');
       }
 
       const body: any = {

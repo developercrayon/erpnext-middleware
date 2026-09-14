@@ -10,6 +10,8 @@ export interface ContentGenerationInput {
   description: string;
   /** Optional reference image URL for vision-capable models */
   referenceImageUrl?: string;
+  /** Optional array of reference image URLs for vision-capable models (e.g. gpt-4o) */
+  referenceImageUrls?: string[];
   /** Optional reference image Base64 data for vision-capable models */
   referenceImageBase64?: string;
   /** System prompt from AI Settings */

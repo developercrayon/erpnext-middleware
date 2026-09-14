@@ -7,6 +7,7 @@ export interface GenerateContentOptions {
   itemName: string;
   description: string;
   referenceImageUrl?: string;
+  referenceImageUrls?: string[];
   referenceImageBase64?: string;
   config: {
     provider: AiProviderName;
@@ -28,6 +29,7 @@ export class ContentGenerationService {
       itemName: options.itemName,
       description: options.description,
       referenceImageUrl: options.referenceImageUrl,
+      referenceImageUrls: options.referenceImageUrls,
       referenceImageBase64: options.referenceImageBase64,
       systemPrompt: options.config.contentPrompt,
       model: options.config.model,
