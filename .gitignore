@@ -24,4 +24,5 @@ get-*.js
 !nest-cli.json
 
 # Generated AI Images
-public/generated_images/
+public/generated_images/
+logs/
