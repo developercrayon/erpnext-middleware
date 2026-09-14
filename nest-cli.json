@@ -6,9 +6,9 @@
     "deleteOutDir": true,
     "watchAssets": true,
     "assets": [
-      "**/*.jsx",
-      "**/*.tsx",
-      "**/*.json"
+      { "include": "**/*.jsx", "watchAssets": true },
+      { "include": "**/*.tsx", "watchAssets": true },
+      { "include": "**/*.json", "watchAssets": true }
     ]
   }
 }

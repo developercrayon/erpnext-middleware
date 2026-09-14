@@ -7,6 +7,7 @@
   "license": "MIT",
   "scripts": {
     "build": "nest build",
+    "postbuild": "node -e \"const fs=require('fs'),p=require('path');function copy(s,d){if(!fs.existsSync(s))return;fs.mkdirSync(d,{recursive:true});fs.readdirSync(s).forEach(f=>{const sf=p.join(s,f),df=p.join(d,f);if(fs.lstatSync(sf).isDirectory())copy(sf,df);else if(sf.endsWith('.jsx'))fs.copyFileSync(sf,df)})};copy('src/admin/components','dist/admin/components')\"",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
