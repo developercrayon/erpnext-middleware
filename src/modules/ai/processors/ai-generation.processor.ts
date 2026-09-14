@@ -23,6 +23,17 @@ function replaceDynamicFields(prompt: string | null | undefined, userInput: any)
   // 1. Explicit top-level replacements
   finalPrompt = finalPrompt.replace(/\{\{item_name\}\}/g, userInput.item_name || '');
   finalPrompt = finalPrompt.replace(/\{\{custom_sku\}\}/g, userInput.custom_sku || userInput.item_name || '');
+  finalPrompt = finalPrompt.replace(/\{\{description\}\}/g, userInput.description || '');
+  finalPrompt = finalPrompt.replace(/\{\{item_group\}\}/g, userInput.item_group || '');
+
+  // 1b. Support any direct property on userInput
+  const userKeys = Object.keys(userInput || {});
+  for (const key of userKeys) {
+    if (key !== 'dynamic_fields' && typeof userInput[key] === 'string') {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      finalPrompt = finalPrompt.replace(regex, userInput[key] || '');
+    }
+  }
 
   // 2. Iterate through all dynamic fields sent from ERPNext
   if (userInput.dynamic_fields && typeof userInput.dynamic_fields === 'object') {

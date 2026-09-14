@@ -6,13 +6,14 @@ export class CreateSocialPostDto {
   productItemCode: string;
 
   @IsString()
-  campaignId: string;
+  @IsOptional()
+  campaignId?: string;
 
   @IsString()
   platform: string;
 
-  @IsEnum(PostType)
-  postType: PostType;
+  @IsString()
+  postType: string;
 
   @IsString()
   @IsOptional()

@@ -31,8 +31,8 @@ export class SocialPost {
   @Column({ nullable: true })
   platform: string;
 
-  @Column({ type: 'enum', enum: PostType, default: PostType.STATIC })
-  postType: PostType;
+  @Column({ name: 'post_type', type: 'varchar', nullable: true, default: 'Static' })
+  postType: string;
 
   @Column({ name: 'marketing_goal', type: 'text', nullable: true })
   marketingGoal: string;

@@ -61,71 +61,11 @@ export class SocialPostsProcessor {
         }
       }
 
-      // 2. Fetch Content AI settings
-      let contentConfig: any;
-      try {
-        contentConfig = await this.settingsService.getDecryptedConfig(AiConfigType.CONTENT);
-      } catch (err) {
-        this.logger.warn(`Skipping content generation: ${err.message}`);
-      }
+      // Note: Text content (caption, hashtags) is now generated synchronously in the service.
+      // This processor only handles media generation.
 
-      if (contentConfig) {
-        // We inject the social media context into the system prompt.
-        const defaultPrompt = `You are a social media expert. Create a post for ${post.platform}.
-        Post Type: ${post.postType}. 
-        Marketing Goal: ${post.marketingGoal || 'Drive engagement and sales'}.
-        Product Name: {itemName}
-        Product Description: {description}
-        
-        Return ONLY valid JSON with keys: caption, hashtags, videoReelScript.`;
+      // Fetch Image AI settings
 
-        // If customPrompts are provided, we bundle them into the system prompt.
-        let systemPrompt = defaultPrompt;
-        if (post.customPrompts) {
-          systemPrompt = `You are a social media expert. Create a post for ${post.platform}. Post Type: ${post.postType}.
-          Product Name: {itemName}
-          Product Description: {description}
-          
-          Please generate the following fields based on these specific instructions:
-          - caption: ${post.customPrompts.caption || 'Generate an engaging caption.'}
-          - hashtags: ${post.customPrompts.hashtag || 'Generate relevant hashtags.'}
-          - videoReelScript: ${post.customPrompts.videoReel || 'Generate a short video reel script.'}
-          
-          Return ONLY valid JSON with keys: caption, hashtags, videoReelScript.`;
-        }
-
-        const generatedContent = await this.contentGenService.generateContent({
-          itemName,
-          description,
-          referenceImageUrl: contentReferenceImageUrl,
-          config: {
-            provider: contentConfig.provider as any,
-            model: contentConfig.model,
-            apiKey: contentConfig.apiKey,
-            apiSecret: contentConfig.apiSecret,
-            contentPrompt: systemPrompt,
-          },
-        });
-
-        // Parse generatedContent if it comes back as stringified JSON or object
-        let parsed: any = generatedContent;
-        if (typeof generatedContent === 'string') {
-           try {
-             parsed = JSON.parse(generatedContent);
-           } catch (e) {
-             // Fallback if not valid JSON
-             parsed = { generatedPost: generatedContent };
-           }
-        }
-
-        post.caption = parsed.caption || '';
-        post.hashtags = parsed.hashtags || '';
-        post.videoReelScript = parsed.videoReelScript || '';
-        
-        await this.postRepo.save(post);
-      }
-
-      // 3. Image generation (optional, can be expanded to use the image prompts)
       let imageConfig: any;
       try {
         imageConfig = await this.settingsService.getDecryptedConfig(AiConfigType.IMAGE);

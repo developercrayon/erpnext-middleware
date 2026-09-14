@@ -262,7 +262,15 @@ export class ProductsService {
       const result = await this.erpnextService['connector'].getDocuments(doctype, uniqueHashes);
       const docs = result.success ? result.data : [];
       for (const doc of docs) {
-        const title = doc.title || doc.item_name || doc.tag_name || doc.name;
+        let title = doc.title || doc.item_name || doc.tag_name;
+        if (!title) {
+          const systemFields = ['name', 'owner', 'creation', 'modified', 'modified_by', 'parent', 'parentfield', 'parenttype', 'idx', 'doctype', 'docstatus', '_user_tags', '_comments', '_assign', '_liked_by'];
+          const nonSystemKeys = Object.keys(doc).filter(k => !systemFields.includes(k) && typeof doc[k] === 'string' && doc[k]);
+          if (nonSystemKeys.length > 0) {
+            title = doc[nonSystemKeys[0]];
+          }
+        }
+        title = title || doc.name;
         titlesMap[`${doctype}_${doc.name}`] = title;
       }
     }
@@ -294,11 +302,14 @@ export class ProductsService {
             }
             if (titles.length > 0) {
               resolvedMap[field.fieldname] = titles.join(', ');
+              console.log(`[Backend resolveItemDisplayValues] Resolved table ${field.fieldname} -> ${resolvedMap[field.fieldname]}`);
             }
           }
         }
       }
     }
+    
+    console.log('[Backend resolveItemDisplayValues] Final resolvedMap:', resolvedMap);
 
     return { success: true, data: resolvedMap };
   }
