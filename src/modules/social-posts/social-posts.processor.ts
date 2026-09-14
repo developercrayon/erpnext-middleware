@@ -61,6 +61,10 @@ export class SocialPostsProcessor {
         }
       }
 
+      if (post.selectedImagePromptImages && post.selectedImagePromptImages.length > 0) {
+        imageReferenceImageUrl = post.selectedImagePromptImages[0];
+      }
+
       // Note: Text content (caption, hashtags) is now generated synchronously in the service.
       // This processor only handles media generation.
 
@@ -73,19 +77,22 @@ export class SocialPostsProcessor {
         this.logger.warn(`Skipping image generation: ${err.message}`);
       }
 
-      if (imageConfig && imageConfig.prompts && imageConfig.prompts.length > 0) {
-         let imagePrompt = imageConfig.prompts[0];
+      if (imageConfig && ((imageConfig.prompts && imageConfig.prompts.length > 0) || (post.customPrompts && post.customPrompts.image))) {
+         let imagePrompt = "";
+         
          if (post.customPrompts && post.customPrompts.image) {
             imagePrompt = post.customPrompts.image;
             // Inject variables if they are present in the custom prompt
             imagePrompt = imagePrompt.replace(/{itemName}/g, itemName);
             imagePrompt = imagePrompt.replace(/{description}/g, description);
+         } else if (imageConfig.prompts && imageConfig.prompts.length > 0) {
+            imagePrompt = imageConfig.prompts[0].promptText || imageConfig.prompts[0];
          }
 
          const generatedImages = await this.imageGenService.generateImages({
             dataId: post.id,
             itemName,
-            prompts: [imagePrompt],
+            prompts: [{ promptText: imagePrompt } as any],
             referenceImageUrl: imageReferenceImageUrl,
             config: {
               provider: imageConfig.provider as any,
@@ -94,8 +101,14 @@ export class SocialPostsProcessor {
               apiSecret: imageConfig.apiSecret,
             },
          });
+         const successfulImages = generatedImages.filter(img => img.success);
+         const failedImages = generatedImages.filter(img => !img.success);
          
-         post.mediaUrls = generatedImages.filter(img => img.success).map(img => img.serve_url);
+         if (successfulImages.length === 0 && failedImages.length > 0) {
+           throw new Error(failedImages[0].error || "Image generation failed");
+         }
+         
+         post.mediaUrls = successfulImages.map(img => img.serve_url);
          await this.postRepo.save(post);
       }
 

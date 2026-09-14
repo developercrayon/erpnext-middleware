@@ -25,6 +25,21 @@ export class CreateSocialPostDto {
 
   @IsOptional()
   customPrompts?: Record<string, string>;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  selectedImagePromptImages?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  selectedReelPromptImages?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  selectedContentPromptImages?: string[];
 }
 
 export class UpdateSocialPostDto {

@@ -63,6 +63,15 @@ export class SocialPost {
   @Column({ name: 'custom_prompts', type: 'jsonb', nullable: true })
   customPrompts: Record<string, string>;
 
+  @Column({ name: 'selected_image_prompt_images', type: 'jsonb', nullable: true, default: [] })
+  selectedImagePromptImages: string[];
+
+  @Column({ name: 'selected_reel_prompt_images', type: 'jsonb', nullable: true, default: [] })
+  selectedReelPromptImages: string[];
+
+  @Column({ name: 'selected_content_prompt_images', type: 'jsonb', nullable: true, default: [] })
+  selectedContentPromptImages: string[];
+
   // Images/Media
   @Column({ type: 'jsonb', nullable: true, default: [] })
   mediaUrls: string[];
