@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
@@ -33,7 +33,7 @@ export class SocialPostsService {
 
   async getPosts(page = 1, limit = 10, platform?: string, search?: string) {
     const query = this.postRepo.createQueryBuilder('post')
-      .leftJoinAndMapOne('post.campaign', SocialCampaign, 'campaign', 'campaign.id = post.campaignId')
+      .leftJoinAndMapOne('post.campaign', SocialCampaign, 'campaign', 'campaign.id::text = post.campaignId')
       .orderBy('post.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -92,13 +92,15 @@ export class SocialPostsService {
       }
     }
 
+    const logger = new Logger('SocialPostsService');
+    
     // 2. Fetch Content AI settings
-    let contentConfig: any;
-    try {
-      contentConfig = await this.settingsService.getDecryptedConfig(AiConfigType.CONTENT);
-    } catch (err) {
-      // Ignore error, will just skip content gen
+    const contentConfig = await this.settingsService.getDecryptedConfig(AiConfigType.CONTENT);
+    if (!contentConfig) {
+      throw new Error('AI Content Configuration not found. Please set up your AI keys in Settings.');
     }
+    
+    logger.log(`Found content config: ${contentConfig.provider}`);
 
     if (contentConfig) {
       // We inject the social media context into the system prompt.
@@ -125,33 +127,49 @@ export class SocialPostsService {
         Return ONLY valid JSON with keys: caption, hashtags, videoReelScript.`;
       }
 
-      const generatedContent = await this.contentGenService.generateContent({
-        itemName,
-        description,
-        referenceImageUrl: contentReferenceImageUrl,
-        config: {
-          provider: contentConfig.provider as any,
-          model: contentConfig.model,
-          apiKey: contentConfig.apiKey,
-          apiSecret: contentConfig.apiSecret,
-          contentPrompt: systemPrompt,
-        },
-      });
+      logger.log(`Calling generateContent...`);
+      try {
+        const generatedContent = await this.contentGenService.generateContent({
+          itemName,
+          description,
+          referenceImageUrl: contentReferenceImageUrl,
+          config: {
+            provider: contentConfig.provider as any,
+            model: contentConfig.model,
+            apiKey: contentConfig.apiKey,
+            apiSecret: contentConfig.apiSecret,
+            contentPrompt: systemPrompt,
+          },
+        });
+        
+        logger.log(`Received generatedContent: ${JSON.stringify(generatedContent)}`);
 
-      // Parse generatedContent if it comes back as stringified JSON or object
-      let parsed: any = generatedContent;
-      if (typeof generatedContent === 'string') {
-         try {
-           parsed = JSON.parse(generatedContent);
-         } catch (e) {
-           // Fallback if not valid JSON
-           parsed = { generatedPost: generatedContent };
-         }
+        // Parse generatedContent if it comes back as stringified JSON or object
+        let parsed: any = generatedContent;
+        if (typeof generatedContent === 'string') {
+           try {
+             parsed = JSON.parse(generatedContent);
+           } catch (e) {
+             // Fallback if not valid JSON
+             parsed = { caption: generatedContent };
+           }
+        }
+        
+        // Handle common nested JSON wrappers from OpenAI
+        if (parsed.post && !parsed.caption) {
+           parsed = parsed.post;
+        } else if (parsed.data && !parsed.caption) {
+           parsed = parsed.data;
+        } else if (parsed.socialPost && !parsed.caption) {
+           parsed = parsed.socialPost;
+        }
+
+        post.caption = parsed.caption || '';
+        post.hashtags = parsed.hashtags || '';
+        post.videoReelScript = parsed.videoReelScript || '';
+      } catch (err) {
+        logger.error(`Failed to generate content: ${err.message}`);
       }
-
-      post.caption = parsed.caption || '';
-      post.hashtags = parsed.hashtags || '';
-      post.videoReelScript = parsed.videoReelScript || '';
     }
 
     const savedPost = await this.postRepo.save(post);
