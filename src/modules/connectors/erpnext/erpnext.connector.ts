@@ -180,23 +180,165 @@ export class ERPNextConnector extends BaseConnector {
 
   async fetchItemAttachments(itemCode: string): Promise<ConnectorResult<any>> {
     try {
-      const response = await this.http.get(
-        `${this.baseUrl}/api/resource/File`,
-        {
-          headers: this.authHeaders,
-          params: {
-            fields: JSON.stringify(['name', 'file_url', 'file_name', 'is_private', 'custom_sequence']),
-            filters: JSON.stringify([
-              ['attached_to_doctype', '=', 'Item'],
-              ['attached_to_name', '=', itemCode]
-            ]),
-            order_by: 'custom_sequence asc'
+      // 1. Fetch Files
+      const filesResponse = await this.http.get(`${this.baseUrl}/api/resource/File`, {
+        headers: this.authHeaders,
+        params: {
+          fields: JSON.stringify(['name', 'file_url', 'file_name', 'is_private', 'creation', 'modified', 'custom_sequence']),
+          filters: JSON.stringify([
+            ['attached_to_doctype', '=', 'Item'],
+            ['attached_to_name', '=', itemCode],
+            ['is_folder', '=', 0]
+          ]),
+          limit_page_length: 1000
+        }
+      });
+      const files = filesResponse.data?.data || [];
+
+      // 2. Fetch Comments (Logs)
+      const logsResponse = await this.http.get(`${this.baseUrl}/api/resource/Comment`, {
+        headers: this.authHeaders,
+        params: {
+          fields: JSON.stringify(['name', 'creation', 'modified', 'content', 'owner', 'comment_type']),
+          filters: JSON.stringify([
+            ['reference_doctype', '=', 'Item'],
+            ['reference_name', '=', itemCode],
+            ['comment_type', 'in', ['Attachment', 'Attachment Removed']]
+          ]),
+          order_by: 'modified desc',
+          limit_page_length: 1000
+        }
+      });
+      const logs = logsResponse.data?.data || [];
+
+      // 3. Extract filename helper
+      const extractFilename = (content: string) => {
+        if (!content) return null;
+        content = content.trim();
+        if (content.includes('<a ')) {
+          const start = content.indexOf('>') + 1;
+          const end = content.indexOf('</a>');
+          if (start > 0 && end > start) {
+            const filename = content.substring(start, end).trim();
+            if (filename) return filename;
           }
         }
-      );
-      return this.success(response.data?.data || []);
-    } catch (error) {
-      this.logger.error(`Failed to fetch attachments for ${itemCode}`, error);
+        return content;
+      };
+
+      // 4. Group files by file_name
+      const filesByFilename: Record<string, any[]> = {};
+      for (const file of files) {
+        const filename = file.file_name;
+        if (!filename) continue;
+        if (!filesByFilename[filename]) filesByFilename[filename] = [];
+        filesByFilename[filename].push(file);
+      }
+
+      // 5. Get latest event by filename
+      const latestEventByFilename: Record<string, any> = {};
+      for (const log of logs) {
+        const filename = extractFilename(log.content);
+        if (filename) {
+          latestEventByFilename[filename] = log;
+        }
+      }
+
+      const activeAttachments: any[] = [];
+      const usedFileNames = new Set<string>();
+
+      // 6. Process active attachments from logs
+      for (const [filename, event] of Object.entries(latestEventByFilename)) {
+        if (event.comment_type === 'Attachment Removed') continue;
+        if (event.comment_type !== 'Attachment') continue;
+
+        const matchingFiles = filesByFilename[filename] || [];
+        if (matchingFiles.length === 0) continue;
+
+        matchingFiles.sort((a, b) => {
+          const modA = a.modified || '';
+          const modB = b.modified || '';
+          if (modA === modB) return (a.name || '').localeCompare(b.name || '');
+          return modA.localeCompare(modB);
+        });
+        const newestFile = matchingFiles[matchingFiles.length - 1];
+
+        activeAttachments.push({
+          filename,
+          event_creation: event.creation,
+          event_name: event.name,
+          file: newestFile
+        });
+      }
+
+      activeAttachments.sort((a, b) => {
+        const cA = a.event_creation || '';
+        const cB = b.event_creation || '';
+        if (cA === cB) return (a.event_name || '').localeCompare(b.event_name || '');
+        return cA.localeCompare(cB);
+      });
+
+      const result: any[] = [];
+      for (const row of activeAttachments) {
+        const fileDoc = row.file;
+        if (!fileDoc) continue;
+        const filename = fileDoc.file_name;
+        if (!filename) continue;
+        if (usedFileNames.has(filename)) continue;
+        
+        usedFileNames.add(filename);
+        result.push(fileDoc);
+      }
+
+      // 7. Process fallback files (those without logs or missed)
+      const fallbackFiles: any[] = [];
+      for (const [filename, matchingFiles] of Object.entries(filesByFilename)) {
+        if (usedFileNames.has(filename)) continue;
+        
+        const event = latestEventByFilename[filename];
+        if (event && event.comment_type === 'Attachment Removed') continue;
+
+        matchingFiles.sort((a, b) => {
+          const cA = a.creation || '';
+          const cB = b.creation || '';
+          if (cA === cB) return (a.name || '').localeCompare(b.name || '');
+          return cA.localeCompare(cB);
+        });
+        const newestFile = matchingFiles[matchingFiles.length - 1];
+        fallbackFiles.push(newestFile);
+      }
+
+      fallbackFiles.sort((a, b) => {
+        const cA = a.creation || '';
+        const cB = b.creation || '';
+        if (cA === cB) return (a.name || '').localeCompare(b.name || '');
+        return cA.localeCompare(cB);
+      });
+
+      for (const fileDoc of fallbackFiles) {
+        const filename = fileDoc.file_name;
+        if (!filename) continue;
+        if (usedFileNames.has(filename)) continue;
+        
+        usedFileNames.add(filename);
+        result.push(fileDoc);
+      }
+
+      // 8. FINAL SORT by custom_sequence ASC, then modified ASC
+      result.sort((a, b) => {
+        const seqA = a.custom_sequence ?? 999999;
+        const seqB = b.custom_sequence ?? 999999;
+        if (seqA === seqB) {
+          const modA = a.modified || '';
+          const modB = b.modified || '';
+          return modA.localeCompare(modB);
+        }
+        return seqA - seqB;
+      });
+
+      return this.success(result);
+    } catch (error: any) {
+      this.logger.error(`Failed to fetch attachments for ${itemCode}: ${error.message}`);
       return this.failure(error);
     }
   }
