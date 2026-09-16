@@ -6,6 +6,24 @@
     "token_url": "https://graph.facebook.com/v19.0/oauth/access_token",
     "api_base_url": "https://graph.facebook.com",
     "api_version": "v19.0",
+    "api_credentials": {
+      "required": [
+        "access_token",
+        "page_id"
+      ],
+      "optional": [
+        "user_id"
+      ]
+    },
+    "token_generation": {
+      "required": [
+        "app_id",
+        "app_secret"
+      ],
+      "optional": [
+        "refresh_token"
+      ]
+    },
     "post_types": [
       {
         "id": "image",
@@ -57,6 +75,22 @@
     "token_url": "https://api.instagram.com/oauth/access_token",
     "api_base_url": "https://graph.instagram.com",
     "api_version": "v19.0",
+    "api_credentials": {
+      "required": [
+        "access_token",
+        "instagram_account_id"
+      ],
+      "optional": []
+    },
+    "token_generation": {
+      "required": [
+        "app_id",
+        "app_secret"
+      ],
+      "optional": [
+        "refresh_token"
+      ]
+    },
     "post_types": [
       {
         "id": "image",
@@ -108,6 +142,23 @@
     "token_url": "https://api.pinterest.com/v5/oauth/token",
     "api_base_url": "https://api.pinterest.com",
     "api_version": "v5",
+    "api_credentials": {
+      "required": [
+        "access_token",
+        "board_id"
+      ],
+      "optional": [
+        "user_id"
+      ]
+    },
+    "token_generation": {
+      "required": [
+        "client_id",
+        "client_secret",
+        "refresh_token"
+      ],
+      "optional": []
+    },
     "post_types": [
       {
         "id": "pin",
@@ -146,6 +197,21 @@
     "token_url": "https://open.tiktokapis.com/v2/oauth/token/",
     "api_base_url": "https://open.tiktokapis.com",
     "api_version": "v2",
+    "api_credentials": {
+      "required": [
+        "access_token",
+        "open_id"
+      ],
+      "optional": []
+    },
+    "token_generation": {
+      "required": [
+        "client_key",
+        "client_secret",
+        "refresh_token"
+      ],
+      "optional": []
+    },
     "post_types": [
       {
         "id": "video",
@@ -183,6 +249,23 @@
     "token_url": "https://www.linkedin.com/oauth/v2/accessToken",
     "api_base_url": "https://api.linkedin.com",
     "api_version": "v2",
+    "api_credentials": {
+      "required": [
+        "access_token"
+      ],
+      "optional": [
+        "person_id",
+        "organization_id"
+      ]
+    },
+    "token_generation": {
+      "required": [
+        "client_id",
+        "client_secret",
+        "refresh_token"
+      ],
+      "optional": []
+    },
     "post_types": [
       {
         "id": "image",
@@ -235,6 +318,20 @@
     "token_url": "https://api.twitter.com/2/oauth2/token",
     "api_base_url": "https://api.twitter.com",
     "api_version": "2",
+    "api_credentials": {
+      "required": [
+        "access_token",
+        "user_id"
+      ],
+      "optional": []
+    },
+    "token_generation": {
+      "required": [
+        "client_id",
+        "refresh_token"
+      ],
+      "optional": []
+    },
     "post_types": [
       {
         "id": "text",

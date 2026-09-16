@@ -3,7 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { AiSettingsService } from '../services/ai-settings.service';
 import { AiModelService } from '../services/ai-model.service';
 import { AiConfigType } from '../../../database/entities/ai.entity';
-import { UpsertAiSettingsDto } from '../dto/ai.dto';
+import { UpsertAiSettingsDto, UpsertSocialMediaDto } from '../dto/ai.dto';
 import * as socialPlatformsJson from '../constants/social-platforms.json';
 
 @Controller('ai')
@@ -59,5 +59,11 @@ export class AiSettingsController {
     }
 
     return { message: 'AI settings updated successfully' };
+  }
+
+  @Post('settings/social/validate-token')
+  async validateSocialToken(@Body() dto: UpsertSocialMediaDto) {
+    const result = await this.settingsService.validateSocialToken(dto);
+    return result;
   }
 }

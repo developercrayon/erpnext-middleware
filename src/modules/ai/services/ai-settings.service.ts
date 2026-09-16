@@ -5,6 +5,7 @@ import { AiConfig, AiConfigType, AiImagePrompt, AiSocialMediaConfig } from '../.
 import { AiEncryptionService } from './ai-encryption.service';
 import { AiModelService } from './ai-model.service';
 import { UpsertContentAiDto, UpsertImageAiDto, UpsertSocialMediaDto } from '../dto/ai.dto';
+import axios from 'axios';
 
 @Injectable()
 export class AiSettingsService {
@@ -182,10 +183,12 @@ export class AiSettingsService {
       id: c.id,
       platform: c.platform,
       isEnabled: c.isEnabled,
+      credentialsValid: c.credentialsValid,
       appName: c.appName,
       appId: c.appId,
       clientId: c.clientId,
       isClientSecretConfigured: !!c.clientSecretEncrypted,
+      isAccessTokenConfigured: !!c.accessTokenEncrypted,
       authorizationUrl: c.authorizationUrl,
       tokenUrl: c.tokenUrl,
       apiBaseUrl: c.apiBaseUrl,
@@ -208,6 +211,13 @@ export class AiSettingsService {
       await this.socialMediaRepo.remove(toDelete);
     }
 
+    // Pre-validate all DTOs before saving any
+    for (const dto of dtos) {
+      if (dto.isEnabled && !dto.credentialsValid) {
+        throw new BadRequestException(`Unable to save: Invalid credentials for platform ${dto.platform || 'Unknown'}. Please validate credentials first.`);
+      }
+    }
+
     for (const dto of dtos) {
       let config: AiSocialMediaConfig;
       
@@ -221,14 +231,19 @@ export class AiSettingsService {
       }
 
       config.platform = dto.platform;
-      
+
       if (dto.isEnabled !== undefined) config.isEnabled = dto.isEnabled;
+      if (dto.credentialsValid !== undefined) config.credentialsValid = dto.credentialsValid;
       if (dto.appName !== undefined) config.appName = dto.appName;
       if (dto.appId !== undefined) config.appId = dto.appId;
       if (dto.clientId !== undefined) config.clientId = dto.clientId;
       
       if (dto.clientSecret) {
         config.clientSecretEncrypted = this.encryptionService.encrypt(dto.clientSecret);
+      }
+      
+      if (dto.accessToken) {
+        config.accessTokenEncrypted = this.encryptionService.encrypt(dto.accessToken);
       }
       
       if (dto.authorizationUrl !== undefined) config.authorizationUrl = dto.authorizationUrl;
@@ -238,6 +253,51 @@ export class AiSettingsService {
       if (dto.prompts !== undefined) config.prompts = dto.prompts as any;
       
       await this.socialMediaRepo.save(config);
+    }
+  }
+
+  async validateSocialToken(dto: UpsertSocialMediaDto): Promise<{ success: boolean; accessToken?: string; message?: string }> {
+    try {
+      if (!dto.tokenUrl) {
+        throw new BadRequestException('Token URL is required');
+      }
+
+      const params: Record<string, string> = {
+        grant_type: 'client_credentials', // Default common grant type
+      };
+
+      if (dto.appId) params.client_id = dto.appId;
+      if (dto.clientId) params.client_id = dto.clientId;
+      
+      if (dto.clientSecret) {
+        params.client_secret = dto.clientSecret;
+      } else {
+        // If client secret is not provided in DTO, it might be saved in DB already
+        if (dto.id) {
+          const existing = await this.socialMediaRepo.findOne({ where: { id: dto.id } });
+          if (existing && existing.clientSecretEncrypted) {
+            params.client_secret = this.encryptionService.decrypt(existing.clientSecretEncrypted);
+          }
+        }
+      }
+
+      if (!params.client_secret) {
+        throw new BadRequestException('Client secret is required to validate credentials');
+      }
+
+      const response = await axios.get(dto.tokenUrl, { params });
+      const accessToken = response.data.access_token || response.data.token;
+
+      if (!accessToken) {
+        throw new Error('API request succeeded but no access token was returned.');
+      }
+
+      return { success: true, accessToken };
+    } catch (error: any) {
+      return { 
+        success: false, 
+        message: error?.response?.data?.error?.message || error?.response?.data?.message || error.message || 'Validation failed'
+      };
     }
   }
 }

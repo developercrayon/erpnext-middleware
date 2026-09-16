@@ -53,7 +53,7 @@ export class ERPNextConnector extends BaseConnector {
         if (responseData.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
           return responseData.errors[0].message || responseData.errors[0].type || errMsg;
         }
-        
+
         if (responseData._server_messages) {
           const parsed = JSON.parse(responseData._server_messages);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -75,7 +75,7 @@ export class ERPNextConnector extends BaseConnector {
       const cleanData = { ...responseData };
       delete cleanData.exc; // Remove huge traceback
       delete cleanData._server_messages;
-      
+
       if (Object.keys(cleanData).length > 0) {
         return JSON.stringify(cleanData);
       }
@@ -185,11 +185,12 @@ export class ERPNextConnector extends BaseConnector {
         {
           headers: this.authHeaders,
           params: {
-            fields: JSON.stringify(['name', 'file_url', 'file_name', 'is_private']),
+            fields: JSON.stringify(['name', 'file_url', 'file_name', 'is_private', 'custom_sequence']),
             filters: JSON.stringify([
               ['attached_to_doctype', '=', 'Item'],
               ['attached_to_name', '=', itemCode]
-            ])
+            ]),
+            order_by: 'custom_sequence asc'
           }
         }
       );
@@ -209,6 +210,27 @@ export class ERPNextConnector extends BaseConnector {
       return this.success(response.data);
     } catch (error) {
       this.logger.error(`Failed to delete attachment ${fileName}`, error);
+      return this.failure(error);
+    }
+  }
+
+  async reorderAttachments(itemCode: string, fileNames: string[]): Promise<ConnectorResult<any>> {
+    try {
+      for (let i = 0; i < fileNames.length; i++) {
+        const fileName = fileNames[i];
+        
+        // Update the custom_sequence field for sorting
+        const custom_sequence = i + 1;
+
+        await this.http.put(
+          `${this.baseUrl}/api/resource/File/${encodeURIComponent(fileName)}`,
+          { custom_sequence },
+          { headers: this.authHeaders },
+        );
+      }
+      return this.success({ success: true, message: 'Sequence updated' });
+    } catch (error) {
+      this.logger.error(`Failed to reorder attachments for ${itemCode}`, error);
       return this.failure(error);
     }
   }
@@ -311,7 +333,7 @@ export class ERPNextConnector extends BaseConnector {
       }
 
       const itemsData: any[] = listResponse.data?.data || [];
-      
+
       let totalItems = itemsData.length;
       if (itemsData.length === queryParams.limit_page_length || params?.limit_start > 0) {
         try {
@@ -369,7 +391,7 @@ export class ERPNextConnector extends BaseConnector {
       const endpointUrl = `${baseUrl}/api/resource/Item?${queryString}`;
 
       const response = await this.http.get(endpointUrl, { headers: this.authHeaders });
-      
+
       const itemsData = response.data?.data || [];
       const items: any[] = itemsData.map((listItem: any) => {
         const customAmazon = listItem.custom_amazon === 1 || listItem.custom_amazon === true;
@@ -666,7 +688,7 @@ export class ERPNextConnector extends BaseConnector {
         },
         { headers: this.authHeaders }
       );
-      
+
       const orders = response.data?.message || [];
       if (orders.length > 0) {
         return this.success(orders[0]); // Returns the first matching order
@@ -948,16 +970,16 @@ export class ERPNextConnector extends BaseConnector {
 
   private cachedItemSchema: any = null;
   private cachedItemSchemaTimestamp: number = 0;
-  
+
   private cachedSchemas: Record<string, { schema: any, timestamp: number }> = {};
-  
+
   private readonly CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
   async getItemSchema(): Promise<ConnectorResult<any>> {
     if (this.cachedItemSchema && (Date.now() - this.cachedItemSchemaTimestamp < this.CACHE_TTL_MS)) {
       return this.success(this.cachedItemSchema);
     }
-    
+
     try {
       const response = await this.http.get(`${this.baseUrl}/api/method/frappe.desk.form.load.getdoctype?doctype=Item`, {
         headers: this.authHeaders,
@@ -975,7 +997,7 @@ export class ERPNextConnector extends BaseConnector {
     if (this.cachedSchemas[doctype] && (Date.now() - this.cachedSchemas[doctype].timestamp < this.CACHE_TTL_MS)) {
       return this.success(this.cachedSchemas[doctype].schema);
     }
-    
+
     try {
       const response = await this.http.get(`${this.baseUrl}/api/method/frappe.desk.form.load.getdoctype?doctype=${encodeURIComponent(doctype)}`, {
         headers: this.authHeaders,
@@ -1074,7 +1096,7 @@ export class ERPNextConnector extends BaseConnector {
         },
         { headers: this.authHeaders }
       );
-      
+
       const existingFiles = listResponse.data?.message || [];
       const alreadyAttached = existingFiles.some((f: any) => f.file_url === fileUrl || fileUrl.includes(f.file_url) || f.file_url.includes(fileUrl));
 
@@ -1116,10 +1138,10 @@ export class ERPNextConnector extends BaseConnector {
         },
         { headers: this.authHeaders }
       );
-      
+
       const files = listResponse.data?.message || [];
       console.log(`[removeAttachedFile] Found ${files.length} files attached:`, files);
-      
+
       const filesToDelete = files.filter((f: any) => f.file_url === fileUrl || fileUrl.includes(f.file_url) || f.file_url.includes(fileUrl));
 
       if (filesToDelete.length === 0) {
@@ -1252,7 +1274,7 @@ export class ERPNextConnector extends BaseConnector {
             attribute_name: attributeName,
             custom_company: process.env.ERPNEXT_COMPANY || 'Woodwolf Studio (O) Pvt. Ltd',
             item_attribute_values: [
-              { 
+              {
                 attribute_value: String(attributeValue),
                 abbr: String(attributeValue || 'VAL').substring(0, 10)
               }
@@ -1268,7 +1290,7 @@ export class ERPNextConnector extends BaseConnector {
       const valueExists = values.some((v: any) => v.attribute_value === attributeValue);
 
       if (!valueExists) {
-        values.push({ 
+        values.push({
           attribute_value: String(attributeValue),
           abbr: String(attributeValue || 'VAL').substring(0, 10)
         });

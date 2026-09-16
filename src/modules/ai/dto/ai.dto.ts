@@ -92,6 +92,14 @@ export class UpsertSocialMediaDto {
   @IsOptional()
   isEnabled?: boolean;
 
+  @IsBoolean()
+  @IsOptional()
+  credentialsValid?: boolean;
+
+  @IsString()
+  @IsOptional()
+  accessToken?: string;
+
   @IsString()
   @IsOptional()
   appName?: string;

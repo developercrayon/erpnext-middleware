@@ -5,6 +5,9 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { QUEUE_NAMES, JOB_NAMES, QUEUE_DEFAULT_OPTIONS } from '../queue/queue.constants';
 import { MarketplaceSource } from '../../database/entities/order.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, LessThanOrEqual } from 'typeorm';
+import { SocialPost, SocialPostStatus } from '../../database/entities/social-post.entity';
 
 function parseCron(envValue: string | undefined, defaultCron: string): string {
   if (!envValue) return defaultCron;
@@ -19,7 +22,6 @@ export class SchedulerService {
   private readonly logger = new Logger(SchedulerService.name);
 
   constructor(
-    private readonly config: ConfigService,
     @InjectQueue(QUEUE_NAMES.ORDERS)
     private readonly ordersQueue: Queue,
     @InjectQueue(QUEUE_NAMES.INVENTORY)
@@ -30,6 +32,10 @@ export class SchedulerService {
     private readonly retryQueue: Queue,
     @InjectQueue(QUEUE_NAMES.SYSTEM)
     private readonly systemQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.SOCIAL_POSTS)
+    private readonly socialPostsQueue: Queue,
+    @InjectRepository(SocialPost)
+    private readonly postRepo: Repository<SocialPost>,
   ) {}
 
   /**

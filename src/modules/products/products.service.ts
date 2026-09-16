@@ -344,6 +344,12 @@ export class ProductsService {
     return result.data;
   }
 
+  async reorderImages(sku: string, fileNames: string[]) {
+    const result = await this.erpnextService['connector'].reorderAttachments(sku, fileNames);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  }
+
   async getStats() {
     // Fetch stats directly from ERPNext or dummy for now
     return {

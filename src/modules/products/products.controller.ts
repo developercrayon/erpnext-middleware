@@ -89,6 +89,23 @@ export class ProductsController {
     return this.productsService.deleteAttachment(fileName);
   }
 
+  @Post(':id/reorder-images')
+  @ApiOperation({ summary: 'Reorder attachments for an ERPNext Item' })
+  async reorderImages(
+    @Param('id') id: string,
+    @Body('fileNames') fileNames: string[],
+  ) {
+    if (!fileNames || !Array.isArray(fileNames)) {
+      throw new BadRequestException('fileNames array is required');
+    }
+    try {
+      const result = await this.productsService.reorderImages(id, fileNames);
+      return { success: true, message: 'Images reordered successfully', data: result };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to reorder images');
+    }
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single product by SKU' })
   async findOne(@Param('id') id: string) {

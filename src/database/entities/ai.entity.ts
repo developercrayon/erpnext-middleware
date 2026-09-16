@@ -272,6 +272,9 @@ export class AiSocialMediaConfig {
   @Column({ name: 'is_enabled', type: 'boolean', default: true })
   isEnabled: boolean;
 
+  @Column({ name: 'credentials_valid', type: 'boolean', default: false })
+  credentialsValid: boolean;
+
   @Column({ name: 'app_name', type: 'varchar', length: 100, nullable: true })
   appName: string | null;
 
@@ -283,6 +286,9 @@ export class AiSocialMediaConfig {
 
   @Column({ name: 'client_secret_encrypted', type: 'text', nullable: true })
   clientSecretEncrypted: string | null;
+
+  @Column({ name: 'access_token_encrypted', type: 'text', nullable: true })
+  accessTokenEncrypted: string | null;
 
   @Column({ name: 'authorization_url', type: 'varchar', length: 255, nullable: true })
   authorizationUrl: string | null;

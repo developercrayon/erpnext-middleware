@@ -8,6 +8,7 @@ export const QUEUE_NAMES = {
   AMAZON_PRODUCT_TYPES: 'amazon-product-types',
   AI: 'ai',
   SYSTEM: 'system',
+  SOCIAL_POSTS: 'social-posts',
 } as const;
 
 export const JOB_NAMES = {
@@ -44,6 +45,9 @@ export const JOB_NAMES = {
   // AI
   AI_GENERATE_PRODUCT: 'ai-generate-product',
   AI_GENERATE_SOCIAL_POST: 'ai-generate-social-post',
+
+  // Social Posts
+  PUBLISH_SOCIAL_POST: 'publish-social-post',
 
   // System
   CLEAR_LOGS: 'clear-logs',

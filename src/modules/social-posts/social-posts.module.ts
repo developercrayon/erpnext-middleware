@@ -6,6 +6,8 @@ import { SocialCampaign } from '../../database/entities/social-campaign.entity';
 import { SocialPostsController } from './social-posts.controller';
 import { SocialPostsService } from './social-posts.service';
 import { SocialPostsProcessor } from './social-posts.processor';
+import { SocialPostsPublisherProcessor } from './social-posts-publisher.processor';
+import { InstagramService } from './instagram.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AiModule } from '../ai/ai.module';
 import { ProductsModule } from '../products/products.module';
@@ -13,14 +15,15 @@ import { ProductsModule } from '../products/products.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([SocialPost, SocialCampaign]),
-    BullModule.registerQueue({
-      name: QUEUE_NAMES.AI,
-    }),
+    BullModule.registerQueue(
+      { name: QUEUE_NAMES.AI },
+      { name: QUEUE_NAMES.SOCIAL_POSTS }
+    ),
     AiModule,
     ProductsModule,
   ],
   controllers: [SocialPostsController],
-  providers: [SocialPostsService, SocialPostsProcessor],
+  providers: [SocialPostsService, SocialPostsProcessor, SocialPostsPublisherProcessor, InstagramService],
   exports: [SocialPostsService],
 })
 export class SocialPostsModule {}
