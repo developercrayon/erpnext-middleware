@@ -90,9 +90,7 @@ export class AppController {
           <div class="container">
             <h1>Middleware Platform</h1>
             <p>Integration hub connecting ERPNext with Amazon and Flipkart marketplaces.</p>
-            <div class="buttons">
-              <a href="/admin" class="btn">Admin Login</a>
-            </div>
+
           </div>
         </div>
       </body>

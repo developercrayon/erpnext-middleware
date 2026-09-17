@@ -29,20 +29,7 @@ async function bootstrap() {
     prefix: '/uploads',
   });
 
-  // Workaround for AdminJS NestJS integration crash on Express 4/5
-  const httpAdapter = app.getHttpAdapter();
-  const originalGetInstance = httpAdapter.getInstance;
-  httpAdapter.getInstance = function () {
-    const instance = originalGetInstance.call(this);
-    return new Proxy(instance, {
-      get(target, prop, receiver) {
-        if (prop === 'router') {
-          return target._router;
-        }
-        return Reflect.get(target, prop, receiver);
-      },
-    });
-  };
+
 
   const config = app.get(ConfigService);
 
@@ -81,7 +68,7 @@ async function bootstrap() {
 
   // ─── Global Prefix ────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1', {
-    exclude: ['admin/(.*)', 'admin', '', '/'],
+    exclude: ['', '/'],
   });
 
   // ─── Validation ───────────────────────────────────────────────────────────
@@ -150,7 +137,6 @@ async function bootstrap() {
   ║  Environment : ${env.padEnd(34)}║
   ║  Server      : ${(`http://localhost:${port}`).padEnd(34)}║
   ║  Swagger     : ${(`http://localhost:${port}/api/docs`).padEnd(34)}║
-  ║  Admin Panel : ${(`http://localhost:${port}/admin`).padEnd(34)}║
   ╚════════════════════════════════════════════════════╝
   `);
 }

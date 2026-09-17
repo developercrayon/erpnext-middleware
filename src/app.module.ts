@@ -38,8 +38,6 @@ import { SocialPostsModule } from './modules/social-posts/social-posts.module';
 import { HealthController } from './common/health/health.controller';
 import { AppController } from './app.controller';
 
-import { AdminModule } from './admin/admin.module';
-
 // Purchasing Modules
 import { OcrIntegrationModule } from './modules/ocr-integration/ocr-integration.module';
 import { PurchasingModule } from './modules/purchasing/purchasing.module';
@@ -96,9 +94,6 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 
     // ─── Database ─────────────────────────────────────────────────────────────
     DatabaseModule,
-
-    // ─── Admin Dashboard ──────────────────────────────────────────────────────
-    AdminModule.register(),
 
     // ─── Connectors ───────────────────────────────────────────────────────────
     ERPNextModule,
