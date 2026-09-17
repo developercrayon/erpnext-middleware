@@ -59,20 +59,6 @@ export class ReviewsController {
     };
   }
 
-  @Post('sessions')
-  async createSession(@Body() dto: CreateReviewSessionDto) {
-    const session = await this.reviewsService.getOrCreateSession(dto);
-    const token = session.token;
-    const qrDataUrl = await this.qrService.generateQrDataUrl(token, 'INVOICE');
-    return {
-      session,
-      reviewUrl: this.qrService.getReviewUrl(token, 'DIRECT'),
-      qrReviewUrl: this.qrService.getReviewUrl(token, 'INVOICE'),
-      whatsappReviewUrl: this.qrService.getReviewUrl(token, 'WHATSAPP'),
-      emailReviewUrl: this.qrService.getReviewUrl(token, 'EMAIL'),
-      qrDataUrl,
-    };
-  }
 
   @Get('session/:token')
   async resolveSession(

@@ -90,13 +90,6 @@ export class PurchasingController {
     };
   }
 
-  @Post('purchase-invoices/manual')
-  async createManualInvoice(
-    @Body() body: any,
-    @Query('user') user?: string,
-  ) {
-    return this.purchasingService.createManualPurchaseInvoice(body, user || 'User');
-  }
 
   @Get('purchase-invoices')
   async getAllInvoices(
