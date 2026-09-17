@@ -25,6 +25,9 @@ pg.types.setTypeParser(1114, str => new Date(str + 'Z'));
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useStaticAssets(join(__dirname, '..', 'public'));
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads',
+  });
 
   // Workaround for AdminJS NestJS integration crash on Express 4/5
   const httpAdapter = app.getHttpAdapter();
