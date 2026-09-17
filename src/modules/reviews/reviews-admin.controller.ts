@@ -13,7 +13,7 @@ import { ReviewSettingsService, ReviewSettingsDto } from './services/review-sett
 import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { ReviewStatus } from '../../common/enums/review.enums';
 
-@Controller('admin/reviews')
+@Controller('reviews-admin')
 export class ReviewsAdminController {
   constructor(
     private readonly reviewsService: ReviewsService,

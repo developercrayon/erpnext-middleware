@@ -18,9 +18,9 @@ export class ReviewQrService {
   getReviewUrl(token: string, source?: string): string {
     const baseUrl = this.getBaseReviewUrl().replace(/\/+$/, '');
     if (!source || source.toUpperCase() === 'DIRECT') {
-      return `${baseUrl}/review/${token}`;
+      return `${baseUrl}/ocr/review/${token}`;
     }
-    return `${baseUrl}/review/${token}?source=${source.toUpperCase()}`;
+    return `${baseUrl}/ocr/review/${token}?source=${source.toUpperCase()}`;
   }
 
   async generateQrDataUrl(
