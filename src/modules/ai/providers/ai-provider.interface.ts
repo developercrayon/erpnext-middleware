@@ -22,6 +22,10 @@ export interface ContentGenerationInput {
   apiKey: string;
   /** Decrypted API secret (if required, e.g. Google) */
   apiSecret?: string;
+  url?: string;
+  generateUrl?: string;
+  editUrl?: string;
+  readUrl?: string;
 }
 
 export interface ContentGenerationOutput {
@@ -51,6 +55,10 @@ export interface ImageGenerationInput {
   apiKey: string;
   /** Decrypted API secret (if required) */
   apiSecret?: string;
+  url?: string;
+  generateUrl?: string;
+  editUrl?: string;
+  readUrl?: string;
 }
 
 export interface ImageGenerationOutput {

@@ -40,6 +40,12 @@ import { AppController } from './app.controller';
 
 import { AdminModule } from './admin/admin.module';
 
+// Purchasing Modules
+import { OcrIntegrationModule } from './modules/ocr-integration/ocr-integration.module';
+import { PurchasingModule } from './modules/purchasing/purchasing.module';
+import { PurchasingERPNextModule } from './modules/purchasing-erpnext/erpnext.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
+
 @Module({
   imports: [
     // ─── Config ─────────────────────────────────────────────────────────────
@@ -115,6 +121,10 @@ import { AdminModule } from './admin/admin.module';
     CountryModule,
     OrderFieldMappingModule,
     ItemGroupModule,
+    OcrIntegrationModule,
+    PurchasingModule,
+    PurchasingERPNextModule,
+    ReviewsModule,
 
     // ─── Infrastructure ───────────────────────────────────────────────────────
     QueueModule,

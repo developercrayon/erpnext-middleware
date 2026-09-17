@@ -56,6 +56,15 @@ export class AiConfig {
   @Column({ name: 'model', type: 'varchar', length: 100 })
   model: string;
 
+  @Column({ name: 'generate_model', type: 'varchar', length: 100, nullable: true })
+  generateModel: string | null;
+
+  @Column({ name: 'edit_model', type: 'varchar', length: 100, nullable: true })
+  editModel: string | null;
+
+  @Column({ name: 'read_model', type: 'varchar', length: 100, nullable: true })
+  readModel: string | null;
+
   /** AES-256-GCM encrypted API key — NEVER returned to frontend */
   @Column({ name: 'api_key_encrypted', type: 'text', nullable: true })
   apiKeyEncrypted: string | null;
@@ -63,6 +72,18 @@ export class AiConfig {
   /** AES-256-GCM encrypted API secret — NEVER returned to frontend */
   @Column({ name: 'api_secret_encrypted', type: 'text', nullable: true })
   apiSecretEncrypted: string | null;
+
+  @Column({ name: 'url', type: 'varchar', length: 255, nullable: true })
+  url: string | null;
+
+  @Column({ name: 'generate_url', type: 'varchar', length: 255, nullable: true })
+  generateUrl: string | null;
+
+  @Column({ name: 'edit_url', type: 'varchar', length: 255, nullable: true })
+  editUrl: string | null;
+
+  @Column({ name: 'read_url', type: 'varchar', length: 255, nullable: true })
+  readUrl: string | null;
 
   /** System prompt for content AI (not applicable for image AI) */
   @Column({ name: 'content_prompt', type: 'text', nullable: true })

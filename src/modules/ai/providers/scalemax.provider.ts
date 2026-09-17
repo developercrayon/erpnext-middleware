@@ -14,18 +14,16 @@ export class ScalemaxProvider extends AIProvider {
     input: ImageGenerationInput,
   ): Promise<ImageGenerationOutput> {
     try {
-      let apiUrl = process.env.SCALEMAX_BASE_URL;
-
-      if (!apiUrl) {
-        throw new Error(
-          'SCALEMAX_BASE_URL is not defined in environment variables',
-        );
-      }
+      let apiUrl: string;
 
       if (input.referenceImageBase64) {
-        apiUrl = apiUrl.replace('/generations', '/edits');
+        apiUrl = input.editUrl || (input.url ? `${input.url.replace(/\/$/, '')}/images/edits` : `${process.env.SCALEMAX_BASE_URL?.replace(/\/$/, '')}/images/edits`);
       } else {
-        apiUrl = apiUrl.replace('/edits', '/generations');
+        apiUrl = input.generateUrl || (input.url ? `${input.url.replace(/\/$/, '')}/images/generations` : `${process.env.SCALEMAX_BASE_URL?.replace(/\/$/, '')}/images/generations`);
+      }
+
+      if (!apiUrl || apiUrl.includes('undefined')) {
+        throw new Error('Scalemax API URL is not properly configured in database or environment variables');
       }
 
       const body: any = {

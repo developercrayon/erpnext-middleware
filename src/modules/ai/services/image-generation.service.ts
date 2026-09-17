@@ -18,6 +18,13 @@ export interface GenerateImagesOptions {
     model: string;
     apiKey: string;
     apiSecret?: string;
+    url?: string;
+    generateUrl?: string;
+    editUrl?: string;
+    readUrl?: string;
+    generateModel?: string;
+    editModel?: string;
+    readModel?: string;
   };
   targetIndex?: number;
   existingResults?: GeneratedImageResult[];
@@ -92,9 +99,13 @@ export class ImageGenerationService {
           promptText: finalPromptText,
           referenceImageUrl: options.referenceImageUrl,
           referenceImageBase64: resolvedReferenceImageBase64,
-          model: options.config.model,
+          model: resolvedReferenceImageBase64 ? (options.config.editModel || options.config.model) : (options.config.generateModel || options.config.model),
           apiKey: options.config.apiKey,
           apiSecret: options.config.apiSecret,
+          url: options.config.url,
+          generateUrl: options.config.generateUrl,
+          editUrl: options.config.editUrl,
+          readUrl: options.config.readUrl,
         });
 
         // Determine file extension

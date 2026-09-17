@@ -46,6 +46,22 @@ export class UpsertContentAiDto {
   @IsBoolean()
   @IsOptional()
   isEnabled?: boolean;
+
+  @IsString()
+  @IsOptional()
+  url?: string;
+
+  @IsString()
+  @IsOptional()
+  generateUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  editUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  readUrl?: string;
 }
 
 export class UpsertImageAiDto {
@@ -59,6 +75,18 @@ export class UpsertImageAiDto {
 
   @IsString()
   @IsOptional()
+  generateModel?: string;
+
+  @IsString()
+  @IsOptional()
+  editModel?: string;
+
+  @IsString()
+  @IsOptional()
+  readModel?: string;
+
+  @IsString()
+  @IsOptional()
   apiKey?: string;
 
   @IsString()
@@ -68,6 +96,22 @@ export class UpsertImageAiDto {
   @IsBoolean()
   @IsOptional()
   isEnabled?: boolean;
+
+  @IsString()
+  @IsOptional()
+  url?: string;
+
+  @IsString()
+  @IsOptional()
+  generateUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  editUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  readUrl?: string;
 
   @IsOptional()
   @ValidateNested({ each: true })

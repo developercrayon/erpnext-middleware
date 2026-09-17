@@ -134,6 +134,12 @@ export const AI_MODELS_RAW = {
         "key": "gpt-image-1-5",
         "label": "Best Quality",
         "active": true
+      },
+      {
+        "name": "Claude opus 5",
+        "key": "claude-opus-5",
+        "label": "Best Quality",
+        "active": true
       }
     ],
     "openai": [

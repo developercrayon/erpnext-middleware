@@ -49,7 +49,14 @@ export class AiSettingsService {
       isConfigured: !!config.apiKeyEncrypted,
       provider: config.provider,
       model: config.model,
+      generateModel: config.generateModel,
+      editModel: config.editModel,
+      readModel: config.readModel,
       isEnabled: config.isEnabled,
+      url: config.url,
+      generateUrl: config.generateUrl,
+      editUrl: config.editUrl,
+      readUrl: config.readUrl,
       contentPrompt: config.contentPrompt,
       masterPrompt: config.imageMasterPrompt,
       prompts: config.imagePrompts
@@ -78,10 +85,17 @@ export class AiSettingsService {
     return {
       provider: config.provider,
       model: config.model,
+      generateModel: config.generateModel,
+      editModel: config.editModel,
+      readModel: config.readModel,
       apiKey: config.apiKeyEncrypted ? this.encryptionService.decrypt(config.apiKeyEncrypted) : (config.provider === 'scalemax' ? process.env.SCALEMAX_API_KEY : undefined),
       apiSecret: config.apiSecretEncrypted
         ? this.encryptionService.decrypt(config.apiSecretEncrypted)
         : undefined,
+      url: config.url,
+      generateUrl: config.generateUrl,
+      editUrl: config.editUrl,
+      readUrl: config.readUrl,
       contentPrompt: config.contentPrompt,
       imageMasterPrompt: config.imageMasterPrompt,
       prompts: config.imagePrompts?.filter((p) => p.isEnabled) || [],
@@ -109,6 +123,10 @@ export class AiSettingsService {
     if (dto.isEnabled !== undefined) {
       config.isEnabled = dto.isEnabled;
     }
+    if (dto.url !== undefined) config.url = dto.url;
+    if (dto.generateUrl !== undefined) config.generateUrl = dto.generateUrl;
+    if (dto.editUrl !== undefined) config.editUrl = dto.editUrl;
+    if (dto.readUrl !== undefined) config.readUrl = dto.readUrl;
 
     if (dto.apiKey) {
       config.apiKeyEncrypted = this.encryptionService.encrypt(dto.apiKey);
@@ -138,9 +156,18 @@ export class AiSettingsService {
     config.provider = dto.provider;
     config.model = dto.model;
 
+    if (dto.generateModel !== undefined) config.generateModel = dto.generateModel;
+    if (dto.editModel !== undefined) config.editModel = dto.editModel;
+    if (dto.readModel !== undefined) config.readModel = dto.readModel;
+
     if (dto.isEnabled !== undefined) {
       config.isEnabled = dto.isEnabled;
     }
+
+    if (dto.url !== undefined) config.url = dto.url;
+    if (dto.generateUrl !== undefined) config.generateUrl = dto.generateUrl;
+    if (dto.editUrl !== undefined) config.editUrl = dto.editUrl;
+    if (dto.readUrl !== undefined) config.readUrl = dto.readUrl;
 
     if (dto.masterPrompt !== undefined) {
       config.imageMasterPrompt = dto.masterPrompt;
