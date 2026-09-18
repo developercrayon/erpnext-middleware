@@ -63,12 +63,16 @@ export class AIInvoiceExtractionService {
 
     const errors: string[] = [];
     
-    // Fetch dynamic AI Configuration from the database
+    // Fetch dynamic AI Configuration from the database (Image/Vision model)
     let aiConfig;
     try {
-      aiConfig = await this.aiSettingsService.getDecryptedConfig(AiConfigType.CONTENT);
+      aiConfig = await this.aiSettingsService.getDecryptedConfig(AiConfigType.IMAGE);
     } catch (err) {
-      throw new Error(`AI Configuration missing or invalid in database: ${err.message}`);
+      try {
+        aiConfig = await this.aiSettingsService.getDecryptedConfig(AiConfigType.CONTENT);
+      } catch (err2) {
+        throw new Error(`AI Configuration missing or invalid in database: ${err.message}`);
+      }
     }
 
     // 3. Try ScaleMax Claude Vision API
@@ -255,8 +259,9 @@ CRITICAL EXTRACTION RULES:
 2. INVOICE HEADER & METADATA:
    - Extract Invoice Number / Bill Number accurately (e.g. 'SR/PI/2024-25/0156', 'INV-2026-NEW-8801').
    - Standardize Invoice Date to YYYY-MM-DD format (e.g., '15-Apr-2024' -> '2024-04-15', '15/09/2026' -> '2026-09-15').
-   - Standardize Due Date to YYYY-MM-DD format. If an explicit due date is not printed, but payment terms or credit days are mentioned (e.g. 'Net 15 days', 'Net 30', '45 days', '60 days credit'), calculate the exact due_date by adding those days to invoice_date.
-   - Extract Currency (e.g. 'INR', 'USD'), PO Number, Payment Terms (e.g. 'Net 30', 'Net 15', 'Due on Receipt'), and Warehouse / Destination if mentioned.
+   - Standardize Due Date to YYYY-MM-DD format ONLY IF an explicit due date is physically printed on the invoice. If NO due date is printed on the invoice, set due_date to null. NEVER invent, calculate, or assume a due date if not in the document.
+   - Extract Payment Terms ONLY if explicitly printed on the invoice (e.g. 'Net 30', 'Net 15', 'Due on Receipt'). If not mentioned in the invoice, set to null.
+   - Extract Currency (e.g. 'INR', 'USD'), PO Number, and Warehouse / Destination if mentioned.
 
 3. LINE ITEMS (EVERY ROW IN TABLE):
    - Extract EVERY line item row accurately without skipping any rows.
@@ -691,6 +696,14 @@ Output ONLY valid, parseable JSON conforming strictly to this schema:
       let description = (it.description || it.item_name || 'Unidentified Item').trim();
       let itemCode = it.item_code ? String(it.item_code).trim() : null;
 
+      // Extract SKU from subtext if mentioned (e.g. SKU: WW-JW-01 or Model: ...)
+      if (!itemCode) {
+        const skuSubtextMatch = description.match(/(?:SKU|Item Code|Model No|Part No)[:\s]+([A-Z0-9_\-\/]{3,30})/i);
+        if (skuSubtextMatch) {
+          itemCode = skuSubtextMatch[1].trim();
+        }
+      }
+
       // Extract SKU prefix from description if item_code is missing
       if (!itemCode) {
         const prefixMatch = description.match(/^([A-Z0-9_\-\/]{3,30})\s*[-–:|]\s*(.+)$/i);
@@ -699,6 +712,12 @@ Output ONLY valid, parseable JSON conforming strictly to this schema:
           description = prefixMatch[2].trim();
         }
       }
+
+      // Clean secondary metadata from description if appended to preserve clean product title
+      description = description
+        .replace(/\r?\n\s*(?:SKU|Item Code|Model|Material|Grid|Size|Color|Finish|Brand|Made in|Dimensions?):.+$/is, '')
+        .replace(/\s*\|\s*(?:SKU|Item Code|Model|Material|Grid|Size|Color|Finish|Brand|Made in|Dimensions?):.+$/i, '')
+        .trim();
 
       const hsnCode = this.sanitizeHsnCode(it.hsn_code);
       const quantity = this.parseNumeric(it.quantity, 1);
@@ -767,20 +786,8 @@ Output ONLY valid, parseable JSON conforming strictly to this schema:
     const rawDueDate = data.invoice?.due_date;
     const paymentTerms = data.payment_terms || data.invoice?.payment_terms || null;
 
-    // 1. Try parsing explicit due date
-    let dueDate = this.parseDateToIso(rawDueDate);
-    // 2. If due date is missing or same as invoice date, try calculating from terms/text
-    if (!dueDate || dueDate === invoiceDate) {
-      const calculatedFromTerms =
-        this.calculateDueDateFromTerms(invoiceDate, rawDueDate) ||
-        this.calculateDueDateFromTerms(invoiceDate, paymentTerms);
-      if (calculatedFromTerms) {
-        dueDate = calculatedFromTerms;
-      }
-    }
-    if (!dueDate) {
-      dueDate = invoiceDate;
-    }
+    // Extract explicit due date only if physically present on the document
+    const dueDate = rawDueDate ? this.parseDateToIso(rawDueDate) : null;
 
     return {
       supplier: {
@@ -814,7 +821,7 @@ Output ONLY valid, parseable JSON conforming strictly to this schema:
         postal_code: data.shipping_address?.postal_code || null,
         country: data.shipping_address?.country || 'India',
       },
-      warehouse: data.warehouse || data.destination_warehouse || data.set_warehouse || null,
+      warehouse: this.sanitizeWarehouse(data.warehouse || data.destination_warehouse || data.set_warehouse),
       items,
       taxes: {
         cgst: Number(cgst.toFixed(2)),
@@ -833,6 +840,23 @@ Output ONLY valid, parseable JSON conforming strictly to this schema:
       notes: data.notes || null,
       overall_confidence: this.parseNumeric(data.overall_confidence, 0.98),
     };
+  }
+
+  private sanitizeWarehouse(val: any): string {
+    if (!val || typeof val !== 'string') return 'Stores - woodwolf';
+    const trimmed = val.trim();
+    if (
+      trimmed.includes(',') ||
+      trimmed.length > 35 ||
+      /\b(?:street|road|park|gidc|zone|building|plot|nagar|floor|ahmedabad|rajkot|mumbai|delhi|gujarat|\d{6})\b/i.test(trimmed)
+    ) {
+      return 'Stores - woodwolf';
+    }
+    if (/finished\s*goods/i.test(trimmed)) return 'Finished Goods - woodwolf';
+    if (/goods\s*in\s*transit/i.test(trimmed)) return 'Goods In Transit - woodwolf';
+    if (/work\s*in\s*progress/i.test(trimmed)) return 'Work In Progress - woodwolf';
+    if (/stores/i.test(trimmed)) return 'Stores - woodwolf';
+    return trimmed || 'Stores - woodwolf';
   }
 
   private getMimeType(filePath: string, originalName: string): string {

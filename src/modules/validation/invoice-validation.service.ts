@@ -31,9 +31,15 @@ export class InvoiceValidationService {
       errors.push({
         field: 'supplier',
         severity: ValidationSeverity.ERROR,
-        message: 'Supplier name or GSTIN is missing. A valid supplier must be selected.',
+        message: 'Supplier name is missing. A valid supplier must be provided.',
       });
     }
+
+    const totalTaxExtracted = Number(data.taxes?.total_tax || 0);
+    const hasItemsWithTax = data.items?.some(
+      (it) => (Number(it.tax_percentage) || 0) > 0 || (Number(it.tax_amount) || 0) > 0,
+    );
+    const isTaxCharged = totalTaxExtracted > 0 || hasItemsWithTax;
 
     if (data.supplier?.gstin) {
       const gstinClean = data.supplier.gstin.trim().toUpperCase();
@@ -45,6 +51,20 @@ export class InvoiceValidationService {
           message: `GSTIN "${gstinClean}" does not strictly match the 15-character Indian GSTIN format. Please verify supplier GSTIN.`,
         });
       }
+    } else if (isTaxCharged) {
+      // If GST is charged on invoice, GSTIN is mandatory
+      errors.push({
+        field: 'supplier.gstin',
+        severity: ValidationSeverity.ERROR,
+        message: 'Tax is charged on this invoice. A valid 15-character Supplier GSTIN is mandatory.',
+      });
+    } else {
+      // If NO tax is charged and NO GSTIN is provided, treat as Unregistered supplier (ALLOWED without blocking)
+      info.push({
+        field: 'supplier.gstin',
+        severity: ValidationSeverity.INFO,
+        message: 'No GSTIN provided and 0% tax detected. Invoice will be processed as an Unregistered / Non-GST purchase.',
+      });
     }
 
     if (!data.invoice?.number || !data.invoice.number.trim()) {
@@ -82,20 +102,49 @@ export class InvoiceValidationService {
     } else {
       data.items.forEach((item, idx) => {
         const itemIdx = idx + 1;
-        if (!item.matched_erp_item_code && !item.item_code) {
-          warnings.push({
-            field: `items[${idx}].matched_erp_item_code`,
-            severity: ValidationSeverity.WARNING,
-            message: `Item #${itemIdx} (${item.description}) is new — will be automatically registered in ERPNext upon approval.`,
-          });
+        const isLinkedToErp = Boolean(item.matched_erp_item_code && item.matched_erp_item_code.trim());
+        const effectiveItemCode = (item.matched_erp_item_code || item.item_code || '').trim();
+        const effectiveHsn = ((item as any).gst_hsn_code || (item as any).hsn_code || '').trim();
+
+        if (!isLinkedToErp) {
+          // If not linked to an existing ERP item, item_code (SKU) and hsn_code are MANDATORY
+          if (!effectiveItemCode) {
+            errors.push({
+              field: `items[${idx}].item_code`,
+              severity: ValidationSeverity.ERROR,
+              message: `Item #${itemIdx} (${item.description || 'New Item'}) is a new item and requires an Item Code (SKU).`,
+            });
+          }
+
+          if (!effectiveHsn) {
+            errors.push({
+              field: `items[${idx}].hsn_code`,
+              severity: ValidationSeverity.ERROR,
+              message: `Item #${itemIdx} (${item.description || 'New Item'}) is a new item and requires a GST HSN Code.`,
+            });
+          } else if (!/^\d{4,8}$/.test(effectiveHsn)) {
+            warnings.push({
+              field: `items[${idx}].hsn_code`,
+              severity: ValidationSeverity.WARNING,
+              message: `Item #${itemIdx} HSN code "${effectiveHsn}" should ideally be 4, 6, or 8 numeric digits.`,
+            });
+          }
         }
 
-        if (item.match_confidence && item.match_confidence < 0.75) {
-          warnings.push({
-            field: `items[${idx}].match_confidence`,
-            severity: ValidationSeverity.WARNING,
-            message: `Item #${itemIdx} has low matching confidence (${Math.round(item.match_confidence * 100)}%). Please review ERP item selection.`,
-          });
+        if (isLinkedToErp) {
+          if (item.match_reason && item.match_reason.includes('HSN differs')) {
+            warnings.push({
+              field: `items[${idx}].hsn_code`,
+              severity: ValidationSeverity.WARNING,
+              message: `Item #${itemIdx} ("${item.description}") matched ERP item (${item.matched_erp_item_code}), but HSN differs (${item.match_reason}).`,
+            });
+          } else if (item.match_confidence && item.match_confidence < 0.75) {
+            warnings.push({
+              field: `items[${idx}].match_confidence`,
+              severity: ValidationSeverity.WARNING,
+              message: `Item #${itemIdx} has low matching confidence (${Math.round(item.match_confidence * 100)}%). Please review ERP item selection.`,
+            });
+          }
         }
 
         if (item.quantity <= 0) {

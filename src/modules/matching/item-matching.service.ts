@@ -83,133 +83,171 @@ export class ItemMatchingService {
       }
     }
 
-    // 4. Exact Item Name Match
+    // 4. Exact Item Name Match (Links to ERP item; notes HSN difference if any)
     const cleanDesc = codePrefixMatch ? codePrefixMatch[2].trim() : rawDesc;
     const cleanNormDesc = this.normalizeItemText(cleanDesc);
+    const strippedDesc = cleanDesc
+      .replace(/\r?\n\s*(?:SKU|Item Code|Model|Material|Grid|Size|Color|Finish|Brand|Made in|Dimensions?):.+$/is, '')
+      .replace(/\s*\|\s*(?:SKU|Item Code|Model|Material|Grid|Size|Color|Finish|Brand|Made in|Dimensions?):.+$/i, '')
+      .trim();
+    const strippedNormDesc = this.normalizeItemText(strippedDesc);
+
     const exactNameMatch = items.find(
       (i) => i.item_name.toLowerCase() === rawDesc.toLowerCase() ||
              this.normalizeItemText(i.item_name) === normDesc ||
              i.item_name.toLowerCase() === cleanDesc.toLowerCase() ||
-             this.normalizeItemText(i.item_name) === cleanNormDesc
+             this.normalizeItemText(i.item_name) === cleanNormDesc ||
+             i.item_name.toLowerCase() === strippedDesc.toLowerCase() ||
+             this.normalizeItemText(i.item_name) === strippedNormDesc
     );
     if (exactNameMatch) {
+      const erpHsn = (exactNameMatch.gst_hsn_code || '').trim();
+      const hsnMatches = rawHsn && erpHsn ? rawHsn.substring(0, 4) === erpHsn.substring(0, 4) : true;
+      const matchReason = rawHsn && erpHsn && !hsnMatches
+        ? `Exact Title match, but HSN differs (Invoice: ${rawHsn} vs ERP: ${erpHsn}). Please review.`
+        : (rawHsn && erpHsn ? `Exact Title & Verified HSN (${rawHsn}) with ERP Item` : 'Exact Item Title match');
+
       return {
         item_code: exactNameMatch.item_code,
         item_name: exactNameMatch.item_name,
         uom: exactNameMatch.stock_uom,
-        confidence: 0.95,
-        match_reason: 'Exact Item Title match',
-        match_type: 'EXACT_NAME',
+        confidence: hsnMatches ? 0.98 : 0.90,
+        match_reason: matchReason,
+        match_type: hsnMatches && rawHsn ? 'TITLE_AND_HSN' : 'EXACT_NAME',
       };
     }
 
-    // 4. Normalized Name & Dimension Match (e.g. "WOOD WALL SHELF 18\"" -> "Wooden Wall Shelf - 18 Inch")
-    const candidates: Array<{
-      item_code: string;
-      item_name: string;
-      confidence: number;
-    }> = [];
-
-    let bestMatch: ErpItem | null = null;
-    let highestSim = 0;
-    let bestReason = '';
-
-    for (const erpItem of items) {
-      const erpNorm = this.normalizeItemText(erpItem.item_name + ' ' + (erpItem.description || ''));
-      const sim = this.calculateTokenSimilarity(normDesc, erpNorm);
-
-      // Check dimension match (e.g. 18", 18 inch, 4ft, 2m)
-      const dimExtracted = this.extractDimensions(rawDesc);
-      const dimErp = this.extractDimensions(erpItem.item_name);
-      let dimBonus = 0;
-      if (dimExtracted && dimErp && dimExtracted === dimErp) {
-        dimBonus = 0.15;
-      }
-
-      const totalScore = Math.min(0.99, sim + dimBonus);
-
-      if (totalScore >= 0.5) {
-        candidates.push({
-          item_code: erpItem.item_code,
-          item_name: erpItem.item_name,
-          confidence: Number(totalScore.toFixed(2)),
-        });
-      }
-
-      if (totalScore > highestSim) {
-        highestSim = totalScore;
-        bestMatch = erpItem;
-        bestReason = dimBonus > 0
-          ? 'Semantic name match + dimension match'
-          : 'Fuzzy semantic keyword match';
-      }
-    }
-
-    if (bestMatch && highestSim >= 0.65) {
-      return {
-        item_code: bestMatch.item_code,
-        item_name: bestMatch.item_name,
-        uom: bestMatch.stock_uom,
-        confidence: Number(highestSim.toFixed(2)),
-        match_reason: bestReason,
-        match_type: highestSim >= 0.85 ? 'SEMANTIC' : 'FUZZY',
-        candidates: candidates.sort((a, b) => b.confidence - a.confidence).slice(0, 5),
-      };
-    }
+    // 5. If not an exact match (Code, Embedded SKU, or Title), do NOT auto-assign item_code.
+    // Leave it as unlinked (New Custom Item) so user can choose from suggestions or create new.
+    const query = cleanDesc || rawDesc || rawCode;
+    const candidates = items
+      .map((i) => ({
+        item_code: i.item_code,
+        item_name: i.item_name,
+        confidence: Number(this.computeAdvancedSimilarity(query, i).toFixed(2)),
+      }))
+      .filter((c) => c.confidence > 0.15);
 
     return {
       item_code: null,
       item_name: null,
       confidence: 0,
-      match_reason: 'No matching ERPNext item found with sufficient confidence',
+      match_reason: 'Item is not an exact match in ERPNext. Marked as new item for review.',
       match_type: 'NONE',
       candidates: candidates.sort((a, b) => b.confidence - a.confidence).slice(0, 5),
     };
+  }
+
+  private computeAdvancedSimilarity(query: string, item: ErpItem): number {
+    if (!query) return 0;
+    const q = query.toLowerCase().trim();
+    const rawCode = (item.item_code || '').toLowerCase();
+    const rawName = (item.item_name || '').toLowerCase();
+    const rawDesc = (item.description || '').toLowerCase();
+
+    if (rawCode === q || rawName === q) return 1.0;
+    if (rawCode.replace(/[-_]/g, ' ') === q.replace(/[-_]/g, ' ')) return 0.98;
+    if (rawName.replace(/[-_]/g, ' ') === q.replace(/[-_]/g, ' ')) return 0.98;
+
+    const qNorm = this.normalizeItemText(query);
+    const itNorm = this.normalizeItemText(rawCode + ' ' + rawName + ' ' + rawDesc);
+
+    if (qNorm === itNorm) return 0.99;
+
+    const qTokens = qNorm.split(' ').filter(Boolean);
+    const itTokens = new Set(itNorm.split(' ').filter(Boolean));
+    const itText = itNorm;
+
+    if (qTokens.length === 0) return 0;
+
+    const colorList = ['black', 'white', 'red', 'green', 'blue', 'yellow', 'maroon', 'navyblue', 'lightgray', 'gray', 'grey', 'gold', 'antique', 'silver', 'brown', 'natural', 'walnut', 'oak', 'teak'];
+    const sizeList = ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', '2xl', '3xl', '4in', '6in', '8in', '10in', '12in', '14in', '16in', '18in', '24in'];
+    const coreNounList = ['tshirt', 'hoodie', 'shirt', 'jacket', 'pant', 'ganesha', 'idol', 'stand', 'clock', 'coaster', 'shelf', 'holder', 'box', 'tray', 'bottle', 'pen', 'calendar', 'laptop', 'pack', 'sign'];
+
+    const qColors = qTokens.filter((t) => colorList.includes(t));
+    const qSizes = qTokens.filter((t) => sizeList.includes(t));
+    const qNouns = qTokens.filter((t) => coreNounList.includes(t));
+    const qGeneral = qTokens.filter((t) => !colorList.includes(t) && !sizeList.includes(t) && !coreNounList.includes(t));
+
+    // If query has core product noun, candidate MUST match it
+    if (qNouns.length > 0) {
+      const nounMatched = qNouns.some((n) => itTokens.has(n) || itText.includes(n));
+      if (!nounMatched) {
+        return 0;
+      }
+    }
+
+    let score = 0;
+    let maxPossible = 0;
+
+    // 1. Core Nouns (Weight: 40)
+    if (qNouns.length > 0) {
+      maxPossible += 40;
+      const matchedCount = qNouns.filter((n) => itTokens.has(n) || itText.includes(n)).length;
+      score += (matchedCount / qNouns.length) * 40;
+    }
+
+    // 2. Colors (Weight: 25)
+    if (qColors.length > 0) {
+      maxPossible += 25;
+      const colorMatched = qColors.some((c) => itTokens.has(c) || itText.includes(c));
+      if (colorMatched) {
+        score += 25;
+      } else {
+        score -= 10;
+      }
+    }
+
+    // 3. Sizes / Dimensions (Weight: 25)
+    if (qSizes.length > 0) {
+      maxPossible += 25;
+      const sizeMatched = qSizes.some((s) => itTokens.has(s) || itText.includes(s));
+      if (sizeMatched) {
+        score += 25;
+      } else {
+        score -= 10;
+      }
+    }
+
+    // 4. Modifiers & general keywords (Weight: 20)
+    if (qGeneral.length > 0) {
+      maxPossible += 20;
+      const matchedGen = qGeneral.filter((g) => itTokens.has(g) || itText.includes(g)).length;
+      score += (matchedGen / qGeneral.length) * 20;
+    }
+
+    if (maxPossible === 0) {
+      let matchedWords = 0;
+      for (const word of qTokens) {
+        if (itText.includes(word)) matchedWords++;
+      }
+      return matchedWords > 0 ? (matchedWords / qTokens.length) * 0.6 : 0;
+    }
+
+    return Math.max(0, Math.min(0.95, (score / maxPossible) * 0.9));
   }
 
   private normalizeItemText(text: string): string {
     if (!text) return '';
     return text
       .toLowerCase()
-      .replace(/(\d+)\s*inch(es)?/g, '$1in')
-      .replace(/(\d+)\s*\"/g, '$1in')
-      .replace(/(\d+)\s*ft/g, '$1ft')
-      .replace(/(\d+)\s*feet/g, '$1ft')
+      .replace(/(\d+)\s*inch(es)?/gi, '$1in')
+      .replace(/(\d+)\s*\"/gi, '$1in')
+      .replace(/(\d+)\s*in\b/gi, '$1in')
+      .replace(/\bt-?shirt\b/gi, 'tshirt')
+      .replace(/\btee\b/gi, 'tshirt')
+      .replace(/\bhoodies\b/gi, 'hoodie')
+      .replace(/\bcoasters\b/gi, 'coaster')
+      .replace(/\bstands\b/gi, 'stand')
+      .replace(/\bidols\b/gi, 'idol')
+      .replace(/\bclocks\b/gi, 'clock')
+      .replace(/\bcustom\b/gi, 'customize')
+      .replace(/\bcustomized\b/gi, 'customize')
+      .replace(/\blight\s*gray\b/gi, 'lightgray')
+      .replace(/\blight\s*grey\b/gi, 'lightgray')
+      .replace(/\bnavy\s*blue\b/gi, 'navyblue')
       .replace(/[^a-z0-9]/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-  }
-
-  private extractDimensions(text: string): string | null {
-    if (!text) return null;
-    const match = text.match(/\b(\d+)\s*(inch|\"|in|ft|feet|m|meter|cm|mm)\b/i);
-    if (match) {
-      return match[1] + (match[2].startsWith('"') || match[2].startsWith('i') ? 'in' : match[2].toLowerCase());
-    }
-    return null;
-  }
-
-  private calculateTokenSimilarity(text1: string, text2: string): number {
-    const tokens1 = new Set(text1.split(' ').filter((t) => t.length > 1));
-    const tokens2 = new Set(text2.split(' ').filter((t) => t.length > 1));
-
-    if (tokens1.size === 0 || tokens2.size === 0) return 0;
-
-    let overlap = 0;
-    for (const t of tokens1) {
-      if (tokens2.has(t)) {
-        overlap++;
-      } else {
-        // substring check
-        for (const t2 of tokens2) {
-          if (t.length > 3 && t2.includes(t)) {
-            overlap += 0.5;
-            break;
-          }
-        }
-      }
-    }
-
-    return (2.0 * overlap) / (tokens1.size + tokens2.size);
   }
 }
