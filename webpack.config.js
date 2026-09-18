@@ -6,10 +6,7 @@ module.exports = function (options, webpack) {
     externals: [
       nodeExternals({
         allowlist: [
-          /^@adminjs\/nestjs/,
-          /^@adminjs\/typeorm/,
-          /^@adminjs\/express/,
-          /^adminjs/,
+
         ],
       }),
     ],

@@ -35,8 +35,8 @@ COPY --from=builder /usr/src/app/dist ./dist
 # Copy public static assets
 COPY public ./public
 
-# Create logs, .adminjs, and generated_images directories
-RUN mkdir -p logs .adminjs public/generated_images && chown -R node:node logs .adminjs public/generated_images
+# Create logs and generated_images directories
+RUN mkdir -p logs public/generated_images && chown -R node:node logs public/generated_images
 
 # Run as root to avoid Dokploy volume permission issues
 # USER node
