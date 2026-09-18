@@ -136,7 +136,6 @@ async function bootstrap() {
   ╠════════════════════════════════════════════════════╣
   ║  Environment : ${env.padEnd(34)}║
   ║  Server      : ${(`http://localhost:${port}`).padEnd(34)}║
-  ║  Swagger     : ${(`http://localhost:${port}/api/docs`).padEnd(34)}║
   ╚════════════════════════════════════════════════════╝
   `);
 }
