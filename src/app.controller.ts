@@ -88,8 +88,8 @@ export class AppController {
       <body>
         <div class="overlay">
           <div class="container">
-            <h1>Middleware Platform</h1>
-            <p>Integration hub connecting ERPNext with Amazon and Flipkart marketplaces.</p>
+            <h1>API Platform</h1>
+            <p>Integration hub connecting ERPNext with Amazon and Flipkart marketplaces API Platform.</p>
 
           </div>
         </div>
