@@ -61,45 +61,47 @@ export class ImageGenerationService {
     const startIndex = options.targetIndex !== undefined ? options.targetIndex : 0;
     const endIndex = options.targetIndex !== undefined ? options.targetIndex + 1 : options.prompts.length;
 
-    let resolvedReferenceImageBase64 = options.referenceImageBase64;
-    if (!resolvedReferenceImageBase64 && options.referenceImageUrl && !options.referenceImageUrl.startsWith('blob:')) {
-      try {
-        let fullUrl = options.referenceImageUrl;
-        if (!fullUrl.startsWith('http')) {
-          const baseUrl = process.env.ERPNEXT_BASE_URL || 'http://localhost:8000';
-          fullUrl = `${baseUrl}/${fullUrl.startsWith('/') ? fullUrl.substring(1) : fullUrl}`;
-        }
-        
-        this.logger.log(`Fetching reference image from URL to convert to base64: ${fullUrl}`);
-        const response = await axios.get(fullUrl, { responseType: 'arraybuffer' });
-        const base64 = Buffer.from(response.data, 'binary').toString('base64');
-        
-        let mimeType = 'image/jpeg';
-        if (fullUrl.toLowerCase().includes('.png')) mimeType = 'image/png';
-        if (fullUrl.toLowerCase().includes('.webp')) mimeType = 'image/webp';
-        
-        resolvedReferenceImageBase64 = `data:${mimeType};base64,${base64}`;
-        this.logger.log(`Successfully converted reference image to base64 on backend`);
-      } catch (e: any) {
-        this.logger.error(`Failed to convert reference image URL to base64: ${e.message}`);
-      }
-    }
-
     for (let i = startIndex; i < endIndex; i++) {
-      const prompt = options.prompts[i];
+      const prompt = options.prompts[i] as any; // Cast to any to access custom referenceImageUrl
       if (!prompt) continue;
       
       const finalPromptText = options.masterPrompt 
         ? `${options.masterPrompt}\n\n${prompt.promptText}` 
         : prompt.promptText;
 
+      let currentReferenceImageUrl = prompt.referenceImageUrl || options.referenceImageUrl;
+      let currentReferenceImageBase64 = options.referenceImageBase64;
+
+      if (!currentReferenceImageBase64 && currentReferenceImageUrl && !currentReferenceImageUrl.startsWith('blob:')) {
+        try {
+          let fullUrl = currentReferenceImageUrl;
+          if (!fullUrl.startsWith('http')) {
+            const baseUrl = process.env.ERPNEXT_BASE_URL || 'http://localhost:8000';
+            fullUrl = `${baseUrl}/${fullUrl.startsWith('/') ? fullUrl.substring(1) : fullUrl}`;
+          }
+          
+          this.logger.log(`Fetching reference image from URL to convert to base64: ${fullUrl}`);
+          const response = await axios.get(fullUrl, { responseType: 'arraybuffer' });
+          const base64 = Buffer.from(response.data, 'binary').toString('base64');
+          
+          let mimeType = 'image/jpeg';
+          if (fullUrl.toLowerCase().includes('.png')) mimeType = 'image/png';
+          if (fullUrl.toLowerCase().includes('.webp')) mimeType = 'image/webp';
+          
+          currentReferenceImageBase64 = `data:${mimeType};base64,${base64}`;
+          this.logger.log(`Successfully converted reference image to base64 on backend`);
+        } catch (e: any) {
+          this.logger.error(`Failed to convert reference image URL to base64: ${e.message}`);
+        }
+      }
+
       try {
         const response = await provider.generateImage({
           itemName: options.itemName,
           promptText: finalPromptText,
-          referenceImageUrl: options.referenceImageUrl,
-          referenceImageBase64: resolvedReferenceImageBase64,
-          model: resolvedReferenceImageBase64 ? (options.config.editModel || options.config.model) : (options.config.generateModel || options.config.model),
+          referenceImageUrl: currentReferenceImageUrl,
+          referenceImageBase64: currentReferenceImageBase64,
+          model: currentReferenceImageBase64 ? (options.config.editModel || options.config.model) : (options.config.generateModel || options.config.model),
           apiKey: options.config.apiKey,
           apiSecret: options.config.apiSecret,
           url: options.config.url,

@@ -89,11 +89,36 @@ export class SocialPostsProcessor {
             imagePrompt = imageConfig.prompts[0].promptText || imageConfig.prompts[0];
          }
 
+         let promptsToUse: any[] = [];
+         
+         if (post.postType?.toLowerCase() === 'carousel' && post.selectedImagePromptImages && post.selectedImagePromptImages.length > 0) {
+           // For carousels, generate an image for EACH selected reference image
+           promptsToUse = post.selectedImagePromptImages.map((img, idx) => {
+             // Find custom prompt override by index since the same image might be selected multiple times
+             const customPromptObj = post.customPrompts?.carouselPrompts?.[idx] as any;
+             const specificPrompt = (customPromptObj && customPromptObj.prompt && typeof customPromptObj.prompt === 'string' && customPromptObj.prompt.trim() !== "") 
+               ? customPromptObj.prompt 
+               : imagePrompt;
+             
+             // Optionally inject itemName/description into specific prompt as well
+             let finalSpecificPrompt = specificPrompt;
+             finalSpecificPrompt = finalSpecificPrompt.replace(/{itemName}/g, itemName);
+             finalSpecificPrompt = finalSpecificPrompt.replace(/{description}/g, description);
+
+             return {
+               promptText: finalSpecificPrompt,
+               referenceImageUrl: img
+             };
+           });
+         } else {
+           // For static/reel, generate one image
+           promptsToUse = [{ promptText: imagePrompt, referenceImageUrl: imageReferenceImageUrl }];
+         }
+
          const generatedImages = await this.imageGenService.generateImages({
             dataId: post.id,
             itemName,
-            prompts: [{ promptText: imagePrompt } as any],
-            referenceImageUrl: imageReferenceImageUrl,
+            prompts: promptsToUse,
             config: {
               provider: imageConfig.provider as any,
               model: imageConfig.model,
@@ -110,12 +135,14 @@ export class SocialPostsProcessor {
          const successfulImages = generatedImages.filter(img => img.success);
          const failedImages = generatedImages.filter(img => !img.success);
          
-         if (successfulImages.length === 0 && failedImages.length > 0) {
-           throw new Error(failedImages[0].error || "Image generation failed");
+         if (successfulImages.length > 0) {
+           post.mediaUrls = successfulImages.map(img => img.serve_url);
+           await this.postRepo.save(post);
          }
          
-         post.mediaUrls = successfulImages.map(img => img.serve_url);
-         await this.postRepo.save(post);
+         if (failedImages.length > 0) {
+           throw new Error(failedImages[0].error || `Failed to generate ${failedImages.length} images`);
+         }
       }
 
       post.status = SocialPostStatus.GENERATED_READY_FOR_REVIEW;

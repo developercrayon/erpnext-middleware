@@ -108,4 +108,71 @@ export class InstagramService {
       throw new Error(error?.response?.data?.error?.message || error.message);
     }
   }
+
+  /**
+   * Uploads an image to create an Instagram media container for a carousel item.
+   * Returns the container ID.
+   */
+  async createCarouselItemContainer(imageUrl: string, igUserId: string, accessToken: string): Promise<string> {
+    if (!igUserId || !accessToken) {
+      throw new Error('Instagram Account ID or Access Token is missing.');
+    }
+
+    const url = `${this.BASE_URL}/${igUserId}/media`;
+    const params = {
+      image_url: imageUrl,
+      is_carousel_item: true,
+      access_token: accessToken,
+    };
+
+    try {
+      this.logger.log(`Creating carousel item container for image: ${imageUrl}`);
+      const response = await axios.post(url, null, { params });
+      
+      if (response.data && response.data.id) {
+        this.logger.log(`Carousel item container created successfully: ${response.data.id}`);
+        return response.data.id;
+      }
+      throw new Error('Invalid response from Instagram API (missing container ID)');
+    } catch (error: any) {
+      this.logger.error(`Failed to create Instagram carousel item: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw new Error(error?.response?.data?.error?.message || error.message);
+    }
+  }
+
+  /**
+   * Creates a parent carousel container linking multiple carousel items.
+   * Returns the parent container ID.
+   */
+  async createCarouselContainer(childrenIds: string[], caption: string, igUserId: string, accessToken: string): Promise<string> {
+    if (!igUserId || !accessToken) {
+      throw new Error('Instagram Account ID or Access Token is missing.');
+    }
+    
+    if (!childrenIds || childrenIds.length < 2 || childrenIds.length > 10) {
+      throw new Error('Carousel posts must have between 2 and 10 items.');
+    }
+
+    const url = `${this.BASE_URL}/${igUserId}/media`;
+    const params = {
+      media_type: 'CAROUSEL',
+      children: childrenIds.join(','),
+      caption: caption,
+      access_token: accessToken,
+    };
+
+    try {
+      this.logger.log(`Creating carousel container with children: ${childrenIds.join(',')}`);
+      const response = await axios.post(url, null, { params });
+      
+      if (response.data && response.data.id) {
+        this.logger.log(`Carousel container created successfully: ${response.data.id}`);
+        return response.data.id;
+      }
+      throw new Error('Invalid response from Instagram API (missing container ID)');
+    } catch (error: any) {
+      this.logger.error(`Failed to create Instagram carousel container: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw new Error(error?.response?.data?.error?.message || error.message);
+    }
+  }
 }

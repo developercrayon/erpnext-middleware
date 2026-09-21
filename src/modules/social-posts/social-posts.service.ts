@@ -218,28 +218,56 @@ export class SocialPostsService {
         throw new Error('Instagram configuration is incomplete. Please select a page in AI settings.');
       }
       
-      const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
-      if (!imageUrl) {
-        throw new Error('No media generated to post to Instagram.');
-      }
-      
-      // Build public URL for the image
-      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
-      const fullImageUrl = imageUrl.startsWith('http') 
-        ? imageUrl 
-        : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-
       const captionText = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim();
+      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
 
-      // Create container
-      const creationId = await this.instagramService.createMediaContainer(
-        fullImageUrl,
-        captionText,
-        config.platformAccountId,
-        config.accessToken
-      );
-      
-      post.creationId = creationId;
+      if (post.postType?.toLowerCase() === 'carousel') {
+        if (!post.mediaUrls || post.mediaUrls.length < 2) {
+          throw new Error('Carousel posts must have at least 2 media items.');
+        }
+
+        const childCreationIds: string[] = [];
+        for (const imageUrl of post.mediaUrls) {
+          const fullImageUrl = imageUrl.startsWith('http') 
+            ? imageUrl 
+            : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+          
+          const childId = await this.instagramService.createCarouselItemContainer(
+            fullImageUrl,
+            config.platformAccountId,
+            config.accessToken
+          );
+          childCreationIds.push(childId);
+        }
+
+        const creationId = await this.instagramService.createCarouselContainer(
+          childCreationIds,
+          captionText,
+          config.platformAccountId,
+          config.accessToken
+        );
+        post.creationId = creationId;
+
+      } else {
+        const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
+        if (!imageUrl) {
+          throw new Error('No media generated to post to Instagram.');
+        }
+        
+        const fullImageUrl = imageUrl.startsWith('http') 
+          ? imageUrl 
+          : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+
+        // Create static/reel container
+        const creationId = await this.instagramService.createMediaContainer(
+          fullImageUrl,
+          captionText,
+          config.platformAccountId,
+          config.accessToken
+        );
+        
+        post.creationId = creationId;
+      }
     }
 
     const savedPost = await this.postRepo.save(post);
