@@ -7,28 +7,61 @@ export class InstagramService {
   private readonly API_VERSION = 'v19.0';
   private readonly BASE_URL = `https://graph.facebook.com/${this.API_VERSION}`;
 
-  private get igUserId(): string {
-    return process.env.INSTAGRAM_ACCOUNT_ID || '';
+  async getPages(accessToken: string): Promise<any[]> {
+    if (!accessToken) {
+      throw new Error('Access token is required to fetch pages.');
+    }
+    const url = `${this.BASE_URL}/me/accounts`;
+    try {
+      this.logger.log(`Fetching Facebook pages`);
+      const response = await axios.get(url, { params: { access_token: accessToken } });
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error: any) {
+      this.logger.error(`Failed to fetch pages: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw new Error(error?.response?.data?.error?.message || error.message);
+    }
   }
 
-  private get accessToken(): string {
-    return process.env.META_ACCESS_TOKEN || '';
+  async getBusinessAccount(pageId: string, accessToken: string): Promise<string> {
+    if (!pageId || !accessToken) {
+      throw new Error('Page ID and Access Token are required.');
+    }
+    const url = `${this.BASE_URL}/${pageId}`;
+    try {
+      this.logger.log(`Fetching Instagram business account for page: ${pageId}`);
+      const response = await axios.get(url, { 
+        params: { 
+          fields: 'instagram_business_account',
+          access_token: accessToken 
+        } 
+      });
+      if (response.data && response.data.instagram_business_account && response.data.instagram_business_account.id) {
+        return response.data.instagram_business_account.id;
+      }
+      throw new Error('No Instagram Business Account connected to this page.');
+    } catch (error: any) {
+      this.logger.error(`Failed to fetch business account: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw new Error(error?.response?.data?.error?.message || error.message);
+    }
   }
 
   /**
    * Uploads an image to create an Instagram media container.
    * Returns the container ID (creation_id).
    */
-  async createMediaContainer(imageUrl: string, caption: string): Promise<string> {
-    if (!this.igUserId || !this.accessToken) {
-      throw new Error('INSTAGRAM_ACCOUNT_ID or META_ACCESS_TOKEN is missing in environment variables.');
+  async createMediaContainer(imageUrl: string, caption: string, igUserId: string, accessToken: string): Promise<string> {
+    if (!igUserId || !accessToken) {
+      throw new Error('Instagram Account ID or Access Token is missing.');
     }
 
-    const url = `${this.BASE_URL}/${this.igUserId}/media`;
+    const url = `${this.BASE_URL}/${igUserId}/media`;
     const params = {
       image_url: imageUrl,
       caption: caption,
-      access_token: this.accessToken,
+      access_token: accessToken,
     };
 
     try {
@@ -50,15 +83,15 @@ export class InstagramService {
    * Publishes an uploaded media container to the Instagram feed.
    * Returns the Instagram Post ID.
    */
-  async publishMedia(creationId: string): Promise<string> {
-    if (!this.igUserId || !this.accessToken) {
-      throw new Error('INSTAGRAM_ACCOUNT_ID or META_ACCESS_TOKEN is missing in environment variables.');
+  async publishMedia(creationId: string, igUserId: string, accessToken: string): Promise<string> {
+    if (!igUserId || !accessToken) {
+      throw new Error('Instagram Account ID or Access Token is missing.');
     }
 
-    const url = `${this.BASE_URL}/${this.igUserId}/media_publish`;
+    const url = `${this.BASE_URL}/${igUserId}/media_publish`;
     const params = {
       creation_id: creationId,
-      access_token: this.accessToken,
+      access_token: accessToken,
     };
 
     try {

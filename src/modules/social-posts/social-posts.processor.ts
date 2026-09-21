@@ -99,6 +99,12 @@ export class SocialPostsProcessor {
               model: imageConfig.model,
               apiKey: imageConfig.apiKey,
               apiSecret: imageConfig.apiSecret,
+              url: imageConfig.url,
+              generateUrl: imageConfig.generateUrl,
+              editUrl: imageConfig.editUrl,
+              readUrl: imageConfig.readUrl,
+              generateModel: imageConfig.generateModel,
+              editModel: imageConfig.editModel,
             },
          });
          const successfulImages = generatedImages.filter(img => img.success);

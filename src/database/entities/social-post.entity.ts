@@ -82,6 +82,12 @@ export class SocialPost {
   @Column({ name: 'error_message', type: 'text', nullable: true })
   errorMessage: string;
 
+  @Column({ name: 'creation_id', type: 'varchar', length: 255, nullable: true })
+  creationId: string | null;
+
+  @Column({ name: 'platform_post_id', type: 'varchar', length: 255, nullable: true })
+  platformPostId: string | null;
+
   @Column({ name: 'scheduled_at', type: 'timestamp', nullable: true })
   scheduledAt: Date;
 

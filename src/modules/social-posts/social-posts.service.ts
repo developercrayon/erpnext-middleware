@@ -12,6 +12,7 @@ import { AiSettingsService } from '../ai/services/ai-settings.service';
 import { ContentGenerationService } from '../ai/services/content-generation.service';
 import { ProductsService } from '../products/products.service';
 import { AiConfigType } from '../../database/entities/ai.entity';
+import { InstagramService } from './instagram.service';
 
 @Injectable()
 export class SocialPostsService {
@@ -22,9 +23,12 @@ export class SocialPostsService {
     private readonly campaignRepo: Repository<SocialCampaign>,
     @InjectQueue(QUEUE_NAMES.AI)
     private readonly aiQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.SOCIAL_POSTS)
+    private readonly socialPostsQueue: Queue,
     private readonly settingsService: AiSettingsService,
     private readonly contentGenService: ContentGenerationService,
     private readonly productsService: ProductsService,
+    private readonly instagramService: InstagramService,
   ) {}
 
   async getCampaigns(): Promise<SocialCampaign[]> {
@@ -169,8 +173,8 @@ export class SocialPostsService {
            parsed = parsed.socialPost;
         }
 
-        post.caption = parsed.caption || '';
-        post.hashtags = parsed.hashtags || '';
+        post.caption = typeof parsed.caption === 'string' ? parsed.caption.replace(/[""]/g, '') : (parsed.caption || '');
+        post.hashtags = typeof parsed.hashtags === 'string' ? parsed.hashtags.replace(/[{}""]/g, '') : (parsed.hashtags || '');
         post.videoReelScript = parsed.videoReelScript || '';
       } catch (err) {
         logger.error(`Failed to generate content: ${err.message}`);
@@ -205,6 +209,93 @@ export class SocialPostsService {
     const post = await this.getPostById(id);
     post.scheduledAt = new Date(dto.scheduledAt);
     post.status = SocialPostStatus.SCHEDULED;
-    return this.postRepo.save(post);
+
+    // Fetch config for this platform
+    if (post.platform === 'instagram') {
+      const config = await this.settingsService.getDecryptedSocialMediaConfig('instagram');
+      
+      if (!config.platformAccountId || !config.accessToken) {
+        throw new Error('Instagram configuration is incomplete. Please select a page in AI settings.');
+      }
+      
+      const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
+      if (!imageUrl) {
+        throw new Error('No media generated to post to Instagram.');
+      }
+      
+      // Build public URL for the image
+      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
+      const fullImageUrl = imageUrl.startsWith('http') 
+        ? imageUrl 
+        : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+
+      const captionText = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim();
+
+      // Create container
+      const creationId = await this.instagramService.createMediaContainer(
+        fullImageUrl,
+        captionText,
+        config.platformAccountId,
+        config.accessToken
+      );
+      
+      post.creationId = creationId;
+    }
+
+    const savedPost = await this.postRepo.save(post);
+
+    // Calculate delay
+    const delay = savedPost.scheduledAt.getTime() - Date.now();
+    
+    // Add to publisher queue
+    await this.socialPostsQueue.add(
+      JOB_NAMES.PUBLISH_SOCIAL_POST,
+      { postId: savedPost.id },
+      { delay: Math.max(delay, 0) }
+    );
+
+    return savedPost;
+  }
+
+  async getInstagramPages() {
+    const config = await this.settingsService.getDecryptedSocialMediaConfig('instagram');
+    if (!config.accessToken) {
+      throw new Error('Instagram access token is missing.');
+    }
+    
+    // Check if pages list is already cached
+    if (config.pagesList && Array.isArray(config.pagesList) && config.pagesList.length > 0) {
+      return { 
+        pages: config.pagesList,
+        selectedPageId: config.selectedPageId,
+      };
+    }
+
+    // Fetch from Facebook Graph API
+    const pages = await this.instagramService.getPages(config.accessToken);
+    
+    // Cache in DB
+    await this.settingsService.updateSocialMediaConfig('instagram', { pagesList: pages });
+    
+    return {
+      pages,
+      selectedPageId: config.selectedPageId,
+    };
+  }
+
+  async selectInstagramPage(pageId: string) {
+    const config = await this.settingsService.getDecryptedSocialMediaConfig('instagram');
+    if (!config.accessToken) {
+      throw new Error('Instagram access token is missing.');
+    }
+
+    const igUserId = await this.instagramService.getBusinessAccount(pageId, config.accessToken);
+    
+    await this.settingsService.updateSocialMediaConfig('instagram', {
+      selectedPageId: pageId,
+      platformAccountId: igUserId,
+    });
+
+    return { success: true, igUserId };
   }
 }

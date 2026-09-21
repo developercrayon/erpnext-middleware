@@ -6,6 +6,7 @@ import { InstagramService } from './instagram.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SocialPost, SocialPostStatus } from '../../database/entities/social-post.entity';
+import { AiSettingsService } from '../ai/services/ai-settings.service';
 
 @Processor(QUEUE_NAMES.SOCIAL_POSTS)
 export class SocialPostsPublisherProcessor {
@@ -13,6 +14,7 @@ export class SocialPostsPublisherProcessor {
 
   constructor(
     private readonly instagramService: InstagramService,
+    private readonly settingsService: AiSettingsService,
     @InjectRepository(SocialPost)
     private readonly postRepo: Repository<SocialPost>,
   ) {}
@@ -44,24 +46,29 @@ export class SocialPostsPublisherProcessor {
         throw new Error('No media URLs available to publish');
       }
 
-      // Build public URL for the image
-      // Instagram requires a publicly accessible URL to download the image.
-      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
-      const firstImageUrl = post.mediaUrls[0];
-      const fullImageUrl = firstImageUrl.startsWith('http') 
-        ? firstImageUrl 
-        : `${publicBaseUrl}${firstImageUrl.startsWith('/') ? '' : '/'}${firstImageUrl}`;
+      const config = await this.settingsService.getDecryptedSocialMediaConfig(post.platform);
+      
+      if (!config.platformAccountId || !config.accessToken) {
+        throw new Error('Platform configuration is incomplete for publishing.');
+      }
 
-      // 1. Create Media Container
-      const caption = post.caption || '';
-      const creationId = await this.instagramService.createMediaContainer(fullImageUrl, caption);
+      if (post.platform === 'instagram') {
+        if (!post.creationId) {
+          throw new Error('Missing creation_id. The media container was not created during scheduling.');
+        }
 
-      // 2. Publish Media
-      const igPostId = await this.instagramService.publishMedia(creationId);
+        // Publish Media using existing container
+        const igPostId = await this.instagramService.publishMedia(
+          post.creationId, 
+          config.platformAccountId, 
+          config.accessToken
+        );
 
-      // 3. Update DB
+        // Update DB
+        post.platformPostId = igPostId;
+      }
+
       post.status = SocialPostStatus.PUBLISHED;
-      // You can store the igPostId in a new column if added, otherwise just log it
       post.errorMessage = null;
       await this.postRepo.save(post);
 

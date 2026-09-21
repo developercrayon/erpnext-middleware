@@ -44,4 +44,14 @@ export class SocialPostsController {
   async schedulePost(@Param('id') id: string, @Body() dto: ScheduleSocialPostDto) {
     return this.postsService.schedulePost(id, dto);
   }
+
+  @Get('instagram/pages')
+  async getInstagramPages() {
+    return this.postsService.getInstagramPages();
+  }
+
+  @Post('instagram/select-page')
+  async selectInstagramPage(@Body('pageId') pageId: string) {
+    return this.postsService.selectInstagramPage(pageId);
+  }
 }

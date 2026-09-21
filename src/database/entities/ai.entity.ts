@@ -338,6 +338,15 @@ export class AiSocialMediaConfig {
     contentIdea?: string;
   } | null;
 
+  @Column({ name: 'pages_list', type: 'jsonb', nullable: true })
+  pagesList: any | null;
+
+  @Column({ name: 'selected_page_id', type: 'varchar', length: 100, nullable: true })
+  selectedPageId: string | null;
+
+  @Column({ name: 'platform_account_id', type: 'varchar', length: 100, nullable: true })
+  platformAccountId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

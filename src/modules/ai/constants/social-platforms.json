@@ -71,8 +71,8 @@
   {
     "id": "instagram",
     "name": "Instagram",
-    "authorization_url": "https://api.instagram.com/oauth/authorize",
-    "token_url": "https://api.instagram.com/oauth/access_token",
+    "authorization_url": "https://graph.facebook.com/debug_token",
+    "token_url": "",
     "api_base_url": "https://graph.instagram.com",
     "api_version": "v19.0",
     "api_credentials": {
@@ -84,12 +84,9 @@
     },
     "token_generation": {
       "required": [
-        "app_id",
-        "app_secret"
+        "access_token"
       ],
-      "optional": [
-        "refresh_token"
-      ]
+      "optional": []
     },
     "post_types": [
       {

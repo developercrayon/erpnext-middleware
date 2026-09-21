@@ -283,8 +283,60 @@ export class AiSettingsService {
     }
   }
 
+  async getDecryptedSocialMediaConfig(platform: string) {
+    const config = await this.socialMediaRepo.findOne({ where: { platform } });
+    if (!config) {
+      throw new Error(`Social media configuration for platform ${platform} not found.`);
+    }
+
+    return {
+      ...config,
+      accessToken: config.accessTokenEncrypted ? this.encryptionService.decrypt(config.accessTokenEncrypted) : null,
+      clientSecret: config.clientSecretEncrypted ? this.encryptionService.decrypt(config.clientSecretEncrypted) : null,
+    };
+  }
+
+  async updateSocialMediaConfig(platform: string, updates: Partial<AiSocialMediaConfig>) {
+    const config = await this.socialMediaRepo.findOne({ where: { platform } });
+    if (!config) {
+      throw new Error(`Social media configuration for platform ${platform} not found.`);
+    }
+    Object.assign(config, updates);
+    await this.socialMediaRepo.save(config);
+  }
+
   async validateSocialToken(dto: UpsertSocialMediaDto): Promise<{ success: boolean; accessToken?: string; message?: string }> {
     try {
+      if (dto.platform === 'instagram') {
+        let tokenToValidate = dto.accessToken;
+        if (!tokenToValidate && dto.id) {
+          const existing = await this.socialMediaRepo.findOne({ where: { id: dto.id } });
+          if (existing && existing.accessTokenEncrypted) {
+            tokenToValidate = this.encryptionService.decrypt(existing.accessTokenEncrypted);
+          }
+        }
+
+        if (!tokenToValidate) {
+          throw new BadRequestException('Access token is required to validate Instagram credentials');
+        }
+
+        const response = await axios.get('https://graph.facebook.com/debug_token', {
+          params: {
+            input_token: tokenToValidate,
+            access_token: tokenToValidate
+          }
+        });
+
+        if (response.data?.data?.is_valid) {
+          return { success: true, accessToken: dto.accessToken ? tokenToValidate : undefined };
+        } else {
+          return { 
+            success: false, 
+            message: response.data?.data?.error?.message || 'Token is invalid or expired'
+          };
+        }
+      }
+
       if (!dto.tokenUrl) {
         throw new BadRequestException('Token URL is required');
       }
