@@ -108,22 +108,6 @@
         ]
       },
       {
-        "id": "video",
-        "name": "Feed Video",
-        "aspect_ratios": [
-          "1:1",
-          "4:5",
-          "1.91:1"
-        ]
-      },
-      {
-        "id": "reel",
-        "name": "Reel",
-        "aspect_ratios": [
-          "9:16"
-        ]
-      },
-      {
         "id": "story",
         "name": "Story",
         "aspect_ratios": [

@@ -25,7 +25,13 @@ export class SocialPostsProcessor {
   ) {}
 
   @Process(JOB_NAMES.AI_GENERATE_SOCIAL_POST)
-  async handleGenerateSocialPost(job: Job<{ socialPostId: string; productItemCode: string }>) {
+  async handleGenerateSocialPost(job: Job<{ 
+    socialPostId: string; 
+    productItemCode: string;
+    selectedImagePromptBase64s?: string[];
+    selectedReelPromptBase64s?: string[];
+    selectedContentPromptBase64s?: string[];
+  }>) {
     const { socialPostId, productItemCode } = job.data;
     this.logger.log(`Starting AI generation job for Social Post ${socialPostId}`);
 

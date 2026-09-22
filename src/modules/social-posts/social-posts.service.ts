@@ -261,13 +261,22 @@ export class SocialPostsService {
           ? imageUrl 
           : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
 
-        // Create static/reel container
-        const creationId = await this.instagramService.createMediaContainer(
-          fullImageUrl,
-          captionText,
-          config.platformAccountId,
-          config.accessToken
-        );
+        // Create static/reel/story container
+        let creationId;
+        if (post.postType?.toLowerCase() === 'story') {
+          creationId = await this.instagramService.createStoryMediaContainer(
+            fullImageUrl,
+            config.platformAccountId,
+            config.accessToken
+          );
+        } else {
+          creationId = await this.instagramService.createMediaContainer(
+            fullImageUrl,
+            captionText,
+            config.platformAccountId,
+            config.accessToken
+          );
+        }
         
         post.creationId = creationId;
       }

@@ -80,6 +80,37 @@ export class InstagramService {
   }
 
   /**
+   * Uploads an image to create an Instagram media container specifically for STORIES.
+   * Returns the container ID (creation_id).
+   */
+  async createStoryMediaContainer(imageUrl: string, igUserId: string, accessToken: string): Promise<string> {
+    if (!igUserId || !accessToken) {
+      throw new Error('Instagram Account ID or Access Token is missing.');
+    }
+
+    const url = `${this.BASE_URL}/${igUserId}/media`;
+    const params = {
+      media_type: 'STORIES',
+      image_url: imageUrl,
+      access_token: accessToken,
+    };
+
+    try {
+      this.logger.log(`Creating story media container for image: ${imageUrl}`);
+      const response = await axios.post(url, null, { params });
+      
+      if (response.data && response.data.id) {
+        this.logger.log(`Story media container created successfully: ${response.data.id}`);
+        return response.data.id;
+      }
+      throw new Error('Invalid response from Instagram API (missing container ID)');
+    } catch (error: any) {
+      this.logger.error(`Failed to create Instagram story media container: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
+      throw new Error(error?.response?.data?.error?.message || error.message);
+    }
+  }
+
+  /**
    * Publishes an uploaded media container to the Instagram feed.
    * Returns the Instagram Post ID.
    */
