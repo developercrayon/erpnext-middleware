@@ -54,4 +54,14 @@ export class SocialPostsController {
   async selectInstagramPage(@Body('pageId') pageId: string) {
     return this.postsService.selectInstagramPage(pageId);
   }
+
+  @Get('facebook/pages')
+  async getFacebookPages() {
+    return this.postsService.getFacebookPages();
+  }
+
+  @Post('facebook/select-page')
+  async selectFacebookPage(@Body('pageId') pageId: string) {
+    return this.postsService.selectFacebookPage(pageId);
+  }
 }

@@ -66,6 +66,10 @@ export class SocialPostsPublisherProcessor {
 
         // Update DB
         post.platformPostId = igPostId;
+      } else if (post.platform === 'facebook') {
+        // Facebook natively scheduled the post at generation time via Graph API
+        // So we don't need to actually call publish here. We just need to mark it as PUBLISHED in our DB.
+        this.logger.log(`Post ${postId} was natively scheduled on Facebook. Marking as PUBLISHED locally.`);
       }
 
       post.status = SocialPostStatus.PUBLISHED;

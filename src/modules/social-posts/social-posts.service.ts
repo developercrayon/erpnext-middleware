@@ -13,6 +13,7 @@ import { ContentGenerationService } from '../ai/services/content-generation.serv
 import { ProductsService } from '../products/products.service';
 import { AiConfigType } from '../../database/entities/ai.entity';
 import { InstagramService } from './instagram.service';
+import { FacebookService } from './facebook.service';
 
 @Injectable()
 export class SocialPostsService {
@@ -29,6 +30,7 @@ export class SocialPostsService {
     private readonly contentGenService: ContentGenerationService,
     private readonly productsService: ProductsService,
     private readonly instagramService: InstagramService,
+    private readonly facebookService: FacebookService,
   ) {}
 
   async getCampaigns(): Promise<SocialCampaign[]> {
@@ -181,6 +183,11 @@ export class SocialPostsService {
       }
     }
 
+    if (post.postType === 'message') {
+      post.status = SocialPostStatus.DRAFT;
+      return await this.postRepo.save(post);
+    }
+
     const savedPost = await this.postRepo.save(post);
 
     // Enqueue background job to generate images/media
@@ -280,6 +287,105 @@ export class SocialPostsService {
         
         post.creationId = creationId;
       }
+    } else if (post.platform === 'facebook') {
+      const config = await this.settingsService.getDecryptedSocialMediaConfig('facebook');
+      
+      if (!config.platformAccountId || !config.accessToken) {
+        throw new Error('Facebook configuration is incomplete. Please select a page in AI settings.');
+      }
+      
+      const captionText = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim();
+      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
+      const scheduledTime = Math.floor(post.scheduledAt.getTime() / 1000);
+
+      // Extract the Page Access Token if available from the cached pagesList
+      let facebookAccessToken = config.accessToken;
+      if (config.pagesList && Array.isArray(config.pagesList)) {
+        const selectedPage = config.pagesList.find((p: any) => p.id === config.platformAccountId);
+        if (selectedPage && selectedPage.access_token) {
+          facebookAccessToken = selectedPage.access_token;
+        }
+      }
+
+      if (post.postType?.toLowerCase() === 'message') {
+        const creationId = await this.facebookService.publishMessage(
+          captionText,
+          config.platformAccountId,
+          facebookAccessToken,
+          scheduledTime
+        );
+        post.creationId = creationId;
+        post.platformPostId = creationId;
+      } else if (post.postType?.toLowerCase() === 'carousel') {
+        if (!post.mediaUrls || post.mediaUrls.length < 2) {
+          throw new Error('Carousel posts must have at least 2 media items.');
+        }
+
+        const childCreationIds: string[] = [];
+        for (const imageUrl of post.mediaUrls) {
+          const fullImageUrl = imageUrl.startsWith('http') 
+            ? imageUrl 
+            : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+          
+          const childId = await this.facebookService.uploadCarouselPhoto(
+            fullImageUrl,
+            config.platformAccountId,
+            facebookAccessToken
+          );
+          childCreationIds.push(childId);
+        }
+
+        const creationId = await this.facebookService.publishCarousel(
+          childCreationIds,
+          captionText,
+          config.platformAccountId,
+          facebookAccessToken,
+          scheduledTime
+        );
+        post.creationId = creationId;
+        post.platformPostId = creationId;
+      } else if (post.postType?.toLowerCase() === 'story') {
+        const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
+        if (!imageUrl) {
+          throw new Error('No media generated to post to Facebook Story.');
+        }
+        
+        const fullImageUrl = imageUrl.startsWith('http') 
+          ? imageUrl 
+          : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+
+        const creationId = await this.facebookService.publishStory(
+          fullImageUrl,
+          config.platformAccountId,
+          facebookAccessToken
+        );
+        post.creationId = creationId;
+        post.platformPostId = creationId;
+      } else {
+        // Feed Image
+        const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
+        if (!imageUrl) {
+          throw new Error('No media generated to post to Facebook.');
+        }
+        
+        const fullImageUrl = imageUrl.startsWith('http') 
+          ? imageUrl 
+          : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+
+        const creationId = await this.facebookService.publishImage(
+          fullImageUrl,
+          captionText,
+          config.platformAccountId,
+          facebookAccessToken,
+          scheduledTime
+        );
+        post.creationId = creationId;
+        post.platformPostId = creationId;
+      }
+      
+      // Since Facebook posts are natively scheduled via Graph API,
+      // we mark them with a distinct status.
+      post.status = SocialPostStatus.SCHEDULED_PUBLISH;
     }
 
     const savedPost = await this.postRepo.save(post);
@@ -311,7 +417,6 @@ export class SocialPostsService {
       };
     }
 
-    // Fetch from Facebook Graph API
     const pages = await this.instagramService.getPages(config.accessToken);
     
     // Cache in DB
@@ -337,5 +442,46 @@ export class SocialPostsService {
     });
 
     return { success: true, igUserId };
+  }
+
+  async getFacebookPages() {
+    const config = await this.settingsService.getDecryptedSocialMediaConfig('facebook');
+    if (!config.accessToken) {
+      throw new Error('Facebook access token is missing.');
+    }
+    
+    // Check if pages list is already cached
+    if (config.pagesList && Array.isArray(config.pagesList) && config.pagesList.length > 0) {
+      return { 
+        pages: config.pagesList,
+        selectedPageId: config.selectedPageId,
+      };
+    }
+
+    // Fetch from Facebook Graph API
+    const pages = await this.facebookService.getPages(config.accessToken);
+    
+    // Cache in DB
+    await this.settingsService.updateSocialMediaConfig('facebook', { pagesList: pages });
+    
+    return {
+      pages,
+      selectedPageId: config.selectedPageId,
+    };
+  }
+
+  async selectFacebookPage(pageId: string) {
+    const config = await this.settingsService.getDecryptedSocialMediaConfig('facebook');
+    if (!config.accessToken) {
+      throw new Error('Facebook access token is missing.');
+    }
+
+    // For Facebook, the platformAccountId is just the pageId directly
+    await this.settingsService.updateSocialMediaConfig('facebook', {
+      selectedPageId: pageId,
+      platformAccountId: pageId,
+    });
+    
+    return { success: true };
   }
 }

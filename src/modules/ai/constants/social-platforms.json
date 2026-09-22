@@ -2,27 +2,22 @@
   {
     "id": "facebook",
     "name": "Facebook",
-    "authorization_url": "https://www.facebook.com/v19.0/dialog/oauth",
-    "token_url": "https://graph.facebook.com/v19.0/oauth/access_token",
-    "api_base_url": "https://graph.facebook.com",
+    "authorization_url": "https://graph.facebook.com/debug_token",
+    "token_url": "",
+    "api_base_url": "https://graph.instagram.com",
     "api_version": "v19.0",
     "api_credentials": {
       "required": [
         "access_token",
-        "page_id"
+        "instagram_account_id"
       ],
-      "optional": [
-        "user_id"
-      ]
+      "optional": []
     },
     "token_generation": {
       "required": [
-        "app_id",
-        "app_secret"
+        "access_token"
       ],
-      "optional": [
-        "refresh_token"
-      ]
+      "optional": []
     },
     "post_types": [
       {
@@ -35,18 +30,8 @@
         ]
       },
       {
-        "id": "video",
-        "name": "Video",
-        "aspect_ratios": [
-          "16:9",
-          "1:1",
-          "4:5",
-          "9:16"
-        ]
-      },
-      {
-        "id": "reel",
-        "name": "Reel",
+        "id": "message",
+        "name": "Message",
         "aspect_ratios": [
           "9:16"
         ]

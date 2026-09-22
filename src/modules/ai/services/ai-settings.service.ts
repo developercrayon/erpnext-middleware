@@ -307,7 +307,7 @@ export class AiSettingsService {
 
   async validateSocialToken(dto: UpsertSocialMediaDto): Promise<{ success: boolean; accessToken?: string; message?: string }> {
     try {
-      if (dto.platform === 'instagram') {
+      if (dto.platform === 'instagram' || dto.platform === 'facebook') {
         let tokenToValidate = dto.accessToken;
         if (!tokenToValidate && dto.id) {
           const existing = await this.socialMediaRepo.findOne({ where: { id: dto.id } });
@@ -317,7 +317,7 @@ export class AiSettingsService {
         }
 
         if (!tokenToValidate) {
-          throw new BadRequestException('Access token is required to validate Instagram credentials');
+          throw new BadRequestException(`Access token is required to validate ${dto.platform === 'facebook' ? 'Facebook' : 'Instagram'} credentials`);
         }
 
         const response = await axios.get('https://graph.facebook.com/debug_token', {
