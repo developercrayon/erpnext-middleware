@@ -40,6 +40,21 @@ export class CreateSocialPostDto {
   @IsString({ each: true })
   @IsOptional()
   selectedContentPromptImages?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  selectedImagePromptBase64s?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  selectedReelPromptBase64s?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  selectedContentPromptBase64s?: string[];
 }
 
 export class UpdateSocialPostDto {

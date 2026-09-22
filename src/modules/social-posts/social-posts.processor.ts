@@ -107,12 +107,17 @@ export class SocialPostsProcessor {
 
              return {
                promptText: finalSpecificPrompt,
-               referenceImageUrl: img
+               referenceImageUrl: img,
+               referenceImageBase64: job.data.selectedImagePromptBase64s?.[idx]
              };
            });
          } else {
            // For static/reel, generate one image
-           promptsToUse = [{ promptText: imagePrompt, referenceImageUrl: imageReferenceImageUrl }];
+           promptsToUse = [{ 
+             promptText: imagePrompt, 
+             referenceImageUrl: imageReferenceImageUrl,
+             referenceImageBase64: job.data.selectedImagePromptBase64s?.[0]
+           }];
          }
 
          const generatedImages = await this.imageGenService.generateImages({

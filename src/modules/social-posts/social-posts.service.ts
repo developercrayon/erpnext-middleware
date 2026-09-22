@@ -189,6 +189,9 @@ export class SocialPostsService {
       {
         socialPostId: savedPost.id,
         productItemCode: savedPost.productItemCode,
+        selectedImagePromptBase64s: dto.selectedImagePromptBase64s,
+        selectedReelPromptBase64s: dto.selectedReelPromptBase64s,
+        selectedContentPromptBase64s: dto.selectedContentPromptBase64s,
       },
       {
         attempts: 3,
