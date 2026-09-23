@@ -150,7 +150,7 @@
     "name": "Pinterest",
     "authorization_url": "https://www.pinterest.com/oauth/",
     "token_url": "https://api.pinterest.com/v5/oauth/token",
-    "api_base_url": "https://api.pinterest.com",
+    "api_base_url": "https://api-sandbox.pinterest.com",
     "api_version": "v5",
     "api_credentials": {
       "required": [

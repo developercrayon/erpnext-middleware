@@ -75,7 +75,8 @@ export class SocialPostsPublisherProcessor {
         this.logger.log(`Post ${postId} was natively scheduled on Facebook. Marking as PUBLISHED locally.`);
       } else if (post.platform === 'pinterest') {
         const title = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim() || 'Untitled Pin';
-        const link = "https://woodwolff.com";
+        const storeFrontUrl = process.env.STOREFRONT_URL || 'https://woodwolff.com';
+        const link = `${storeFrontUrl.replace(/\/$/, '')}/product/${post.productItemCode || ''}`;
         const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
         
         let pinId;
@@ -91,7 +92,9 @@ export class SocialPostsPublisherProcessor {
             title, 
             link, 
             fullImageUrls, 
-            config.accessToken
+            config.accessToken,
+            config.apiBaseUrl,
+            config.apiVersion
           );
         } else {
           const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
@@ -107,7 +110,9 @@ export class SocialPostsPublisherProcessor {
             title, 
             link, 
             fullImageUrl, 
-            config.accessToken
+            config.accessToken,
+            config.apiBaseUrl,
+            config.apiVersion
           );
         }
         post.platformPostId = pinId;

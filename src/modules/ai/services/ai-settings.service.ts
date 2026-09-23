@@ -398,7 +398,8 @@ export class AiSettingsService {
           throw new BadRequestException('Access token is required to validate Pinterest credentials');
         }
 
-        const response = await axios.get('https://api.pinterest.com/v5/user_account', {
+        const baseUrl = dto.apiBaseUrl && dto.apiVersion ? `${dto.apiBaseUrl}/${dto.apiVersion}` : 'https://api-sandbox.pinterest.com/v5';
+        const response = await axios.get(`${baseUrl}/user_account`, {
           headers: {
             'Authorization': `Bearer ${tokenToValidate}`
           }

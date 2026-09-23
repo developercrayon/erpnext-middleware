@@ -4,16 +4,15 @@ import axios from 'axios';
 @Injectable()
 export class PinterestService {
   private readonly logger = new Logger(PinterestService.name);
-  private readonly BASE_URL = 'https://api.pinterest.com/v5';
-
   /**
    * Fetches the Pinterest Boards for the authenticated user.
    */
-  async getBoards(accessToken: string): Promise<any[]> {
+  async getBoards(accessToken: string, apiBaseUrl?: string, apiVersion?: string): Promise<any[]> {
     if (!accessToken) {
       throw new Error('Access token is required to fetch Pinterest boards.');
     }
-    const url = `${this.BASE_URL}/boards`;
+    const baseUrl = apiBaseUrl && apiVersion ? `${apiBaseUrl}/${apiVersion}` : 'https://api-sandbox.pinterest.com/v5';
+    const url = `${baseUrl}/boards`;
     try {
       this.logger.log(`Fetching Pinterest boards`);
       const response = await axios.get(url, {
@@ -40,12 +39,13 @@ export class PinterestService {
   /**
    * Publishes a pin with a single image
    */
-  async publishImage(boardId: string, title: string, link: string, imageUrl: string, accessToken: string): Promise<string> {
+  async publishImage(boardId: string, title: string, link: string, imageUrl: string, accessToken: string, apiBaseUrl?: string, apiVersion?: string): Promise<string> {
     if (!boardId || !accessToken || !imageUrl) {
       throw new Error('Board ID, Image URL, or Access Token is missing.');
     }
 
-    const url = `${this.BASE_URL}/pins`;
+    const baseUrl = apiBaseUrl && apiVersion ? `${apiBaseUrl}/${apiVersion}` : 'https://api-sandbox.pinterest.com/v5';
+    const url = `${baseUrl}/pins`;
     const payload = {
       board_id: boardId,
       title: title,
@@ -79,12 +79,13 @@ export class PinterestService {
   /**
    * Publishes a pin with a carousel of images
    */
-  async publishCarousel(boardId: string, title: string, link: string, imageUrls: string[], accessToken: string): Promise<string> {
+  async publishCarousel(boardId: string, title: string, link: string, imageUrls: string[], accessToken: string, apiBaseUrl?: string, apiVersion?: string): Promise<string> {
     if (!boardId || !accessToken || !imageUrls || imageUrls.length < 2) {
       throw new Error('Board ID, multiple Image URLs, or Access Token is missing.');
     }
 
-    const url = `${this.BASE_URL}/pins`;
+    const baseUrl = apiBaseUrl && apiVersion ? `${apiBaseUrl}/${apiVersion}` : 'https://api-sandbox.pinterest.com/v5';
+    const url = `${baseUrl}/pins`;
     const payload = {
       board_id: boardId,
       title: title,

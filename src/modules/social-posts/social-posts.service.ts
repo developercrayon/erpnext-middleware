@@ -519,7 +519,7 @@ export class SocialPostsService {
     }
 
     // Fetch from Pinterest API
-    const boards = await this.pinterestService.getBoards(config.accessToken);
+    const boards = await this.pinterestService.getBoards(config.accessToken, config.apiBaseUrl, config.apiVersion);
     
     // Cache in DB
     await this.settingsService.updateSocialMediaConfig('pinterest', { pagesList: boards });
