@@ -7,6 +7,10 @@ export class CreateSocialPostDto {
 
   @IsString()
   @IsOptional()
+  postId?: string;
+
+  @IsString()
+  @IsOptional()
   campaignId?: string;
 
   @IsString()

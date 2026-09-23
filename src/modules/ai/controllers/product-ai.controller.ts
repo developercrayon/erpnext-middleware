@@ -116,13 +116,16 @@ export class ProductAiController {
   @Get('images/:dataId/:index')
   async serveImage(
     @Param('dataId') dataId: string,
-    @Param('index') index: string,
+    @Param('index') indexParam: string,
     @Res() res: Response,
   ) {
     const fs = require('fs');
     const path = require('path');
     const publicDir = path.join(process.cwd(), 'public');
     const dirPath = path.join(publicDir, 'generated_images', dataId);
+
+    // Remove any extension like .png, .jpg from the index parameter
+    const index = indexParam.split('.')[0];
 
     if (index === 'original') {
       let basePath = path.join(dirPath, 'original');

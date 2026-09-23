@@ -124,7 +124,7 @@ export class ImageGenerationService {
         const result = {
           filename,
           file_path: filePath,
-          serve_url: `/api/v1/ai/images/${options.dataId}/${i}`, // Used to stream from DB via API
+          serve_url: `/api/v1/ai/images/${options.dataId}/${i}.${ext}`, // Used to stream from DB via API
           mime_type: response.mimeType,
           prompt_index: i,
           prompt_text: finalPromptText,

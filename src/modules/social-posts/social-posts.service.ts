@@ -74,10 +74,26 @@ export class SocialPostsService {
   }
 
   async generatePost(dto: CreateSocialPostDto): Promise<SocialPost> {
-    const post = this.postRepo.create({
-      ...dto,
-      status: SocialPostStatus.GENERATING, // Keep GENERATING to indicate media is pending
-    });
+    let post: SocialPost;
+
+    if (dto.postId) {
+      const existing = await this.postRepo.findOne({ where: { id: dto.postId } });
+      if (existing) {
+        post = Object.assign(existing, dto);
+        post.status = SocialPostStatus.GENERATING;
+        post.errorMessage = null;
+      } else {
+        post = this.postRepo.create({
+          ...dto,
+          status: SocialPostStatus.GENERATING,
+        });
+      }
+    } else {
+      post = this.postRepo.create({
+        ...dto,
+        status: SocialPostStatus.GENERATING, // Keep GENERATING to indicate media is pending
+      });
+    }
 
     // 1. Fetch Product Data from ERPNext via products module
     const productsData = await this.productsService.findAll({ search: post.productItemCode });
