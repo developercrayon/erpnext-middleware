@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import { HttpClientService } from '../../shared/http-client.service';
 
 @Injectable()
 export class PinterestService {
   private readonly logger = new Logger(PinterestService.name);
+  
+  constructor(private readonly http: HttpClientService) {}
+
   /**
    * Fetches the Pinterest Boards for the authenticated user.
    */
@@ -15,7 +18,7 @@ export class PinterestService {
     const url = `${baseUrl}/boards`;
     try {
       this.logger.log(`Fetching Pinterest boards`);
-      const response = await axios.get(url, {
+      const response = await this.http.get(url, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -39,14 +42,14 @@ export class PinterestService {
   /**
    * Publishes a pin with a single image
    */
-  async publishImage(boardId: string, title: string, link: string, imageUrl: string, accessToken: string, apiBaseUrl?: string, apiVersion?: string): Promise<string> {
+  async publishImage(boardId: string, title: string, description: string, link: string, imageUrl: string, accessToken: string, apiBaseUrl?: string, apiVersion?: string): Promise<string> {
     if (!boardId || !accessToken || !imageUrl) {
       throw new Error('Board ID, Image URL, or Access Token is missing.');
     }
 
     const baseUrl = apiBaseUrl && apiVersion ? `${apiBaseUrl}/${apiVersion}` : 'https://api-sandbox.pinterest.com/v5';
     const url = `${baseUrl}/pins`;
-    const payload = {
+    const payload: any = {
       board_id: boardId,
       title: title,
       link: link,
@@ -55,10 +58,13 @@ export class PinterestService {
         url: imageUrl
       }
     };
+    if (description) {
+      payload.description = description;
+    }
 
     try {
       this.logger.log(`Publishing image pin to board: ${boardId}`);
-      const response = await axios.post(url, payload, {
+      const response = await this.http.post(url, payload, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -80,14 +86,14 @@ export class PinterestService {
   /**
    * Publishes a pin with a carousel of images
    */
-  async publishCarousel(boardId: string, title: string, link: string, imageUrls: string[], accessToken: string, apiBaseUrl?: string, apiVersion?: string): Promise<string> {
+  async publishCarousel(boardId: string, title: string, description: string, link: string, imageUrls: string[], accessToken: string, apiBaseUrl?: string, apiVersion?: string): Promise<string> {
     if (!boardId || !accessToken || !imageUrls || imageUrls.length < 2) {
       throw new Error('Board ID, multiple Image URLs, or Access Token is missing.');
     }
 
     const baseUrl = apiBaseUrl && apiVersion ? `${apiBaseUrl}/${apiVersion}` : 'https://api-sandbox.pinterest.com/v5';
     const url = `${baseUrl}/pins`;
-    const payload = {
+    const payload: any = {
       board_id: boardId,
       title: title,
       link: link,
@@ -96,10 +102,13 @@ export class PinterestService {
         items: imageUrls.map(img => ({ url: img }))
       }
     };
+    if (description) {
+      payload.description = description;
+    }
 
     try {
       this.logger.log(`Publishing carousel pin to board: ${boardId}`);
-      const response = await axios.post(url, payload, {
+      const response = await this.http.post(url, payload, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',

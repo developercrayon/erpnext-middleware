@@ -94,6 +94,8 @@ export class HttpClientService {
     const urlStr = config.url || '';
     if (urlStr.includes('amazon')) service = 'AMAZON';
     else if (urlStr.includes('flipkart')) service = 'FLIPKART';
+    else if (urlStr.includes('pinterest')) service = 'PINTEREST';
+    else if (urlStr.includes('graph.facebook.com') || urlStr.includes('instagram')) service = 'FACEBOOK_IG';
     else if (urlStr.includes('erpnext') || urlStr.includes(this.config.get('erpnext.baseUrl') || '')) service = 'ERPNEXT';
 
     // Safely parse request body - JSON.parse is synchronous, not a Promise

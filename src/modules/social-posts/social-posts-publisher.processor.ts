@@ -74,7 +74,11 @@ export class SocialPostsPublisherProcessor {
         // So we don't need to actually call publish here. We just need to mark it as PUBLISHED in our DB.
         this.logger.log(`Post ${postId} was natively scheduled on Facebook. Marking as PUBLISHED locally.`);
       } else if (post.platform === 'pinterest') {
-        const title = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim() || 'Untitled Pin';
+        const rawTitle = (post.caption || 'Untitled Pin').trim();
+        const title = rawTitle.length > 100 ? rawTitle.substring(0, 97) + '...' : rawTitle;
+        const rawDescription = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim();
+        const description = rawDescription.length > 500 ? rawDescription.substring(0, 497) + '...' : rawDescription;
+        
         const storeFrontUrl = process.env.STOREFRONT_URL || 'https://woodwolff.com';
         const link = `${storeFrontUrl.replace(/\/$/, '')}/product/${post.productItemCode || ''}`;
         const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
@@ -90,6 +94,7 @@ export class SocialPostsPublisherProcessor {
           pinId = await this.pinterestService.publishCarousel(
             config.platformAccountId, 
             title, 
+            description,
             link, 
             fullImageUrls, 
             config.accessToken,
@@ -108,6 +113,7 @@ export class SocialPostsPublisherProcessor {
           pinId = await this.pinterestService.publishImage(
             config.platformAccountId, 
             title, 
+            description,
             link, 
             fullImageUrl, 
             config.accessToken,

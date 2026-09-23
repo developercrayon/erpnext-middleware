@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import { HttpClientService } from '../../shared/http-client.service';
 
 @Injectable()
 export class FacebookService {
   private readonly logger = new Logger(FacebookService.name);
   private readonly API_VERSION = 'v19.0';
   private readonly BASE_URL = `https://graph.facebook.com/${this.API_VERSION}`;
+
+  constructor(private readonly http: HttpClientService) {}
 
   /**
    * Fetches the Facebook Pages the user manages.
@@ -17,7 +19,7 @@ export class FacebookService {
     const url = `${this.BASE_URL}/me/accounts`;
     try {
       this.logger.log(`Fetching Facebook pages`);
-      const response = await axios.get(url, { params: { access_token: accessToken } });
+      const response = await this.http.get(url, { params: { access_token: accessToken } });
       if (response.data && response.data.data) {
         return response.data.data;
       }
@@ -49,7 +51,7 @@ export class FacebookService {
 
     try {
       this.logger.log(`Publishing message to Facebook Page: ${pageId}`);
-      const response = await axios.post(url, null, { params });
+      const response = await this.http.post(url, null, { params });
       
       if (response.data && response.data.id) {
         this.logger.log(`Message published successfully! Post ID: ${response.data.id}`);
@@ -84,7 +86,7 @@ export class FacebookService {
 
     try {
       this.logger.log(`Publishing photo to Facebook Page: ${pageId}`);
-      const response = await axios.post(url, null, { params });
+      const response = await this.http.post(url, null, { params });
       
       if (response.data && response.data.id) {
         this.logger.log(`Photo published successfully! Post ID: ${response.data.id}`);
@@ -153,7 +155,7 @@ export class FacebookService {
 
     try {
       this.logger.log(`Publishing carousel to Facebook Page: ${pageId}`);
-      const response = await axios.post(url, null, { params });
+      const response = await this.http.post(url, null, { params });
       
       if (response.data && response.data.id) {
         this.logger.log(`Carousel published successfully! Post ID: ${response.data.id}`);

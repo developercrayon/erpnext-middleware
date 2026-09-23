@@ -82,6 +82,7 @@ export class SocialPostsService {
         post = Object.assign(existing, dto);
         post.status = SocialPostStatus.GENERATING;
         post.errorMessage = null;
+        post.mediaUrls = []; // Clear old media urls on regenerate
       } else {
         post = this.postRepo.create({
           ...dto,
