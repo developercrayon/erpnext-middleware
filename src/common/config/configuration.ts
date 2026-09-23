@@ -2,7 +2,7 @@ export default () => ({
   app: {
     name: process.env.APP_NAME || 'erpnext-middleware',
     port: parseInt(process.env.APP_PORT, 10) || 3000,
-    url: process.env.APP_URL || 'http://localhost:3000',
+    url: process.env.APP_URL || 'https://inkretix.t3package.com',
     env: process.env.NODE_ENV || 'development',
   },
 

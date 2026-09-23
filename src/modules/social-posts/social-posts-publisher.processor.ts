@@ -81,7 +81,7 @@ export class SocialPostsPublisherProcessor {
         
         const storeFrontUrl = process.env.STOREFRONT_URL || 'https://woodwolff.com';
         const link = `${storeFrontUrl.replace(/\/$/, '')}/product/${post.productItemCode || ''}`;
-        const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
+        const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'https://inkretix.t3package.com';
         
         let pinId;
         if (post.postType?.toLowerCase() === 'carousel') {

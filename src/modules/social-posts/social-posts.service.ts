@@ -248,7 +248,7 @@ export class SocialPostsService {
       }
       
       const captionText = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim();
-      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
+      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'https://inkretix.t3package.com';
 
       if (post.postType?.toLowerCase() === 'carousel') {
         if (!post.mediaUrls || post.mediaUrls.length < 2) {
@@ -314,7 +314,7 @@ export class SocialPostsService {
       }
       
       const captionText = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim();
-      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
+      const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'https://inkretix.t3package.com';
       const scheduledTime = Math.floor(post.scheduledAt.getTime() / 1000);
 
       // Extract the Page Access Token if available from the cached pagesList
