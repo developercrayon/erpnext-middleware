@@ -13,6 +13,7 @@ import { PinterestService } from './pinterest.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AiModule } from '../ai/ai.module';
 import { ProductsModule } from '../products/products.module';
+import { SharedModule } from '../../shared/shared.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ProductsModule } from '../products/products.module';
     ),
     AiModule,
     ProductsModule,
+    SharedModule,
   ],
   controllers: [SocialPostsController],
   providers: [SocialPostsService, SocialPostsProcessor, SocialPostsPublisherProcessor, InstagramService, FacebookService, PinterestService],
