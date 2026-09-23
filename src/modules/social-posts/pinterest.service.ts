@@ -61,7 +61,8 @@ export class PinterestService {
       const response = await axios.post(url, payload, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cookie': '_ir=0'
         }
       });
       
@@ -101,7 +102,8 @@ export class PinterestService {
       const response = await axios.post(url, payload, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cookie': '_ir=0'
         }
       });
       
