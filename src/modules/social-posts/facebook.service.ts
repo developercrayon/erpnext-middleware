@@ -117,7 +117,7 @@ export class FacebookService {
 
     try {
       this.logger.log(`Uploading carousel photo to Facebook Page: ${pageId}`);
-      const response = await axios.post(url, null, { params });
+      const response = await this.http.post(url, null, { params });
       
       if (response.data && response.data.id) {
         this.logger.log(`Carousel photo uploaded successfully! Media FBID: ${response.data.id}`);
@@ -187,7 +187,7 @@ export class FacebookService {
     let photoId: string;
     try {
       this.logger.log(`Uploading story photo to Facebook Page: ${pageId}`);
-      const uploadResponse = await axios.post(uploadUrl, null, { params: uploadParams });
+      const uploadResponse = await this.http.post(uploadUrl, null, { params: uploadParams });
       
       if (uploadResponse.data && uploadResponse.data.id) {
         photoId = uploadResponse.data.id;
@@ -214,7 +214,7 @@ export class FacebookService {
 
     try {
       this.logger.log(`Publishing story to Facebook Page: ${pageId}`);
-      const storyResponse = await axios.post(storyUrl, null, { params: storyParams });
+      const storyResponse = await this.http.post(storyUrl, null, { params: storyParams });
       
       if (storyResponse.data && storyResponse.data.id) {
         this.logger.log(`Story published successfully! Story ID: ${storyResponse.data.id}`);
