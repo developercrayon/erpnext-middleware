@@ -216,6 +216,10 @@ export class AiSettingsService {
       clientId: c.clientId,
       isClientSecretConfigured: !!c.clientSecretEncrypted,
       isAccessTokenConfigured: !!c.accessTokenEncrypted,
+      consumerKey: c.consumerKey,
+      signatureMethod: c.signatureMethod,
+      isConsumerSecretConfigured: !!c.consumerSecretEncrypted,
+      isAccessTokenSecretConfigured: !!c.accessTokenSecretEncrypted,
       authorizationUrl: c.authorizationUrl,
       tokenUrl: c.tokenUrl,
       apiBaseUrl: c.apiBaseUrl,
@@ -272,6 +276,18 @@ export class AiSettingsService {
       if (dto.accessToken) {
         config.accessTokenEncrypted = this.encryptionService.encrypt(dto.accessToken);
       }
+
+      if (dto.consumerKey !== undefined) config.consumerKey = dto.consumerKey;
+
+      if (dto.consumerSecret) {
+        config.consumerSecretEncrypted = this.encryptionService.encrypt(dto.consumerSecret);
+      }
+
+      if (dto.accessTokenSecret) {
+        config.accessTokenSecretEncrypted = this.encryptionService.encrypt(dto.accessTokenSecret);
+      }
+
+      if (dto.signatureMethod !== undefined) config.signatureMethod = dto.signatureMethod;
       
       if (dto.authorizationUrl !== undefined) config.authorizationUrl = dto.authorizationUrl;
       if (dto.tokenUrl !== undefined) config.tokenUrl = dto.tokenUrl;
@@ -293,6 +309,8 @@ export class AiSettingsService {
       ...config,
       accessToken: config.accessTokenEncrypted ? this.encryptionService.decrypt(config.accessTokenEncrypted) : null,
       clientSecret: config.clientSecretEncrypted ? this.encryptionService.decrypt(config.clientSecretEncrypted) : null,
+      consumerSecret: config.consumerSecretEncrypted ? this.encryptionService.decrypt(config.consumerSecretEncrypted) : null,
+      accessTokenSecret: config.accessTokenSecretEncrypted ? this.encryptionService.decrypt(config.accessTokenSecretEncrypted) : null,
     };
   }
 
@@ -337,6 +355,134 @@ export class AiSettingsService {
         }
       }
 
+      if (dto.platform === 'linkedin') {
+        let tokenToValidate = dto.accessToken;
+        if (!tokenToValidate && dto.id) {
+          const existing = await this.socialMediaRepo.findOne({ where: { id: dto.id } });
+          if (existing && existing.accessTokenEncrypted) {
+            tokenToValidate = this.encryptionService.decrypt(existing.accessTokenEncrypted);
+          }
+        }
+
+        if (!tokenToValidate) {
+          throw new BadRequestException('Access token is required to validate LinkedIn credentials');
+        }
+
+        const response = await axios.get('https://api.linkedin.com/v2/userinfo', {
+          headers: {
+            'Authorization': `Bearer ${tokenToValidate}`,
+            'X-Restli-Protocol-Version': '2.0.0'
+          }
+        });
+
+        if (response.data && response.data.sub) {
+          return { success: true, accessToken: dto.accessToken ? tokenToValidate : undefined };
+        } else {
+          return { 
+            success: false, 
+            message: 'Invalid response from LinkedIn API'
+          };
+        }
+      }
+
+      if (dto.platform === 'pinterest') {
+        let tokenToValidate = dto.accessToken;
+        if (!tokenToValidate && dto.id) {
+          const existing = await this.socialMediaRepo.findOne({ where: { id: dto.id } });
+          if (existing && existing.accessTokenEncrypted) {
+            tokenToValidate = this.encryptionService.decrypt(existing.accessTokenEncrypted);
+          }
+        }
+
+        if (!tokenToValidate) {
+          throw new BadRequestException('Access token is required to validate Pinterest credentials');
+        }
+
+        const response = await axios.get('https://api.pinterest.com/v5/user_account', {
+          headers: {
+            'Authorization': `Bearer ${tokenToValidate}`
+          }
+        });
+
+        if (response.data && response.data.username) {
+          return { success: true, accessToken: dto.accessToken ? tokenToValidate : undefined };
+        } else {
+          return { 
+            success: false, 
+            message: 'Invalid response from Pinterest API'
+          };
+        }
+      }
+
+      if (dto.platform === 'x') {
+        let consumerKey = dto.consumerKey;
+        let consumerSecret = dto.consumerSecret;
+        let token = dto.accessToken;
+        let tokenSecret = dto.accessTokenSecret;
+        
+        if (dto.id && (!consumerSecret || !tokenSecret)) {
+          const existing = await this.socialMediaRepo.findOne({ where: { id: dto.id } });
+          if (existing) {
+            if (!consumerSecret && existing.consumerSecretEncrypted) {
+              consumerSecret = this.encryptionService.decrypt(existing.consumerSecretEncrypted);
+            }
+            if (!tokenSecret && existing.accessTokenSecretEncrypted) {
+              tokenSecret = this.encryptionService.decrypt(existing.accessTokenSecretEncrypted);
+            }
+            if (!consumerKey) consumerKey = existing.consumerKey;
+            if (!token) token = this.encryptionService.decrypt(existing.accessTokenEncrypted);
+          }
+        }
+
+        if (!consumerKey || !consumerSecret || !token || !tokenSecret) {
+          throw new BadRequestException('All 4 OAuth keys are required to validate X credentials');
+        }
+
+        const url = 'https://api.twitter.com/2/users/me';
+        const method = 'GET';
+        
+        const crypto = require('crypto');
+        const nonce = crypto.randomBytes(16).toString('hex');
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        
+        const params: Record<string, string> = {
+          oauth_consumer_key: consumerKey,
+          oauth_nonce: nonce,
+          oauth_signature_method: 'HMAC-SHA1',
+          oauth_timestamp: timestamp,
+          oauth_token: token,
+          oauth_version: '1.0'
+        };
+        
+        const encode = (str: string) => encodeURIComponent(str).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+        
+        const sortedKeys = Object.keys(params).sort();
+        const parameterString = sortedKeys.map(k => `${encode(k)}=${encode(params[k])}`).join('&');
+        
+        const signatureBaseString = `${method}&${encode(url)}&${encode(parameterString)}`;
+        const signingKey = `${encode(consumerSecret)}&${encode(tokenSecret)}`;
+        
+        const signature = crypto.createHmac('sha1', signingKey).update(signatureBaseString).digest('base64');
+        params.oauth_signature = signature;
+        
+        const authHeader = 'OAuth ' + Object.keys(params)
+          .sort()
+          .map(k => `${encode(k)}="${encode(params[k])}"`)
+          .join(', ');
+
+        const response = await axios.get(url, {
+          headers: {
+            Authorization: authHeader,
+          }
+        });
+
+        if (response.data && response.data.data) {
+          return { success: true, accessToken: dto.accessToken };
+        } else {
+          return { success: false, message: 'Invalid response from X API' };
+        }
+      }
+
       if (!dto.tokenUrl) {
         throw new BadRequestException('Token URL is required');
       }
@@ -375,7 +521,7 @@ export class AiSettingsService {
     } catch (error: any) {
       return { 
         success: false, 
-        message: error?.response?.data?.error?.message || error?.response?.data?.message || error.message || 'Validation failed'
+        message: error?.response?.data?.error?.message || error?.response?.data?.message || error?.response?.data?.detail || error.message || 'Validation failed'
       };
     }
   }

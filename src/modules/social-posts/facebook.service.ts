@@ -169,7 +169,7 @@ export class FacebookService {
   /**
    * Uploads an image as a Facebook story.
    */
-  async publishStory(imageUrl: string, pageId: string, accessToken: string): Promise<string> {
+  async publishStory(imageUrl: string, pageId: string, accessToken: string, scheduledTime?: number): Promise<string> {
     if (!pageId || !accessToken) {
       throw new Error('Facebook Page ID or Access Token is missing.');
     }
@@ -200,10 +200,15 @@ export class FacebookService {
 
     // Step 2: Publish as story
     const storyUrl = `${this.BASE_URL}/${pageId}/photo_stories`;
-    const storyParams = {
+    const storyParams: any = {
       photo_id: photoId,
       access_token: accessToken,
     };
+
+    if (scheduledTime) {
+      storyParams.published = false;
+      storyParams.scheduled_publish_time = scheduledTime;
+    }
 
     try {
       this.logger.log(`Publishing story to Facebook Page: ${pageId}`);

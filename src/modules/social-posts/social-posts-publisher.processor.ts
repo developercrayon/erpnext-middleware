@@ -8,12 +8,15 @@ import { Repository } from 'typeorm';
 import { SocialPost, SocialPostStatus } from '../../database/entities/social-post.entity';
 import { AiSettingsService } from '../ai/services/ai-settings.service';
 
+import { PinterestService } from './pinterest.service';
+
 @Processor(QUEUE_NAMES.SOCIAL_POSTS)
 export class SocialPostsPublisherProcessor {
   private readonly logger = new Logger(SocialPostsPublisherProcessor.name);
 
   constructor(
     private readonly instagramService: InstagramService,
+    private readonly pinterestService: PinterestService,
     private readonly settingsService: AiSettingsService,
     @InjectRepository(SocialPost)
     private readonly postRepo: Repository<SocialPost>,
@@ -70,13 +73,54 @@ export class SocialPostsPublisherProcessor {
         // Facebook natively scheduled the post at generation time via Graph API
         // So we don't need to actually call publish here. We just need to mark it as PUBLISHED in our DB.
         this.logger.log(`Post ${postId} was natively scheduled on Facebook. Marking as PUBLISHED locally.`);
+      } else if (post.platform === 'pinterest') {
+        const title = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim() || 'Untitled Pin';
+        const link = "https://woodwolff.com";
+        const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000';
+        
+        let pinId;
+        if (post.postType?.toLowerCase() === 'carousel') {
+          if (!post.mediaUrls || post.mediaUrls.length < 2) {
+            throw new Error('Carousel posts must have at least 2 media items.');
+          }
+          const fullImageUrls = post.mediaUrls.map(url => 
+            url.startsWith('http') ? url : `${publicBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+          );
+          pinId = await this.pinterestService.publishCarousel(
+            config.platformAccountId, 
+            title, 
+            link, 
+            fullImageUrls, 
+            config.accessToken
+          );
+        } else {
+          const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
+          if (!imageUrl) {
+            throw new Error('No media generated to post to Pinterest.');
+          }
+          const fullImageUrl = imageUrl.startsWith('http') 
+            ? imageUrl 
+            : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+            
+          pinId = await this.pinterestService.publishImage(
+            config.platformAccountId, 
+            title, 
+            link, 
+            fullImageUrl, 
+            config.accessToken
+          );
+        }
+        post.platformPostId = pinId;
+        this.logger.log(`Successfully published post ${postId} to Pinterest!`);
       }
 
       post.status = SocialPostStatus.PUBLISHED;
       post.errorMessage = null;
       await this.postRepo.save(post);
 
-      this.logger.log(`Successfully published post ${postId} to Instagram!`);
+      if (post.platform === 'instagram') {
+        this.logger.log(`Successfully published post ${postId} to Instagram!`);
+      }
 
     } catch (error: any) {
       this.logger.error(`Failed to publish post ${postId}: ${error.message}`);

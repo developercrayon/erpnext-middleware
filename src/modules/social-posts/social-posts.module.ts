@@ -9,6 +9,7 @@ import { SocialPostsProcessor } from './social-posts.processor';
 import { SocialPostsPublisherProcessor } from './social-posts-publisher.processor';
 import { InstagramService } from './instagram.service';
 import { FacebookService } from './facebook.service';
+import { PinterestService } from './pinterest.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AiModule } from '../ai/ai.module';
 import { ProductsModule } from '../products/products.module';
@@ -24,7 +25,7 @@ import { ProductsModule } from '../products/products.module';
     ProductsModule,
   ],
   controllers: [SocialPostsController],
-  providers: [SocialPostsService, SocialPostsProcessor, SocialPostsPublisherProcessor, InstagramService, FacebookService],
+  providers: [SocialPostsService, SocialPostsProcessor, SocialPostsPublisherProcessor, InstagramService, FacebookService, PinterestService],
   exports: [SocialPostsService],
 })
 export class SocialPostsModule {}

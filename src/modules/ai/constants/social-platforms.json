@@ -102,6 +102,50 @@
     ]
   },
   {
+    "id": "x",
+    "name": "X (Twitter)",
+    "authorization_url": "https://twitter.com/i/oauth2/authorize",
+    "token_url": "https://api.twitter.com/2/oauth2/token",
+    "api_base_url": "https://api.twitter.com",
+    "api_version": "2",
+    "api_credentials": {
+      "required": [
+        "signature_method",
+        "consumer_key",
+        "consumer_secret",
+        "access_token",
+        "access_token_secret"
+      ],
+      "optional": []
+    },
+    "token_generation": {},
+    "post_types": [
+      {
+        "id": "text",
+        "name": "Text Post",
+        "aspect_ratios": []
+      },
+      {
+        "id": "image",
+        "name": "Image",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "4:5"
+        ]
+      },
+      {
+        "id": "carousel",
+        "name": "Media Carousel",
+        "aspect_ratios": [
+          "16:9",
+          "1:1",
+          "4:5"
+        ]
+      }
+    ]
+  },
+  {
     "id": "pinterest",
     "name": "Pinterest",
     "authorization_url": "https://www.pinterest.com/oauth/",
@@ -119,15 +163,13 @@
     },
     "token_generation": {
       "required": [
-        "client_id",
-        "client_secret",
-        "refresh_token"
+        "access_token"
       ],
       "optional": []
     },
     "post_types": [
       {
-        "id": "pin",
+        "id": "image_url",
         "name": "Pin",
         "aspect_ratios": [
           "2:3",
@@ -136,73 +178,11 @@
         ]
       },
       {
-        "id": "video_pin",
-        "name": "Video Pin",
-        "aspect_ratios": [
-          "2:3",
-          "1:1",
-          "4:5",
-          "9:16"
-        ]
-      },
-      {
         "id": "carousel",
         "name": "Carousel",
         "aspect_ratios": [
           "1:1",
           "2:3",
-          "4:5"
-        ]
-      }
-    ]
-  },
-  {
-    "id": "tiktok",
-    "name": "TikTok",
-    "authorization_url": "https://www.tiktok.com/v2/auth/authorize/",
-    "token_url": "https://open.tiktokapis.com/v2/oauth/token/",
-    "api_base_url": "https://open.tiktokapis.com",
-    "api_version": "v2",
-    "api_credentials": {
-      "required": [
-        "access_token",
-        "open_id"
-      ],
-      "optional": []
-    },
-    "token_generation": {
-      "required": [
-        "client_key",
-        "client_secret",
-        "refresh_token"
-      ],
-      "optional": []
-    },
-    "post_types": [
-      {
-        "id": "video",
-        "name": "Video",
-        "aspect_ratios": [
-          "9:16",
-          "1:1",
-          "16:9"
-        ]
-      },
-      {
-        "id": "photo",
-        "name": "Photo",
-        "aspect_ratios": [
-          "9:16",
-          "1:1",
-          "4:5"
-        ]
-      },
-      {
-        "id": "carousel",
-        "name": "Photo Carousel",
-        "aspect_ratios": [
-          "9:16",
-          "1:1",
           "4:5"
         ]
       }
@@ -226,9 +206,7 @@
     },
     "token_generation": {
       "required": [
-        "client_id",
-        "client_secret",
-        "refresh_token"
+        "access_token"
       ],
       "optional": []
     },
@@ -274,71 +252,6 @@
         "id": "text",
         "name": "Text Post",
         "aspect_ratios": []
-      }
-    ]
-  },
-  {
-    "id": "x",
-    "name": "X (Twitter)",
-    "authorization_url": "https://twitter.com/i/oauth2/authorize",
-    "token_url": "https://api.twitter.com/2/oauth2/token",
-    "api_base_url": "https://api.twitter.com",
-    "api_version": "2",
-    "api_credentials": {
-      "required": [
-        "access_token",
-        "user_id"
-      ],
-      "optional": []
-    },
-    "token_generation": {
-      "required": [
-        "client_id",
-        "refresh_token"
-      ],
-      "optional": []
-    },
-    "post_types": [
-      {
-        "id": "text",
-        "name": "Text Post",
-        "aspect_ratios": []
-      },
-      {
-        "id": "image",
-        "name": "Image",
-        "aspect_ratios": [
-          "16:9",
-          "1:1",
-          "4:5"
-        ]
-      },
-      {
-        "id": "video",
-        "name": "Video",
-        "aspect_ratios": [
-          "16:9",
-          "1:1",
-          "9:16"
-        ]
-      },
-      {
-        "id": "gif",
-        "name": "GIF",
-        "aspect_ratios": [
-          "16:9",
-          "1:1",
-          "4:5"
-        ]
-      },
-      {
-        "id": "carousel",
-        "name": "Media Carousel",
-        "aspect_ratios": [
-          "16:9",
-          "1:1",
-          "4:5"
-        ]
       }
     ]
   }

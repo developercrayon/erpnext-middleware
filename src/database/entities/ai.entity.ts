@@ -311,6 +311,18 @@ export class AiSocialMediaConfig {
   @Column({ name: 'access_token_encrypted', type: 'text', nullable: true })
   accessTokenEncrypted: string | null;
 
+  @Column({ name: 'consumer_key', type: 'varchar', length: 255, nullable: true })
+  consumerKey: string | null;
+
+  @Column({ name: 'consumer_secret_encrypted', type: 'text', nullable: true })
+  consumerSecretEncrypted: string | null;
+
+  @Column({ name: 'access_token_secret_encrypted', type: 'text', nullable: true })
+  accessTokenSecretEncrypted: string | null;
+
+  @Column({ name: 'signature_method', type: 'varchar', length: 50, nullable: true })
+  signatureMethod: string | null;
+
   @Column({ name: 'authorization_url', type: 'varchar', length: 255, nullable: true })
   authorizationUrl: string | null;
 

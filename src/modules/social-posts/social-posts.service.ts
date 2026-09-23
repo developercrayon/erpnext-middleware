@@ -14,6 +14,7 @@ import { ProductsService } from '../products/products.service';
 import { AiConfigType } from '../../database/entities/ai.entity';
 import { InstagramService } from './instagram.service';
 import { FacebookService } from './facebook.service';
+import { PinterestService } from './pinterest.service';
 
 @Injectable()
 export class SocialPostsService {
@@ -31,6 +32,7 @@ export class SocialPostsService {
     private readonly productsService: ProductsService,
     private readonly instagramService: InstagramService,
     private readonly facebookService: FacebookService,
+    private readonly pinterestService: PinterestService,
   ) {}
 
   async getCampaigns(): Promise<SocialCampaign[]> {
@@ -357,7 +359,8 @@ export class SocialPostsService {
         const creationId = await this.facebookService.publishStory(
           fullImageUrl,
           config.platformAccountId,
-          facebookAccessToken
+          facebookAccessToken,
+          scheduledTime
         );
         post.creationId = creationId;
         post.platformPostId = creationId;
@@ -483,5 +486,45 @@ export class SocialPostsService {
     });
     
     return { success: true };
+  }
+
+  async getPinterestBoards() {
+    const config = await this.settingsService.getDecryptedSocialMediaConfig('pinterest');
+    if (!config.accessToken) {
+      throw new Error('Pinterest access token is missing.');
+    }
+    
+    // Check if boards list is already cached
+    if (config.pagesList && Array.isArray(config.pagesList) && config.pagesList.length > 0) {
+      return { 
+        boards: config.pagesList,
+        selectedBoardId: config.selectedPageId,
+      };
+    }
+
+    // Fetch from Pinterest API
+    const boards = await this.pinterestService.getBoards(config.accessToken);
+    
+    // Cache in DB
+    await this.settingsService.updateSocialMediaConfig('pinterest', { pagesList: boards });
+    
+    return {
+      boards,
+      selectedBoardId: config.selectedPageId,
+    };
+  }
+
+  async selectPinterestBoard(boardId: string) {
+    const config = await this.settingsService.getDecryptedSocialMediaConfig('pinterest');
+    if (!config.accessToken) {
+      throw new Error('Pinterest access token is missing.');
+    }
+
+    await this.settingsService.updateSocialMediaConfig('pinterest', {
+      selectedPageId: boardId,
+      platformAccountId: boardId,
+    });
+
+    return { success: true, boardId };
   }
 }

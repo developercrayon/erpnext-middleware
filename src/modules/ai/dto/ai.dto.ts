@@ -162,6 +162,22 @@ export class UpsertSocialMediaDto {
 
   @IsString()
   @IsOptional()
+  consumerKey?: string;
+
+  @IsString()
+  @IsOptional()
+  consumerSecret?: string;
+
+  @IsString()
+  @IsOptional()
+  accessTokenSecret?: string;
+
+  @IsString()
+  @IsOptional()
+  signatureMethod?: string;
+
+  @IsString()
+  @IsOptional()
   authorizationUrl?: string;
 
   @IsString()

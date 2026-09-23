@@ -64,4 +64,14 @@ export class SocialPostsController {
   async selectFacebookPage(@Body('pageId') pageId: string) {
     return this.postsService.selectFacebookPage(pageId);
   }
+
+  @Get('pinterest/boards')
+  async getPinterestBoards() {
+    return this.postsService.getPinterestBoards();
+  }
+
+  @Post('pinterest/select-board')
+  async selectPinterestBoard(@Body('boardId') boardId: string) {
+    return this.postsService.selectPinterestBoard(boardId);
+  }
 }
