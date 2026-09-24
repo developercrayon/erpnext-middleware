@@ -11,6 +11,9 @@ export class ItemGroupConfig {
   @Column({ name: 'master_image_prompt', type: 'text', nullable: true })
   masterImagePrompt: string;
 
+  @Column({ name: 'selected_fields', type: 'simple-array', nullable: true })
+  selectedFields: string[];
+
   @OneToMany(() => ItemGroupPrompt, (prompt) => prompt.itemGroupConfig, { cascade: true })
   imagePrompts: ItemGroupPrompt[];
 

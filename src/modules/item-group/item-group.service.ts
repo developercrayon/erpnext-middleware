@@ -69,7 +69,7 @@ export class ItemGroupService {
     return config;
   }
 
-  async saveConfig(itemGroup: string, data: { amazonProductType?: string, imagePrompts?: any[], masterImagePrompt?: string }) {
+  async saveConfig(itemGroup: string, data: { amazonProductType?: string, imagePrompts?: any[], masterImagePrompt?: string, selectedFields?: string[] }) {
     let config = await this.configRepo.findOne({
       where: { itemGroup },
       relations: ['imagePrompts'],
@@ -85,6 +85,10 @@ export class ItemGroupService {
 
     if (data.masterImagePrompt !== undefined) {
       config.masterImagePrompt = data.masterImagePrompt;
+    }
+
+    if (data.selectedFields !== undefined) {
+      config.selectedFields = data.selectedFields;
     }
 
     if (data.imagePrompts) {

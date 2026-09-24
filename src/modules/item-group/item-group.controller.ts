@@ -30,7 +30,7 @@ export class ItemGroupController {
   @Post('config/:itemGroup')
   async saveConfig(
     @Param('itemGroup') itemGroup: string,
-    @Body() body: { amazonProductType?: string, imagePrompts?: any[], masterImagePrompt?: string },
+    @Body() body: { amazonProductType?: string, imagePrompts?: any[], masterImagePrompt?: string, selectedFields?: string[] },
   ) {
     return await this.itemGroupService.saveConfig(itemGroup, body);
   }
