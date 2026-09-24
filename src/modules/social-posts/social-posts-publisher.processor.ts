@@ -9,6 +9,7 @@ import { SocialPost, SocialPostStatus } from '../../database/entities/social-pos
 import { AiSettingsService } from '../ai/services/ai-settings.service';
 
 import { PinterestService } from './pinterest.service';
+import { LinkedinService } from './linkedin.service';
 
 @Processor(QUEUE_NAMES.SOCIAL_POSTS)
 export class SocialPostsPublisherProcessor {
@@ -17,6 +18,7 @@ export class SocialPostsPublisherProcessor {
   constructor(
     private readonly instagramService: InstagramService,
     private readonly pinterestService: PinterestService,
+    private readonly linkedinService: LinkedinService,
     private readonly settingsService: AiSettingsService,
     @InjectRepository(SocialPost)
     private readonly postRepo: Repository<SocialPost>,
@@ -123,6 +125,51 @@ export class SocialPostsPublisherProcessor {
         }
         post.platformPostId = pinId;
         this.logger.log(`Successfully published post ${postId} to Pinterest!`);
+      } else if (post.platform === 'linkedin') {
+        const rawDescription = `${post.caption || ''}\n\n${post.hashtags || ''}`.trim();
+        const commentary = rawDescription.length > 3000 ? rawDescription.substring(0, 2997) + '...' : rawDescription;
+        
+        const publicBaseUrl = process.env.APP_PUBLIC_URL || process.env.APP_URL || 'https://inkretix.t3package.com';
+        let linkedinPostId;
+
+        if (post.postType?.toLowerCase() === 'carousel') {
+          if (!post.mediaUrls || post.mediaUrls.length < 2) {
+            throw new Error('Carousel posts must have at least 2 media items.');
+          }
+          const fullImageUrls = post.mediaUrls.map(url => 
+            url.startsWith('http') ? url : `${publicBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+          );
+          linkedinPostId = await this.linkedinService.publishCarousel(
+            config.platformAccountId, 
+            commentary, 
+            fullImageUrls, 
+            config.accessToken
+          );
+        } else if (post.postType?.toLowerCase() === 'image') {
+          const imageUrl = post.mediaUrls && post.mediaUrls.length > 0 ? post.mediaUrls[0] : null;
+          if (!imageUrl) {
+            throw new Error('No media generated to post to LinkedIn.');
+          }
+          const fullImageUrl = imageUrl.startsWith('http') 
+            ? imageUrl 
+            : `${publicBaseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+            
+          linkedinPostId = await this.linkedinService.publishImage(
+            config.platformAccountId, 
+            commentary, 
+            fullImageUrl, 
+            config.accessToken
+          );
+        } else {
+          // Text post
+          linkedinPostId = await this.linkedinService.publishText(
+            config.platformAccountId,
+            commentary,
+            config.accessToken
+          );
+        }
+        post.platformPostId = linkedinPostId;
+        this.logger.log(`Successfully published post ${postId} to LinkedIn!`);
       }
 
       post.status = SocialPostStatus.PUBLISHED;

@@ -10,6 +10,7 @@ import { SocialPostsPublisherProcessor } from './social-posts-publisher.processo
 import { InstagramService } from './instagram.service';
 import { FacebookService } from './facebook.service';
 import { PinterestService } from './pinterest.service';
+import { LinkedinService } from './linkedin.service';
 import { QUEUE_NAMES } from '../queue/queue.constants';
 import { AiModule } from '../ai/ai.module';
 import { ProductsModule } from '../products/products.module';
@@ -27,7 +28,7 @@ import { SharedModule } from '../../shared/shared.module';
     SharedModule,
   ],
   controllers: [SocialPostsController],
-  providers: [SocialPostsService, SocialPostsProcessor, SocialPostsPublisherProcessor, InstagramService, FacebookService, PinterestService],
+  providers: [SocialPostsService, SocialPostsProcessor, SocialPostsPublisherProcessor, InstagramService, FacebookService, PinterestService, LinkedinService],
   exports: [SocialPostsService],
 })
 export class SocialPostsModule {}

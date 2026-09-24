@@ -288,6 +288,7 @@ export class AiSettingsService {
       }
 
       if (dto.signatureMethod !== undefined) config.signatureMethod = dto.signatureMethod;
+      if (dto.platformAccountId !== undefined) config.platformAccountId = dto.platformAccountId;
       
       if (dto.authorizationUrl !== undefined) config.authorizationUrl = dto.authorizationUrl;
       if (dto.tokenUrl !== undefined) config.tokenUrl = dto.tokenUrl;

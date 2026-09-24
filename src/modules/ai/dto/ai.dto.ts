@@ -174,6 +174,10 @@ export class UpsertSocialMediaDto {
 
   @IsString()
   @IsOptional()
+  platformAccountId?: string;
+
+  @IsString()
+  @IsOptional()
   signatureMethod?: string;
 
   @IsString()
