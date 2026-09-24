@@ -1177,6 +1177,9 @@ export class AmazonConnector extends BaseConnector {
 
     if (erpRaw.attachments && Array.isArray(erpRaw.attachments)) {
       for (const att of erpRaw.attachments) {
+        // Only use attachments that are NOT attached to specific fields
+        if (att.attached_to_field && att.attached_to_field !== '') continue;
+
         if (att.file_url) {
           let url = att.file_url;
           if (url.startsWith('/')) url = url.substring(1);

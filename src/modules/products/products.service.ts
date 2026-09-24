@@ -112,8 +112,8 @@ export class ProductsService {
   }
 
 
-  async uploadImage(file: any) {
-    const result = await this.erpnextService['connector'].uploadFile(file);
+  async uploadImage(file: any, options?: { doctype?: string, docname?: string, attached_to_field?: string }) {
+    const result = await this.erpnextService['connector'].uploadFile(file, options);
     if (!result.success) throw new Error(result.error);
     return result.data;
   }

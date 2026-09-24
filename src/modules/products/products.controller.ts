@@ -134,10 +134,15 @@ export class ProductsController {
   @Post('upload-image')
   @ApiOperation({ summary: 'Upload an image file to ERPNext' })
   @UseInterceptors(FileInterceptor('file'))
-  async uploadImage(@UploadedFile() file: any) {
+  async uploadImage(
+    @UploadedFile() file: any,
+    @Body('doctype') doctype?: string,
+    @Body('docname') docname?: string,
+    @Body('attached_to_field') attached_to_field?: string,
+  ) {
     if (!file) throw new BadRequestException('No file provided');
     try {
-      const result = await this.productsService.uploadImage(file);
+      const result = await this.productsService.uploadImage(file, { doctype, docname, attached_to_field });
       return result;
     } catch (error: any) {
       throw new BadRequestException(error.message || 'Failed to upload image');

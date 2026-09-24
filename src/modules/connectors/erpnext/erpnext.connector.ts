@@ -184,11 +184,12 @@ export class ERPNextConnector extends BaseConnector {
       const filesResponse = await this.http.get(`${this.baseUrl}/api/resource/File`, {
         headers: this.authHeaders,
         params: {
-          fields: JSON.stringify(['name', 'file_url', 'file_name', 'is_private', 'creation', 'modified', 'custom_sequence']),
+          fields: JSON.stringify(['name', 'file_url', 'file_name', 'is_private', 'creation', 'modified', 'custom_sequence', 'attached_to_field']),
           filters: JSON.stringify([
             ['attached_to_doctype', '=', 'Item'],
             ['attached_to_name', '=', itemCode],
-            ['is_folder', '=', 0]
+            ['is_folder', '=', 0],
+            ['attached_to_field', 'in', ['', null]]
           ]),
           limit_page_length: 1000
         }
@@ -1022,13 +1023,16 @@ export class ERPNextConnector extends BaseConnector {
     }
   }
 
-  async uploadFile(file: any): Promise<ConnectorResult<any>> {
+  async uploadFile(file: any, options?: { doctype?: string, docname?: string, attached_to_field?: string }): Promise<ConnectorResult<any>> {
     try {
       await this.authenticate();
       const FormData = require('form-data');
       const formData = new FormData();
       formData.append('file', file.buffer, { filename: file.originalname });
       formData.append('is_private', '0');
+      if (options?.doctype) formData.append('doctype', options.doctype);
+      if (options?.docname) formData.append('docname', options.docname);
+      if (options?.attached_to_field) formData.append('attached_to_field', options.attached_to_field);
 
       const response = await this.http.post(
         `${this.baseUrl}/api/method/upload_file`,
