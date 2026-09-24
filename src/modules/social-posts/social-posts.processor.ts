@@ -84,7 +84,10 @@ export class SocialPostsProcessor {
       }
 
       if (imageConfig && ((imageConfig.prompts && imageConfig.prompts.length > 0) || (post.customPrompts && post.customPrompts.image))) {
-         let imagePrompt = "";
+         if (post.postType?.toLowerCase() === 'message' || post.postType?.toLowerCase() === 'text') {
+           this.logger.log(`Skipping image generation for text-only post`);
+         } else {
+           let imagePrompt = "";
          
          if (post.customPrompts && post.customPrompts.image) {
             imagePrompt = post.customPrompts.image;
@@ -153,6 +156,7 @@ export class SocialPostsProcessor {
          
          if (failedImages.length > 0) {
            throw new Error(failedImages[0].error || `Failed to generate ${failedImages.length} images`);
+         }
          }
       }
 

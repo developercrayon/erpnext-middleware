@@ -5,8 +5,8 @@ import axios from 'axios';
 @Injectable()
 export class LinkedinService {
   private readonly logger = new Logger(LinkedinService.name);
-  
-  constructor(private readonly http: HttpClientService) {}
+
+  constructor(private readonly http: HttpClientService) { }
 
   private getHeaders(accessToken: string) {
     return {
@@ -55,16 +55,16 @@ export class LinkedinService {
         owner: `urn:li:organization:${pageId}`
       }
     };
-    
+
     let uploadUrl = '';
     let imageUrn = '';
     try {
       const initResponse = await this.http.post(initUrl, initPayload, { headers: this.getHeaders(accessToken) });
       uploadUrl = initResponse.data?.value?.uploadUrl;
       imageUrn = initResponse.data?.value?.image;
-      
+
       if (!uploadUrl || !imageUrn) {
-         throw new Error('Invalid response from initializeUpload');
+        throw new Error('Invalid response from initializeUpload');
       }
     } catch (error: any) {
       this.logger.error(`Failed to initialize LinkedIn image upload: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`);
@@ -75,12 +75,12 @@ export class LinkedinService {
     let imageBuffer: Buffer;
     let contentType = 'image/png';
     try {
-       const imgResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-       imageBuffer = imgResponse.data;
-       contentType = (imgResponse.headers['content-type'] as string) || 'image/png';
+      const imgResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      imageBuffer = imgResponse.data;
+      contentType = (imgResponse.headers['content-type'] as string) || 'image/png';
     } catch (error: any) {
-       this.logger.error(`Failed to fetch image from URL: ${imageUrl}`);
-       throw new Error(`Cannot download image: ${error.message}`);
+      this.logger.error(`Failed to fetch image from URL: ${imageUrl}`);
+      throw new Error(`Cannot download image: ${error.message}`);
     }
 
     // 3. Upload image binary
