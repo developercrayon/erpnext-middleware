@@ -83,6 +83,8 @@ export class SocialPostsService {
         post.status = SocialPostStatus.GENERATING;
         post.errorMessage = null;
         post.mediaUrls = []; // Clear old media urls on regenerate
+        post.caption = null; // Clear old caption so UI knows it's generating
+        post.hashtags = null; 
       } else {
         post = this.postRepo.create({
           ...dto,
@@ -96,17 +98,21 @@ export class SocialPostsService {
       });
     }
 
-    // 1. Fetch Product Data from ERPNext via products module
-    const productsData = await this.productsService.findAll({ search: post.productItemCode });
-    const product = productsData.data.find(p => p.sku === post.productItemCode || p.name === post.productItemCode);
-    
-    if (!product) {
-      throw new Error(`Product ${post.productItemCode} not found in ERPNext`);
+    // 1. Fetch Product Data from ERPNext via products module (if provided)
+    let product = null;
+    if (post.productItemCode) {
+      const productsData = await this.productsService.findAll({ search: post.productItemCode });
+      product = productsData.data.find(p => p.sku === post.productItemCode || p.name === post.productItemCode);
+      if (!product) {
+        // Just log a warning instead of crashing. 
+        // Generation can proceed using fallback inputs.
+        new Logger('SocialPostsService').warn(`Product ${post.productItemCode} not found in ERPNext. Proceeding without product metadata.`);
+      }
     }
 
-    const itemName = product.name || post.productItemCode;
-    const description = product.description || '';
-    let contentReferenceImageUrl = product.images?.[0] || '';
+    const itemName = product?.name || post.productItemCode || 'Product';
+    const description = product?.description || '';
+    let contentReferenceImageUrl = product?.images?.[0] || '';
 
     let contentReferenceImageUrls: string[] = [];
 

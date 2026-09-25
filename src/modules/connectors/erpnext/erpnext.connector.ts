@@ -1044,7 +1044,28 @@ export class ERPNextConnector extends BaseConnector {
           },
         }
       );
-      return this.success(response.data?.message);
+      
+      let message = response.data?.message;
+      if (message && message.name) {
+        try {
+          const fileRes = await this.http.get(
+            `${this.baseUrl}/api/resource/File/${message.name}`,
+            { headers: this.authHeaders }
+          );
+          if (fileRes.data?.data) {
+            message = fileRes.data.data;
+          }
+        } catch (e) {
+          this.logger.warn(`Failed to fetch updated File doc for ${message.name}: ${e.message}`);
+        }
+      }
+      
+      // Ensure absolute URL
+      if (message && message.file_url && (message.file_url.startsWith('/files/') || message.file_url.startsWith('/private/'))) {
+         message.file_url = `${this.baseUrl}${message.file_url}`;
+      }
+      
+      return this.success(message);
     } catch (error: any) {
       this.logger.error(`Failed to upload file to ERPNext: ${error.message}`);
       return this.failure(error.message);
@@ -1075,7 +1096,28 @@ export class ERPNextConnector extends BaseConnector {
           },
         }
       );
-      return this.success(response.data?.message);
+
+      let message = response.data?.message;
+      if (message && message.name) {
+        try {
+          const fileRes = await this.http.get(
+            `${this.baseUrl}/api/resource/File/${message.name}`,
+            { headers: this.authHeaders }
+          );
+          if (fileRes.data?.data) {
+            message = fileRes.data.data;
+          }
+        } catch (e) {
+          this.logger.warn(`Failed to fetch updated File doc for ${message.name}: ${e.message}`);
+        }
+      }
+
+      // Ensure absolute URL
+      if (message && message.file_url && (message.file_url.startsWith('/files/') || message.file_url.startsWith('/private/'))) {
+         message.file_url = `${this.baseUrl}${message.file_url}`;
+      }
+
+      return this.success(message);
     } catch (error: any) {
       this.logger.error(`Failed to upload file to item ${itemCode}: ${error.message}`);
       return this.failure(error.message);

@@ -41,18 +41,20 @@ export class SocialPostsProcessor {
     }
 
     try {
-      // 1. Fetch Product Data from ERPNext via products module
-      const productsData = await this.productsService.findAll({ search: productItemCode });
-      const product = productsData.data.find(p => p.sku === productItemCode || p.name === productItemCode);
-      
-      if (!product) {
-        throw new Error(`Product ${productItemCode} not found in ERPNext`);
+      // 1. Fetch Product Data from ERPNext via products module (if provided)
+      let product = null;
+      if (productItemCode) {
+        const productsData = await this.productsService.findAll({ search: productItemCode });
+        product = productsData.data.find(p => p.sku === productItemCode || p.name === productItemCode);
+        if (!product) {
+          this.logger.warn(`Product ${productItemCode} not found in ERPNext. Proceeding without product metadata.`);
+        }
       }
 
-      const itemName = product.name || productItemCode;
-      const description = product.description || '';
-      let contentReferenceImageUrl = product.images?.[0] || '';
-      let imageReferenceImageUrl = product.images?.[0] || '';
+      const itemName = product?.name || productItemCode || 'Product';
+      const description = product?.description || '';
+      let contentReferenceImageUrl = product?.images?.[0] || '';
+      let imageReferenceImageUrl = product?.images?.[0] || '';
 
       if (post.customPrompts) {
         if (post.customPrompts.selectedReelPromptImages && Array.isArray(post.customPrompts.selectedReelPromptImages) && post.customPrompts.selectedReelPromptImages.length > 0) {
