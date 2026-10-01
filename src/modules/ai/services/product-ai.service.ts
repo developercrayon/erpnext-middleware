@@ -148,15 +148,14 @@ export class ProductAiService {
   async updateGeneratedContent(id: string, dto: UpdateAiProductContentDto) {
     const data = await this.getAiProductData(id);
 
-    if (!data.generatedContent) {
-      throw new BadRequestException('Cannot update content before it is generated');
-    }
-
-    data.generatedContent = {
-      ...data.generatedContent,
+    const newContent = {
+      ...(data.generatedContent || {} as any),
       ...dto,
     };
-    return await this.productDataRepo.save(data);
+    
+    await this.productDataRepo.update(id, { generatedContent: newContent });
+    data.generatedContent = newContent;
+    return data;
   }
 
   async triggerGeneration(id: string) {
@@ -196,56 +195,20 @@ export class ProductAiService {
     const job = this.jobRepo.create({
       aiProductDataId: data.id,
       status: AiGenerationJobStatus.IN_PROGRESS,
-      contentStatus: 'in_progress',
+      contentStatus: 'pending',
       imageTotal: initialImageTotal,
     });
     const savedJob = await this.jobRepo.save(job);
 
     try {
-      // 1. Generate text content synchronously
-      const contentConfig = await this.settingsService.getDecryptedConfig(AiConfigType.CONTENT);
-      const generatedContent = await this.contentGenService.generateContent({
-        itemName: data.userInput.item_name,
-        description: data.userInput.description,
-        referenceImageUrl: data.userInput.reference_image_url,
-        referenceImageBase64: data.userInput.reference_image_base64,
-        config: {
-          provider: contentConfig.provider as any,
-          model: contentConfig.model,
-          apiKey: contentConfig.apiKey,
-          apiSecret: contentConfig.apiSecret,
-          contentPrompt: replaceDynamicFields(contentConfig.contentPrompt, data.userInput),
-        },
-      });
-
-      // 2. Save text content
-      data.generatedContent = generatedContent as any;
-      if (!hasImage) {
-        data.status = AiProductDataStatus.GENERATED;
-        await this.productDataRepo.save(data);
-
-        savedJob.contentStatus = 'completed';
-        savedJob.status = AiGenerationJobStatus.COMPLETED;
-        savedJob.completedAt = new Date();
-        await this.jobRepo.save(savedJob);
-
-        return { jobId: savedJob.id, status: 'generated' };
-      }
-
-      await this.productDataRepo.save(data);
-
-      savedJob.contentStatus = 'completed';
-      await this.jobRepo.save(savedJob);
-
-      // 3. Queue image generation (handled asynchronously by AiGenerationProcessor)
+      // Queue both content and image generation (handled asynchronously by AiGenerationProcessor)
       await this.aiQueue.add(JOB_NAMES.AI_GENERATE_PRODUCT, {
         aiProductDataId: data.id,
-        imageOnly: true, // Tell processor to only run image generation
+        imageOnly: false, // Tell processor to run both content and image generation
       });
 
     } catch (err: any) {
-      // If text generation fails, mark as failed immediately
-      savedJob.contentStatus = 'failed';
+      // If queueing fails, mark as failed immediately
       savedJob.status = AiGenerationJobStatus.FAILED;
       savedJob.error = err.message;
       savedJob.completedAt = new Date();
@@ -255,7 +218,7 @@ export class ProductAiService {
       data.status = AiProductDataStatus.PENDING;
       await this.productDataRepo.save(data);
 
-      throw new BadRequestException(`Content generation failed: ${err.message}`);
+      throw new BadRequestException(`Failed to queue generation job: ${err.message}`);
     }
 
     return { jobId: savedJob.id };

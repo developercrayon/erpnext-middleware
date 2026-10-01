@@ -119,8 +119,9 @@ export class AiGenerationProcessor {
             },
           });
 
-          productData.generatedContent = generatedContent;
-          await this.productDataRepo.save(productData);
+          await this.productDataRepo.update(productData.id, {
+            generatedContent: generatedContent
+          });
 
           aiJob.contentStatus = 'completed';
           await this.jobRepo.save(aiJob);
@@ -209,8 +210,9 @@ export class AiGenerationProcessor {
             targetIndex,
             existingResults: productData.generatedImages,
             onProgress: async (result, currentResults) => {
-              productData.generatedImages = currentResults;
-              await this.productDataRepo.save(productData);
+              await this.productDataRepo.update(productData.id, {
+                generatedImages: currentResults,
+              });
 
               aiJob.imageCompleted = currentResults.filter((img) => img && img.success).length;
               aiJob.imageFailed = currentResults.filter((img) => img && !img.success).length;
@@ -231,14 +233,16 @@ export class AiGenerationProcessor {
       aiJob.completedAt = new Date();
       await this.jobRepo.save(aiJob);
 
-      productData.status = AiProductDataStatus.GENERATED;
-      productData.generatedAt = new Date();
       try {
-        await this.productDataRepo.save(productData);
+        await this.productDataRepo.update(productData.id, {
+          status: AiProductDataStatus.GENERATED,
+          generatedAt: new Date(),
+        });
       } catch (err: any) {
         this.logger.warn(`Failed to save productData with generatedAt, retrying without it: ${err.message}`);
-        delete (productData as any).generatedAt;
-        await this.productDataRepo.save(productData);
+        await this.productDataRepo.update(productData.id, {
+          status: AiProductDataStatus.GENERATED,
+        });
       }
 
       this.logger.log(`Completed AI generation job for ProductData ${aiProductDataId}`);
@@ -251,13 +255,11 @@ export class AiGenerationProcessor {
       await this.jobRepo.save(aiJob);
 
       // Revert product data status to PENDING so user can retry
-      productData.status = AiProductDataStatus.PENDING;
       try {
-        await this.productDataRepo.save(productData);
-      } catch (err) {
-        delete (productData as any).generatedAt;
-        await this.productDataRepo.save(productData);
-      }
+        await this.productDataRepo.update(productData.id, {
+          status: AiProductDataStatus.PENDING,
+        });
+      } catch (err) {}
 
       throw error;
     }
