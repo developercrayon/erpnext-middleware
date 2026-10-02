@@ -9,6 +9,7 @@ import {
   UseGuards,
   Res,
   NotFoundException,
+  BadRequestException,
   Logger,
   Query,
 } from '@nestjs/common';
@@ -180,5 +181,15 @@ export class ProductAiController {
     // Read and stream the file
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
+  }
+
+  @Post('generate-field')
+  @UseGuards(AuthGuard('jwt'))
+  async generateFieldText(@Body('prompt') prompt: string) {
+    if (!prompt) {
+      throw new BadRequestException('Prompt is required');
+    }
+    const text = await this.productAiService.generateFieldText(prompt);
+    return { text };
   }
 }

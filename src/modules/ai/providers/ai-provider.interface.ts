@@ -84,4 +84,9 @@ export abstract class AIProvider {
    * Must throw BadRequestException if the provider does not support image generation.
    */
   abstract generateImage(input: ImageGenerationInput): Promise<ImageGenerationOutput>;
+
+  /**
+   * Generate plain text for a specific field based on a prompt.
+   */
+  abstract generateText(input: { prompt: string, model: string, apiKey: string }): Promise<string>;
 }

@@ -67,4 +67,18 @@ export class AnthropicProvider extends AIProvider {
   ): Promise<ImageGenerationOutput> {
     throw new BadRequestException('Anthropic does not support image generation');
   }
+
+  async generateText(input: { prompt: string, model: string, apiKey: string }): Promise<string> {
+    const anthropic = new Anthropic({ apiKey: input.apiKey });
+    try {
+      const response = await anthropic.messages.create({
+        model: input.model || 'claude-3-haiku-20240307',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: input.prompt }],
+      });
+      return (response.content[0] as any).text || '';
+    } catch (error: any) {
+      throw new Error(`Anthropic Text Generation failed: ${error.message}`);
+    }
+  }
 }

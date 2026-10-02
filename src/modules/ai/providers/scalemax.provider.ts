@@ -109,4 +109,7 @@ export class ScalemaxProvider extends AIProvider {
     }
   }
 
+  async generateText(input: { prompt: string, model: string, apiKey: string }): Promise<string> {
+    throw new BadRequestException('Scalemax provider does not support text generation');
+  }
 }

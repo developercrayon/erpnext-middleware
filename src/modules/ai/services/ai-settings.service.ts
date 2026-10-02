@@ -58,6 +58,7 @@ export class AiSettingsService {
       editUrl: config.editUrl,
       readUrl: config.readUrl,
       contentPrompt: config.contentPrompt,
+      fieldPrompt: config.fieldPrompt,
       masterPrompt: config.imageMasterPrompt,
       prompts: config.imagePrompts
         ? config.imagePrompts.map((p) => ({
@@ -97,8 +98,10 @@ export class AiSettingsService {
       editUrl: config.editUrl,
       readUrl: config.readUrl,
       contentPrompt: config.contentPrompt,
+      fieldPrompt: config.fieldPrompt,
       imageMasterPrompt: config.imageMasterPrompt,
       prompts: config.imagePrompts?.filter((p) => p.isEnabled) || [],
+      isEnabled: config.isEnabled,
     };
   }
 
@@ -118,6 +121,10 @@ export class AiSettingsService {
     
     if (dto.contentPrompt !== undefined) {
       config.contentPrompt = dto.contentPrompt;
+    }
+    
+    if (dto.fieldPrompt !== undefined) {
+      config.fieldPrompt = dto.fieldPrompt;
     }
     
     if (dto.isEnabled !== undefined) {

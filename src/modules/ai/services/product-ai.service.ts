@@ -52,6 +52,8 @@ function replaceDynamicFields(prompt: string | null | undefined, userInput: any)
 }
 
 
+import { AiProviderFactory } from '../providers/ai-provider.factory';
+
 @Injectable()
 export class ProductAiService {
   private readonly logger = new Logger(ProductAiService.name);
@@ -66,6 +68,7 @@ export class ProductAiService {
     private readonly settingsService: AiSettingsService,
     private readonly contentGenService: ContentGenerationService,
     private readonly itemGroupService: ItemGroupService,
+    private readonly providerFactory: AiProviderFactory,
   ) { }
 
   async createAiProductData(dto: CreateAiProductDataDto) {
@@ -311,5 +314,18 @@ export class ProductAiService {
 
     await this.productDataRepo.delete(id);
     return { success: true };
+  }
+
+  async generateFieldText(prompt: string) {
+    const config = await this.settingsService.getDecryptedConfig(AiConfigType.CONTENT);
+    if (!config || !config.isEnabled) {
+      throw new BadRequestException('Content AI is not enabled or configured.');
+    }
+    const provider = this.providerFactory.getProvider(config.provider as any);
+    return await provider.generateText({
+      prompt,
+      model: config.model,
+      apiKey: config.apiKey,
+    });
   }
 }

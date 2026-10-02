@@ -89,6 +89,10 @@ export class AiConfig {
   @Column({ name: 'content_prompt', type: 'text', nullable: true })
   contentPrompt: string | null;
 
+  /** Prompt used for generating individual fields dynamically */
+  @Column({ name: 'field_prompt', type: 'text', nullable: true })
+  fieldPrompt: string | null;
+
   @Column({ name: 'is_enabled', type: 'boolean', default: true })
   isEnabled: boolean;
 

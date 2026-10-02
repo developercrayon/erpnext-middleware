@@ -224,4 +224,22 @@ export class GoogleProvider extends AIProvider {
       throw new Error(`Google Image Generation failed: ${error.message}`);
     }
   }
+
+  async generateText(input: { prompt: string, model: string, apiKey: string }): Promise<string> {
+    const ai = new GoogleGenAI({
+      apiKey: input.apiKey,
+    });
+
+    const modelName = input.model || 'gemini-1.5-flash';
+
+    try {
+      const result = await ai.models.generateContent({
+        model: modelName,
+        contents: [input.prompt],
+      });
+      return result.text || '';
+    } catch (error: any) {
+      throw new Error(`Google Text Generation failed: ${error.message}`);
+    }
+  }
 }

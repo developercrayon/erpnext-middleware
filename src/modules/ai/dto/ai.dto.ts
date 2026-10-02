@@ -43,6 +43,10 @@ export class UpsertContentAiDto {
   @IsOptional()
   contentPrompt?: string;
 
+  @IsString()
+  @IsOptional()
+  fieldPrompt?: string;
+
   @IsBoolean()
   @IsOptional()
   isEnabled?: boolean;

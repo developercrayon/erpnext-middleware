@@ -83,4 +83,17 @@ export class OpenAiProvider extends AIProvider {
       throw new Error(`OpenAI Image Generation failed: ${error.message}`);
     }
   }
+
+  async generateText(input: { prompt: string, model: string, apiKey: string }): Promise<string> {
+    const openai = new OpenAI({ apiKey: input.apiKey });
+    try {
+      const completion = await openai.chat.completions.create({
+        model: input.model || 'gpt-4o-mini',
+        messages: [{ role: 'user', content: input.prompt }],
+      });
+      return completion.choices[0].message.content || '';
+    } catch (error: any) {
+      throw new Error(`OpenAI Text Generation failed: ${error.message}`);
+    }
+  }
 }
