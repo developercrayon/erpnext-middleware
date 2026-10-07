@@ -43,6 +43,9 @@ import { OcrIntegrationModule } from './modules/ocr-integration/ocr-integration.
 import { PurchasingModule } from './modules/purchasing/purchasing.module';
 import { PurchasingERPNextModule } from './modules/purchasing-erpnext/erpnext.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { SalesOrderModule } from './modules/sales-order/sales-order.module';
+import { SalesInvoiceModule } from './modules/sales-invoice/sales-invoice.module';
+import { SeoModule } from './modules/seo/seo.module';
 
 @Module({
   imports: [
@@ -120,12 +123,15 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     PurchasingModule,
     PurchasingERPNextModule,
     ReviewsModule,
+    SalesOrderModule,
+    SalesInvoiceModule,
 
     // ─── Infrastructure ───────────────────────────────────────────────────────
     QueueModule,
     SchedulerModule,
     AiModule,
     SocialPostsModule,
+    SeoModule,
   ],
   controllers: [AppController, HealthController],
 })
